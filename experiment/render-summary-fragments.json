@@ -1,0 +1,116 @@
+{
+  "server": "https://www.plantuml.com/plantuml/svg",
+  "startedAt": "2026-07-22T18:11:04.013Z",
+  "finishedAt": "2026-07-22T18:11:06.995Z",
+  "mode": "fragments",
+  "count": 15,
+  "successCount": 15,
+  "failedCount": 0,
+  "rendered": [
+    {
+      "id": "keep-roles",
+      "title": "Four useful participant roles",
+      "sourceBytes": 185,
+      "svgBytes": 5976,
+      "output": "rendered/fragments/keep-roles.svg"
+    },
+    {
+      "id": "keep-message-semantics",
+      "title": "Call, self-action, and reply",
+      "sourceBytes": 119,
+      "svgBytes": 3124,
+      "output": "rendered/fragments/keep-message-semantics.svg"
+    },
+    {
+      "id": "keep-async-send",
+      "title": "Asynchronous send",
+      "sourceBytes": 160,
+      "svgBytes": 4366,
+      "output": "rendered/fragments/keep-async-send.svg"
+    },
+    {
+      "id": "keep-alternative",
+      "title": "Alternative outcomes",
+      "sourceBytes": 171,
+      "svgBytes": 3720,
+      "output": "rendered/fragments/keep-alternative.svg"
+    },
+    {
+      "id": "keep-loop",
+      "title": "Repeated interaction",
+      "sourceBytes": 123,
+      "svgBytes": 3068,
+      "output": "rendered/fragments/keep-loop.svg"
+    },
+    {
+      "id": "keep-parallel",
+      "title": "Parallel branches",
+      "sourceBytes": 176,
+      "svgBytes": 3948,
+      "output": "rendered/fragments/keep-parallel.svg"
+    },
+    {
+      "id": "keep-critical",
+      "title": "Critical region",
+      "sourceBytes": 174,
+      "svgBytes": 3759,
+      "output": "rendered/fragments/keep-critical.svg"
+    },
+    {
+      "id": "keep-optional",
+      "title": "Optional path",
+      "sourceBytes": 108,
+      "svgBytes": 2660,
+      "output": "rendered/fragments/keep-optional.svg"
+    },
+    {
+      "id": "later-delay",
+      "title": "Meaningful time gap",
+      "sourceBytes": 134,
+      "svgBytes": 3406,
+      "output": "rendered/fragments/later-delay.svg"
+    },
+    {
+      "id": "simplify-participant-zoo",
+      "title": "PlantUML participant shape zoo",
+      "sourceBytes": 302,
+      "svgBytes": 9971,
+      "output": "rendered/fragments/simplify-participant-zoo.svg"
+    },
+    {
+      "id": "drop-activation",
+      "title": "Explicit activation bars",
+      "sourceBytes": 180,
+      "svgBytes": 4792,
+      "output": "rendered/fragments/drop-activation.svg"
+    },
+    {
+      "id": "drop-note",
+      "title": "Diagram note",
+      "sourceBytes": 138,
+      "svgBytes": 3593,
+      "output": "rendered/fragments/drop-note.svg"
+    },
+    {
+      "id": "drop-lifecycle",
+      "title": "Participant lifecycle",
+      "sourceBytes": 113,
+      "svgBytes": 2780,
+      "output": "rendered/fragments/drop-lifecycle.svg"
+    },
+    {
+      "id": "drop-break",
+      "title": "Special break fragment",
+      "sourceBytes": 189,
+      "svgBytes": 4300,
+      "output": "rendered/fragments/drop-break.svg"
+    },
+    {
+      "id": "drop-reference-numbering",
+      "title": "Reference and source numbering",
+      "sourceBytes": 149,
+      "svgBytes": 3197,
+      "output": "rendered/fragments/drop-reference-numbering.svg"
+    }
+  ]
+}

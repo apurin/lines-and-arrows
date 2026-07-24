@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lines &amp; Arrows view mode</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --page: #eef0f4;
+        --panel: #f6f7f9;
+        --text: #20242c;
+        --muted: #6a7280;
+        --control: #e2e5eb;
+        --control-active: #20242c;
+        --control-active-text: #f6f7f9;
+      }
+
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --page: #0b0d12;
+        --panel: #111319;
+        --text: #e7eaf0;
+        --muted: #a0a7b3;
+        --control: #20242d;
+        --control-active: #e7eaf0;
+        --control-active-text: #111319;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        min-height: 100dvh;
+        background: var(--page);
+        color: var(--text);
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 28px 0 48px;
+      }
+
+      header {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 16px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(22px, 3vw, 32px);
+        font-weight: 720;
+        letter-spacing: -0.035em;
+      }
+
+      p {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .theme-switcher {
+        display: inline-flex;
+        gap: 3px;
+        padding: 3px;
+        border-radius: 12px;
+        background: var(--control);
+      }
+
+      button {
+        min-height: 34px;
+        padding: 0 13px;
+        border: 0;
+        border-radius: 9px;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 650;
+        cursor: pointer;
+      }
+
+      button[aria-pressed="true"] {
+        background: var(--control-active);
+        color: var(--control-active-text);
+      }
+
+      button:focus-visible {
+        outline: 2px solid #6d8cff;
+        outline-offset: 2px;
+      }
+
+      .canvas-shell {
+        overflow: hidden;
+        border-radius: 22px;
+        background: var(--panel);
+        box-shadow: 0 20px 54px rgb(24 31 45 / 0.08);
+      }
+
+      lines-and-arrows {
+        min-width: 720px;
+      }
+
+      @media (max-width: 720px) {
+        main {
+          width: calc(100% - 20px);
+          padding-top: 18px;
+        }
+
+        header {
+          align-items: start;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .canvas-shell {
+          overflow-x: auto;
+          border-radius: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Lines &amp; Arrows</h1>
+          <p>View mode. Select any actor, message, group, section, or gap.</p>
+        </div>
+        <div class="theme-switcher" aria-label="Color theme">
+          <button type="button" data-theme="light">Light</button>
+          <button type="button" data-theme="dark">Dark</button>
+          <button type="button" data-theme="auto" aria-pressed="true">
+            System
+          </button>
+        </div>
+      </header>
+
+      <section class="canvas-shell" aria-label="Diagram preview">
+        <lines-and-arrows
+          id="diagram"
+          theme="auto"
+          label="Report processing sequence"
+        ></lines-and-arrows>
+      </section>
+    </main>
+
+    <script type="module">
+      import { defineLinesAndArrows } from "../src/index.js";
+
+      defineLinesAndArrows();
+
+      const source = `@Customer
+  icon user
+  tag review
+  tooltip Reviews the result before it is accepted
+
+@API
+  icon cloud
+  tag comment
+  tooltip Public entry point
+
+@Worker
+  icon gear-six
+
+@Queue
+  icon tray
+
+Customer -> API: Submit report
+  tag critical
+  tooltip The report must retain its original evidence
+
+critical Process report
+  API -> Worker: Start analysis
+  parallel Prepare result
+    | validate input
+      Worker -> Worker: Check evidence
+    | persist event
+      Worker -> Queue: Store audit event
+  gap 30 seconds later
+  choice Worker result
+    | completed
+      Worker --> API: Analysis complete
+    | queue unavailable
+      Worker ->x Queue: Publish completion event
+
+API --> Customer: Present result`;
+
+      const diagram = document.querySelector("#diagram");
+      const root = document.documentElement;
+      const buttons = [...document.querySelectorAll("[data-theme]")];
+      const iconBase =
+        "https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold";
+
+      diagram.iconResolver = (name) => `${iconBase}/${name}-bold.svg`;
+      diagram.source = source;
+
+      for (const button of buttons) {
+        button.addEventListener("click", () => {
+          const theme = button.dataset.theme;
+          diagram.theme = theme;
+          root.dataset.theme =
+            theme === "auto"
+              ? matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light"
+              : theme;
+          for (const candidate of buttons) {
+            candidate.setAttribute(
+              "aria-pressed",
+              String(candidate === button),
+            );
+          }
+        });
+      }
+
+      const media = matchMedia("(prefers-color-scheme: dark)");
+      const syncSystemTheme = () => {
+        if (diagram.theme === "auto") {
+          root.dataset.theme = media.matches ? "dark" : "light";
+        }
+      };
+      media.addEventListener("change", syncSystemTheme);
+      syncSystemTheme();
+    </script>
+  </body>
+</html>

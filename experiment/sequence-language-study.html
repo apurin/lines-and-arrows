@@ -1,0 +1,1792 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Sequence diagram control model</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;max-width:736px;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="Sequence diagram control model" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;Sequence diagram control model&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(--background) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: light-dark(rgb(255 255 255), rgb(24 24 24));
+  --foreground: light-dark(rgb(26 28 31), rgb(255 255 255));
+  --card: color-mix(in oklab, var(--foreground) 5%, transparent);
+  --card-foreground: var(--foreground);
+  --popover: light-dark(rgb(255 255 255), rgb(45 45 45));
+  --popover-foreground: var(--foreground);
+  --primary: light-dark(rgb(51 156 255), rgb(131 195 255));
+  --primary-foreground: light-dark(rgb(255 255 255), rgb(13 13 13));
+  --secondary: light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%));
+  --secondary-foreground: var(--foreground);
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: light-dark(
+    rgb(26 28 31 / 49.4%),
+    rgb(255 255 255 / 49.8%)
+  );
+  --accent: light-dark(rgb(229 242 255), rgb(13 39 63));
+  --accent-foreground: var(--primary);
+  --destructive: light-dark(rgb(226 85 7), rgb(255 133 73));
+  --border: light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%));
+  --input: light-dark(
+    rgb(26 28 31 / 11.8%),
+    color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+  );
+  --ring: light-dark(rgb(51 156 255), rgb(131 195 255 / 76%));
+  --font-size-base: 14px;
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: 12.5px;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+  --color-background-primary: var(--background);
+  --color-text-primary: var(--foreground);
+  --color-border-secondary: var(--border);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--viz-font-weight-medium);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: superellipse(1.5);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: superellipse(1.5);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+    [aria-pressed=&quot;true&quot;],
+    [aria-selected=&quot;true&quot;],
+    .is-selected
+  ) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id=&quot;control-topology-study&quot;&gt;
+  &lt;style&gt;
+    #control-topology-study {
+      color: var(--foreground);
+      width: 100%;
+    }
+
+    #control-topology-study * {
+      box-sizing: border-box;
+    }
+
+    #control-topology-study .report-header,
+    #control-topology-study .report-section {
+      padding-block: 2.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #control-topology-study .report-header {
+      padding-top: 0.5rem;
+    }
+
+    #control-topology-study .report-section:last-child {
+      border-bottom: 0;
+    }
+
+    #control-topology-study .eyebrow {
+      color: var(--muted-foreground);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 0 0 0.75rem;
+    }
+
+    #control-topology-study .lede {
+      max-width: 72ch;
+      margin-block: 0.75rem 0;
+      color: var(--muted-foreground);
+    }
+
+    #control-topology-study .decision-rule {
+      margin-top: 1.5rem;
+      border-left: 3px solid var(--viz-series-1);
+      padding-left: 1rem;
+      max-width: 68ch;
+    }
+
+    #control-topology-study .metric-grid,
+    #control-topology-study .control-grid,
+    #control-topology-study .two-column,
+    #control-topology-study .implementation-grid {
+      margin-top: 1.5rem;
+    }
+
+    #control-topology-study .control-grid,
+    #control-topology-study .two-column,
+    #control-topology-study .implementation-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.5rem 2rem;
+    }
+
+    #control-topology-study .control-item,
+    #control-topology-study .implementation-step,
+    #control-topology-study .evidence-item {
+      min-width: 0;
+      padding-top: 1rem;
+      border-top: 2px solid var(--border);
+    }
+
+    #control-topology-study .control-item h3,
+    #control-topology-study .implementation-step h3,
+    #control-topology-study .evidence-item h3 {
+      margin-top: 0;
+    }
+
+    #control-topology-study .control-item p,
+    #control-topology-study .implementation-step p,
+    #control-topology-study .evidence-item p,
+    #control-topology-study .metric-context {
+      color: var(--muted-foreground);
+    }
+
+    #control-topology-study .control-number,
+    #control-topology-study .step-number {
+      color: var(--muted-foreground);
+      margin-bottom: 0.35rem;
+    }
+
+    #control-topology-study .property-list {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 0.55rem 1rem;
+      margin: 1rem 0 0;
+    }
+
+    #control-topology-study .property-list dt {
+      font-weight: 500;
+    }
+
+    #control-topology-study .property-list dd {
+      margin: 0;
+      color: var(--muted-foreground);
+    }
+
+    #control-topology-study .sequence-stage {
+      margin-top: 1.75rem;
+      padding-block: 1rem 1.5rem;
+      position: relative;
+    }
+
+    #control-topology-study .actors {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.75rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    #control-topology-study .actor-control {
+      display: grid;
+      justify-items: center;
+      align-content: start;
+      gap: 0.45rem;
+      min-width: 0;
+      text-align: center;
+    }
+
+    #control-topology-study .actor-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: var(--foreground);
+      background: var(--background);
+    }
+
+    #control-topology-study .actor-name {
+      font-weight: 500;
+      overflow-wrap: anywhere;
+    }
+
+    #control-topology-study .stage-body {
+      position: relative;
+      margin-top: 0.5rem;
+      padding-block: 1rem 0.5rem;
+    }
+
+    #control-topology-study .lifelines {
+      position: absolute;
+      inset: 0 0 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      pointer-events: none;
+    }
+
+    #control-topology-study .lifeline {
+      width: 1px;
+      height: 100%;
+      margin-inline: auto;
+      border-left: 1px dashed var(--border);
+    }
+
+    #control-topology-study .group-control {
+      position: relative;
+      margin: 0.5rem 7%;
+      border: 1px solid var(--border);
+      padding: 0.75rem;
+      min-height: 10rem;
+      background: color-mix(in srgb, var(--background) 92%, transparent);
+    }
+
+    #control-topology-study .group-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 1.1rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    #control-topology-study .group-label {
+      color: var(--muted-foreground);
+    }
+
+    #control-topology-study .message-control {
+      display: grid;
+      grid-template-columns: minmax(3.5rem, 1fr) minmax(8rem, 2fr) minmax(3.5rem, 1fr);
+      align-items: center;
+      gap: 0.5rem;
+      margin-block: 1.25rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    #control-topology-study .message-endpoint:first-child {
+      text-align: end;
+    }
+
+    #control-topology-study .message-endpoint:last-child {
+      text-align: start;
+    }
+
+    #control-topology-study .message-line {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      min-width: 0;
+    }
+
+    #control-topology-study .message-shaft {
+      border-top: 1px solid var(--foreground);
+      min-width: 0;
+    }
+
+    #control-topology-study .message-head {
+      width: 0;
+      height: 0;
+      border-top: 0.28rem solid transparent;
+      border-bottom: 0.28rem solid transparent;
+      border-left: 0.55rem solid var(--foreground);
+    }
+
+    #control-topology-study .message-label {
+      grid-column: 2;
+      text-align: center;
+      color: var(--muted-foreground);
+      margin-top: -0.8rem;
+      padding-inline: 0.35rem;
+      overflow-wrap: anywhere;
+    }
+
+    #control-topology-study .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      justify-content: center;
+    }
+
+    #control-topology-study .message-pill {
+      grid-column: 2;
+      justify-self: center;
+      margin-top: 0.35rem;
+    }
+
+    #control-topology-study .anatomy-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem 1.1rem;
+      margin-top: 1rem;
+      color: var(--muted-foreground);
+    }
+
+    #control-topology-study .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    #control-topology-study .legend-mark {
+      width: 0.8rem;
+      height: 0.8rem;
+      border: 1px solid var(--border);
+    }
+
+    #control-topology-study .legend-mark.actor {
+      border-radius: 50%;
+    }
+
+    #control-topology-study .legend-mark.connection {
+      width: 1.2rem;
+      height: 0;
+      border: 0;
+      border-top: 1px solid var(--foreground);
+    }
+
+    #control-topology-study .legend-mark.group {
+      background: color-mix(in srgb, var(--viz-series-1) 12%, transparent);
+    }
+
+    #control-topology-study .legend-mark.pill {
+      width: 1.25rem;
+      border-radius: 999px;
+      background: var(--muted);
+    }
+
+    #control-topology-study .evidence-flow {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    #control-topology-study .plantuml-example {
+      min-width: 0;
+    }
+
+    #control-topology-study .plantuml-example img {
+      display: block;
+      width: 100%;
+      height: 11rem;
+      object-fit: contain;
+    }
+
+    #control-topology-study pre.source,
+    #control-topology-study pre.syntax,
+    #control-topology-study pre.model {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--muted-foreground);
+      border-left: 2px solid var(--border);
+      padding: 0.75rem 0 0.75rem 0.9rem;
+      margin: 0.75rem 0 0;
+      background: transparent;
+    }
+
+    #control-topology-study pre.syntax {
+      color: var(--foreground);
+      border-left-color: var(--viz-series-1);
+    }
+
+    #control-topology-study .merge-result {
+      margin-top: 1.25rem;
+      border-left: 3px solid var(--viz-series-1);
+      padding-left: 1rem;
+    }
+
+    #control-topology-study .coverage-bar {
+      display: grid;
+      grid-template-columns: minmax(8rem, 1fr) minmax(10rem, 2fr) 4rem;
+      gap: 0.75rem;
+      align-items: center;
+      padding-block: 0.5rem;
+    }
+
+    #control-topology-study .bar-track {
+      height: 0.65rem;
+      background: var(--muted);
+      position: relative;
+    }
+
+    #control-topology-study .bar-fill {
+      position: absolute;
+      inset-block: 0;
+      inset-inline-start: 0;
+      width: var(--bar-width);
+      background: var(--viz-series-1);
+    }
+
+    #control-topology-study .bar-fill.secondary {
+      background: var(--viz-series-2);
+    }
+
+    #control-topology-study .bar-fill.rare {
+      background: var(--muted-foreground);
+    }
+
+    #control-topology-study .bar-value {
+      text-align: end;
+      color: var(--muted-foreground);
+    }
+
+    #control-topology-study .boundary-list {
+      margin-top: 1.25rem;
+      padding-left: 1.25rem;
+    }
+
+    #control-topology-study .boundary-list li + li {
+      margin-top: 0.65rem;
+    }
+
+    #control-topology-study .source-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 760px) {
+      #control-topology-study .control-grid,
+      #control-topology-study .two-column,
+      #control-topology-study .implementation-grid,
+      #control-topology-study .evidence-flow {
+        grid-template-columns: 1fr;
+      }
+
+      #control-topology-study .plantuml-example img {
+        height: auto;
+        max-height: 13rem;
+      }
+    }
+
+    @media (max-width: 460px) {
+      #control-topology-study .group-control {
+        margin-inline: 0;
+      }
+
+      #control-topology-study .message-control {
+        grid-template-columns: minmax(2.8rem, 0.8fr) minmax(6rem, 2fr) minmax(2.8rem, 0.8fr);
+      }
+
+      #control-topology-study .coverage-bar {
+        grid-template-columns: 1fr 3.5rem;
+      }
+
+      #control-topology-study .bar-track {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+    }
+  &lt;/style&gt;
+
+  &lt;header class=&quot;report-header&quot;&gt;
+    &lt;p class=&quot;eyebrow&quot;&gt;Corrected product frame&lt;/p&gt;
+    &lt;h2&gt;Four controls, many selectable flavors&lt;/h2&gt;
+    &lt;p class=&quot;lede&quot;&gt;The experiment should decide which editing operations deserve first-class controls. It should not mistake values inside those controls—group labels, icons, or arrowheads—for separate product capabilities.&lt;/p&gt;
+    &lt;p class=&quot;decision-rule&quot;&gt;&lt;strong&gt;Primitive test:&lt;/strong&gt; if two constructs are selected, moved, edited, nested, and deleted in the same way, they are one control with a property selector—not two features.&lt;/p&gt;
+
+    &lt;div class=&quot;viz-grid metric-grid&quot;&gt;
+      &lt;section class=&quot;card viz-stat&quot;&gt;
+        &lt;p class=&quot;text-muted&quot;&gt;Core canvas controls&lt;/p&gt;
+        &lt;p class=&quot;viz-stat-value&quot;&gt;3&lt;/p&gt;
+        &lt;p class=&quot;metric-context&quot;&gt;actor · connection · group&lt;/p&gt;
+      &lt;/section&gt;
+      &lt;section class=&quot;card viz-stat&quot;&gt;
+        &lt;p class=&quot;text-muted&quot;&gt;Cross-cutting attachment&lt;/p&gt;
+        &lt;p class=&quot;viz-stat-value&quot;&gt;1&lt;/p&gt;
+        &lt;p class=&quot;metric-context&quot;&gt;pill on an actor or connection&lt;/p&gt;
+      &lt;/section&gt;
+      &lt;section class=&quot;card viz-stat&quot;&gt;
+        &lt;p class=&quot;text-muted&quot;&gt;Group usage&lt;/p&gt;
+        &lt;p class=&quot;viz-stat-value&quot;&gt;86%&lt;/p&gt;
+        &lt;p class=&quot;metric-context&quot;&gt;one generic group control covers it&lt;/p&gt;
+      &lt;/section&gt;
+    &lt;/div&gt;
+  &lt;/header&gt;
+
+  &lt;section class=&quot;report-section&quot; aria-labelledby=&quot;anatomy-heading&quot;&gt;
+    &lt;p class=&quot;eyebrow&quot;&gt;Control anatomy&lt;/p&gt;
+    &lt;h2 id=&quot;anatomy-heading&quot;&gt;The editor sees objects and attachments&lt;/h2&gt;
+    &lt;p class=&quot;lede&quot;&gt;This single interaction contains every core control. “Critical” is not a fifth primitive: it is the selected type of the group and the visible label of a pill.&lt;/p&gt;
+
+    &lt;div class=&quot;sequence-stage&quot; role=&quot;group&quot; aria-label=&quot;Sequence editor anatomy with three icon-bearing actors, a generic critical group, one arrow connection, a comment pill on API, and a critical pill on the connection.&quot;&gt;
+      &lt;div class=&quot;actors&quot;&gt;
+        &lt;div class=&quot;actor-control&quot;&gt;
+          &lt;span class=&quot;actor-icon&quot;&gt;&lt;i data-lucide=&quot;server&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;
+          &lt;span class=&quot;actor-name&quot;&gt;API&lt;/span&gt;
+          &lt;span class=&quot;pill-row&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;btn btn-ghost&quot; data-tooltip=&quot;any text&quot;&gt;comment&lt;/button&gt;&lt;/span&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;actor-control&quot;&gt;
+          &lt;span class=&quot;actor-icon&quot;&gt;&lt;i data-lucide=&quot;cpu&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;
+          &lt;span class=&quot;actor-name&quot;&gt;Worker&lt;/span&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;actor-control&quot;&gt;
+          &lt;span class=&quot;actor-icon&quot;&gt;&lt;i data-lucide=&quot;database&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;
+          &lt;span class=&quot;actor-name&quot;&gt;Jobs&lt;/span&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;div class=&quot;stage-body&quot;&gt;
+        &lt;div class=&quot;lifelines&quot; aria-hidden=&quot;true&quot;&gt;
+          &lt;span class=&quot;lifeline&quot;&gt;&lt;/span&gt;&lt;span class=&quot;lifeline&quot;&gt;&lt;/span&gt;&lt;span class=&quot;lifeline&quot;&gt;&lt;/span&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;group-control&quot;&gt;
+          &lt;div class=&quot;group-header&quot;&gt;
+            &lt;span class=&quot;viz-badge&quot;&gt;group&lt;/span&gt;
+            &lt;span class=&quot;group-label&quot;&gt;type:&lt;/span&gt;
+            &lt;strong&gt;critical&lt;/strong&gt;
+            &lt;span class=&quot;group-label&quot;&gt;· startup handoff&lt;/span&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;message-control&quot;&gt;
+            &lt;span class=&quot;message-endpoint&quot;&gt;API&lt;/span&gt;
+            &lt;span class=&quot;message-line&quot;&gt;&lt;span class=&quot;message-shaft&quot;&gt;&lt;/span&gt;&lt;span class=&quot;message-head&quot;&gt;&lt;/span&gt;&lt;/span&gt;
+            &lt;span class=&quot;message-endpoint&quot;&gt;Worker&lt;/span&gt;
+            &lt;span class=&quot;message-label&quot;&gt;start job&lt;/span&gt;
+            &lt;span class=&quot;message-pill&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;btn btn-ghost&quot; data-tooltip=&quot;something else&quot;&gt;critical&lt;/button&gt;&lt;/span&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;message-control&quot;&gt;
+            &lt;span class=&quot;message-endpoint&quot;&gt;Worker&lt;/span&gt;
+            &lt;span class=&quot;message-line&quot;&gt;&lt;span class=&quot;message-shaft&quot;&gt;&lt;/span&gt;&lt;span class=&quot;message-head&quot;&gt;&lt;/span&gt;&lt;/span&gt;
+            &lt;span class=&quot;message-endpoint&quot;&gt;Jobs&lt;/span&gt;
+            &lt;span class=&quot;message-label&quot;&gt;claim work&lt;/span&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;div class=&quot;anatomy-legend&quot; aria-label=&quot;Control legend&quot;&gt;
+      &lt;span class=&quot;legend-item&quot;&gt;&lt;span class=&quot;legend-mark actor&quot;&gt;&lt;/span&gt;actor control&lt;/span&gt;
+      &lt;span class=&quot;legend-item&quot;&gt;&lt;span class=&quot;legend-mark connection&quot;&gt;&lt;/span&gt;connection control&lt;/span&gt;
+      &lt;span class=&quot;legend-item&quot;&gt;&lt;span class=&quot;legend-mark group&quot;&gt;&lt;/span&gt;group control&lt;/span&gt;
+      &lt;span class=&quot;legend-item&quot;&gt;&lt;span class=&quot;legend-mark pill&quot;&gt;&lt;/span&gt;pill attachment&lt;/span&gt;
+    &lt;/div&gt;
+  &lt;/section&gt;
+
+  &lt;section class=&quot;report-section&quot; aria-labelledby=&quot;controls-heading&quot;&gt;
+    &lt;p class=&quot;eyebrow&quot;&gt;Actual MVP surface&lt;/p&gt;
+    &lt;h2 id=&quot;controls-heading&quot;&gt;Build these controls once&lt;/h2&gt;
+
+    &lt;div class=&quot;control-grid&quot;&gt;
+      &lt;article class=&quot;control-item&quot;&gt;
+        &lt;p class=&quot;control-number&quot;&gt;01 · canvas object&lt;/p&gt;
+        &lt;h3&gt;Actor&lt;/h3&gt;
+        &lt;p&gt;One uniform actor control. Meaning comes from a readable label and an icon slot, not a hardcoded UML taxonomy.&lt;/p&gt;
+        &lt;dl class=&quot;property-list&quot;&gt;
+          &lt;dt&gt;Identity&lt;/dt&gt;&lt;dd&gt;Stable ID and display label.&lt;/dd&gt;
+          &lt;dt&gt;Icon&lt;/dt&gt;&lt;dd&gt;Qualified, version-stable icon ID such as &lt;code&gt;collection:name&lt;/code&gt;.&lt;/dd&gt;
+          &lt;dt&gt;Order&lt;/dt&gt;&lt;dd&gt;Horizontal position among actors.&lt;/dd&gt;
+          &lt;dt&gt;Attachments&lt;/dt&gt;&lt;dd&gt;Zero or more pills.&lt;/dd&gt;
+        &lt;/dl&gt;
+      &lt;/article&gt;
+
+      &lt;article class=&quot;control-item&quot;&gt;
+        &lt;p class=&quot;control-number&quot;&gt;02 · timeline object&lt;/p&gt;
+        &lt;h3&gt;Connection&lt;/h3&gt;
+        &lt;p&gt;One arrow control with endpoints and text. Solid, dashed, open, synchronous, asynchronous, and future arrowheads are flavor choices added during visual polish.&lt;/p&gt;
+        &lt;dl class=&quot;property-list&quot;&gt;
+          &lt;dt&gt;Endpoints&lt;/dt&gt;&lt;dd&gt;Source and target actor; equality creates a self-connection.&lt;/dd&gt;
+          &lt;dt&gt;Label&lt;/dt&gt;&lt;dd&gt;Human-readable interaction text.&lt;/dd&gt;
+          &lt;dt&gt;Arrow&lt;/dt&gt;&lt;dd&gt;A visual/semantic style value, not a new primitive.&lt;/dd&gt;
+          &lt;dt&gt;Attachments&lt;/dt&gt;&lt;dd&gt;Zero or more pills.&lt;/dd&gt;
+        &lt;/dl&gt;
+      &lt;/article&gt;
+
+      &lt;article class=&quot;control-item&quot;&gt;
+        &lt;p class=&quot;control-number&quot;&gt;03 · structural object&lt;/p&gt;
+        &lt;h3&gt;Group&lt;/h3&gt;
+        &lt;p&gt;One nestable container with a type selector. &lt;code&gt;loop&lt;/code&gt;, &lt;code&gt;opt&lt;/code&gt;, &lt;code&gt;critical&lt;/code&gt;, &lt;code&gt;par&lt;/code&gt;, &lt;code&gt;alt&lt;/code&gt;, &lt;code&gt;break&lt;/code&gt;, &lt;code&gt;ref&lt;/code&gt;, and custom labels share the same editing control.&lt;/p&gt;
+        &lt;dl class=&quot;property-list&quot;&gt;
+          &lt;dt&gt;Type&lt;/dt&gt;&lt;dd&gt;Preset or custom value controlling header and presentation.&lt;/dd&gt;
+          &lt;dt&gt;Label&lt;/dt&gt;&lt;dd&gt;Readable condition, purpose, or reference.&lt;/dd&gt;
+          &lt;dt&gt;Sections&lt;/dt&gt;&lt;dd&gt;One by default; add branches when needed.&lt;/dd&gt;
+          &lt;dt&gt;Children&lt;/dt&gt;&lt;dd&gt;Connections and nested groups.&lt;/dd&gt;
+        &lt;/dl&gt;
+      &lt;/article&gt;
+
+      &lt;article class=&quot;control-item&quot;&gt;
+        &lt;p class=&quot;control-number&quot;&gt;04 · cross-cutting attachment&lt;/p&gt;
+        &lt;h3&gt;Pill&lt;/h3&gt;
+        &lt;p&gt;A compact visible tag whose detail appears on hover or keyboard focus. It replaces diagram notes without forcing annotation text into the sequence layout.&lt;/p&gt;
+        &lt;dl class=&quot;property-list&quot;&gt;
+          &lt;dt&gt;Tag&lt;/dt&gt;&lt;dd&gt;Short visible text such as &lt;code&gt;comment&lt;/code&gt; or &lt;code&gt;critical&lt;/code&gt;.&lt;/dd&gt;
+          &lt;dt&gt;Detail&lt;/dt&gt;&lt;dd&gt;Tooltip text after the first colon.&lt;/dd&gt;
+          &lt;dt&gt;Anchor&lt;/dt&gt;&lt;dd&gt;Actor or connection in MVP; model can remain extensible.&lt;/dd&gt;
+          &lt;dt&gt;Multiplicity&lt;/dt&gt;&lt;dd&gt;Multiple pills preserve source order.&lt;/dd&gt;
+        &lt;/dl&gt;
+      &lt;/article&gt;
+    &lt;/div&gt;
+  &lt;/section&gt;
+
+  &lt;section class=&quot;report-section&quot; aria-labelledby=&quot;group-heading&quot;&gt;
+    &lt;p class=&quot;eyebrow&quot;&gt;Reinterpreting PlantUML&lt;/p&gt;
+    &lt;h2 id=&quot;group-heading&quot;&gt;Three drawings, one group editor&lt;/h2&gt;
+    &lt;p class=&quot;lede&quot;&gt;These PlantUML constructs differ in labels and section count, but their WYSIWYG operations are the same: create a region, label it, choose its type, add or remove sections, move rows, nest, and delete.&lt;/p&gt;
+
+    &lt;div class=&quot;evidence-flow&quot;&gt;
+      &lt;article class=&quot;plantuml-example&quot;&gt;
+        &lt;h3&gt;Alternative&lt;/h3&gt;
+        &lt;img src=&quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2ZXJzaW9uPSIxLjEiIGRhdGEtZGlhZ3JhbS10eXBlPSJTRVFVRU5DRSIgc3R5bGU9IndpZHRoOjI2MnB4O2hlaWdodDoyNjRweDtiYWNrZ3JvdW5kOiNGRkZGRkY7IiB3aWR0aD0iMjYycHgiIGhlaWdodD0iMjY0cHgiIHZpZXdCb3g9IjAgMCAyNjIgMjY0IiB6b29tQW5kUGFuPSJtYWduaWZ5IiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBjb250ZW50U3R5bGVUeXBlPSJ0ZXh0L2NzcyI+PD9wbGFudHVtbCAxLjIwMjYuN2JldGE4Pz48ZGVmcy8+PGcgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGxlbmd0aEFkanVzdD0ic3BhY2luZyI+PGc+PHRpdGxlPlVzZXI8L3RpdGxlPjxyZWN0IHg9IjI5LjQ1NSIgeT0iNDEuMjk3IiB3aWR0aD0iOCIgaGVpZ2h0PSIxODEuMzM2IiBmaWxsPSIjMDAwIiBmaWxsLW9wYWNpdHk9IjAiLz48bGluZSB4MT0iMzIuOTU1IiB5MT0iNDEuMjk3IiB4Mj0iMzIuOTU1IiB5Mj0iMjIyLjYzMyIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7c3Ryb2tlLWRhc2hhcnJheTo1LDU7Ii8+PC9nPjxnPjx0aXRsZT5BUEk8L3RpdGxlPjxyZWN0IHg9IjEyOC42MTEiIHk9IjQxLjI5NyIgd2lkdGg9IjgiIGhlaWdodD0iMTgxLjMzNiIgZmlsbD0iIzAwMCIgZmlsbC1vcGFjaXR5PSIwIi8+PGxpbmUgeDE9IjEzMi4xMTEiIHkxPSI0MS4yOTciIHgyPSIxMzIuMTExIiB5Mj0iMjIyLjYzMyIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7c3Ryb2tlLWRhc2hhcnJheTo1LDU7Ii8+PC9nPjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjQ1LjkxIiBoZWlnaHQ9IjMwLjI5NyIgZmlsbD0iI0UyRTJGMCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7IiByeD0iMi41IiByeT0iMi41Ii8+PHRleHQgeD0iMTciIHk9IjI5Ljk5NSIgZmlsbD0iIzAwMCIgZm9udC1zaXplPSIxNCIgdGV4dExlbmd0aD0iMzEuOTEiPlVzZXI8L3RleHQ+PHJlY3QgeD0iMTE0LjAzNyIgeT0iMTAiIHdpZHRoPSIzNi4xNDgiIGhlaWdodD0iMzAuMjk3IiBmaWxsPSIjRTJFMkYwIiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjAuNTsiIHJ4PSIyLjUiIHJ5PSIyLjUiLz48dGV4dCB4PSIxMjEuMDM3IiB5PSIyOS45OTUiIGZpbGw9IiMwMDAiIGZvbnQtc2l6ZT0iMTQiIHRleHRMZW5ndGg9IjIyLjE0OCI+QVBJPC90ZXh0PjxyZWN0IHg9IjEwIiB5PSIyMjIuNjMzIiB3aWR0aD0iNDUuOTEiIGhlaWdodD0iMzAuMjk3IiBmaWxsPSIjRTJFMkYwIiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjAuNTsiIHJ4PSIyLjUiIHJ5PSIyLjUiLz48dGV4dCB4PSIxNyIgeT0iMjQyLjYyOCIgZmlsbD0iIzAwMCIgZm9udC1zaXplPSIxNCIgdGV4dExlbmd0aD0iMzEuOTEiPlVzZXI8L3RleHQ+PHJlY3QgeD0iMTE0LjAzNyIgeT0iMjIyLjYzMyIgd2lkdGg9IjM2LjE0OCIgaGVpZ2h0PSIzMC4yOTciIGZpbGw9IiNFMkUyRjAiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MC41OyIgcng9IjIuNSIgcnk9IjIuNSIvPjx0ZXh0IHg9IjEyMS4wMzciIHk9IjI0Mi42MjgiIGZpbGw9IiMwMDAiIGZvbnQtc2l6ZT0iMTQiIHRleHRMZW5ndGg9IjIyLjE0OCI+QVBJPC90ZXh0Pjxwb2x5Z29uIHBvaW50cz0iMTIwLjExMSw2Ni40MywxMzAuMTExLDcwLjQzLDEyMC4xMTEsNzQuNDMsMTI0LjExMSw3MC40MyIgZmlsbD0iIzE4MTgxOCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxO3N0cm9rZS1saW5lam9pbjptaXRlcjtzdHJva2UtbWl0ZXJsaW1pdDoxMDsiLz48bGluZSB4MT0iMzIuOTU1IiB5MT0iNzAuNDMiIHgyPSIxMjYuMTExIiB5Mj0iNzAuNDMiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiLz48dGV4dCB4PSIzOS45NTUiIHk9IjY1LjM2NCIgZmlsbD0iIzAwMCIgZm9udC1zaXplPSIxMyIgdGV4dExlbmd0aD0iNzQuMDAxIj5wbGFjZSBvcmRlcjwvdGV4dD48cGF0aCBkPSJNMTYuOTU1LDgyLjQzIEw4MS4zOTgsODIuNDMgTDgxLjM5OCw4OS41NjMgTDcxLjM5OCw5OS41NjMgTDE2Ljk1NSw5OS41NjMgTDE2Ljk1NSw4Mi40MyIgc3R5bGU9InN0cm9rZTojMDAwO3N0cm9rZS13aWR0aDoxLjU7IiBmaWxsPSIjRUVFIi8+PHJlY3QgeD0iMTYuOTU1IiB5PSI4Mi40MyIgd2lkdGg9IjIyNS4yMDgiIGhlaWdodD0iMTE2LjIwMyIgZmlsbD0ibm9uZSIgc3R5bGU9InN0cm9rZTojMDAwO3N0cm9rZS13aWR0aDoxLjU7Ii8+PHRleHQgeD0iMzEuOTU1IiB5PSI5NS40OTciIGZpbGw9IiMwMDAiIGZvbnQtc2l6ZT0iMTMiIHRleHRMZW5ndGg9IjE5LjQ0MyIgZm9udC13ZWlnaHQ9IjcwMCI+YWx0PC90ZXh0Pjx0ZXh0IHg9Ijk2LjM5OCIgeT0iOTQuNjQiIGZpbGw9IiMwMDAiIGZvbnQtc2l6ZT0iMTEiIHRleHRMZW5ndGg9IjEyOS43NjYiIGZvbnQtd2VpZ2h0PSI3MDAiPltJbnZlbnRvcnkgYXZhaWxhYmxlXTwvdGV4dD48bGluZSB4MT0iMTYuOTU1IiB5MT0iMTQ5LjY5NSIgeDI9IjI0Mi4xNjQiIHkyPSIxNDkuNjk1IiBzdHlsZT0ic3Ryb2tlOiMwMDA7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLWRhc2hhcnJheToyLDI7Ii8+PHRleHQgeD0iMjEuOTU1IiB5PSIxNjEuOTA2IiBmaWxsPSIjMDAwIiBmb250LXNpemU9IjExIiB0ZXh0TGVuZ3RoPSI2MS42NTUiIGZvbnQtd2VpZ2h0PSI3MDAiPltTb2xkIG91dF08L3RleHQ+PHBvbHlnb24gcG9pbnRzPSI0My45NTUsMTI2LjY5NSwzMy45NTUsMTMwLjY5NSw0My45NTUsMTM0LjY5NSwzOS45NTUsMTMwLjY5NSIgZmlsbD0iIzE4MTgxOCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxO3N0cm9rZS1saW5lam9pbjptaXRlcjtzdHJva2UtbWl0ZXJsaW1pdDoxMDsiLz48bGluZSB4MT0iMzcuOTU1IiB5MT0iMTMwLjY5NSIgeDI9IjEzMS4xMTEiIHkyPSIxMzAuNjk1IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLWRhc2hhcnJheToyLDI7Ii8+PHRleHQgeD0iNDkuOTU1IiB5PSIxMjUuNjI5IiBmaWxsPSIjMDAwIiBmb250LXNpemU9IjEzIiB0ZXh0TGVuZ3RoPSI2NS43ODciPmNvbmZpcm1lZDwvdGV4dD48cG9seWdvbiBwb2ludHM9IjQzLjk1NSwxODYuNjMzLDMzLjk1NSwxOTAuNjMzLDQzLjk1NSwxOTQuNjMzLDM5Ljk1NSwxOTAuNjMzIiBmaWxsPSIjMTgxODE4IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLWxpbmVqb2luOm1pdGVyO3N0cm9rZS1taXRlcmxpbWl0OjEwOyIvPjxsaW5lIHgxPSIzNy45NTUiIHkxPSIxOTAuNjMzIiB4Mj0iMTMxLjExMSIgeTI9IjE5MC42MzMiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTtzdHJva2UtZGFzaGFycmF5OjIsMjsiLz48dGV4dCB4PSI0OS45NTUiIHk9IjE4NS41NjciIGZpbGw9IiMwMDAiIGZvbnQtc2l6ZT0iMTMiIHRleHRMZW5ndGg9Ijc1LjE1NiI+dW5hdmFpbGFibGU8L3RleHQ+PD9wbGFudHVtbC1zcmMgUE9tbjJpRDAzMEp4VXlMLW0xem00TjNmQlgzbzBFTEVYV0Q1RWNKUHVEX1JMeU1HUlhiY2pmNTdwUk1IMWp1aFVzZXRDM3RkcjI2Nkh6eVpjYjFjYzlUQjkwZENraEU2LUc3UWdHZnpYMUV3WWs1QVVaZVljb3hMbHJtSW95ZnVjSEpPNWRfVWZoeUZyZDgyPz48L2c+PC9zdmc+&quot; alt=&quot;PlantUML alternative group with available and sold-out sections&quot; data-rendered-source=&quot;rendered/fragments/keep-alternative.svg&quot;&gt;
+        &lt;pre class=&quot;source&quot;&gt;&lt;code&gt;alt Inventory available
+  API --&amp;gt; User: confirmed
+else Sold out
+  API --&amp;gt; User: unavailable
+end&lt;/code&gt;&lt;/pre&gt;
+      &lt;/article&gt;
+      &lt;article class=&quot;plantuml-example&quot;&gt;
+        &lt;h3&gt;Loop&lt;/h3&gt;
+        &lt;img src=&quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2ZXJzaW9uPSIxLjEiIGRhdGEtZGlhZ3JhbS10eXBlPSJTRVFVRU5DRSIgc3R5bGU9IndpZHRoOjIyOXB4O2hlaWdodDoyMDRweDtiYWNrZ3JvdW5kOiNGRkZGRkY7IiB3aWR0aD0iMjI5cHgiIGhlaWdodD0iMjA0cHgiIHZpZXdCb3g9IjAgMCAyMjkgMjA0IiB6b29tQW5kUGFuPSJtYWduaWZ5IiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBjb250ZW50U3R5bGVUeXBlPSJ0ZXh0L2NzcyI+PD9wbGFudHVtbCAxLjIwMjYuN2JldGE4Pz48ZGVmcy8+PGcgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGxlbmd0aEFkanVzdD0ic3BhY2luZyI+PGc+PHRpdGxlPkNsaWVudDwvdGl0bGU+PHJlY3QgeD0iMzMuNzY1IiB5PSI0MS4yOTciIHdpZHRoPSI4IiBoZWlnaHQ9IjEyMS4zOTgiIGZpbGw9IiMwMDAiIGZpbGwtb3BhY2l0eT0iMCIvPjxsaW5lIHgxPSIzNy4yNjUiIHkxPSI0MS4yOTciIHgyPSIzNy4yNjUiIHkyPSIxNjIuNjk1IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjAuNTtzdHJva2UtZGFzaGFycmF5OjUsNTsiLz48L2c+PGc+PHRpdGxlPkFQSTwvdGl0bGU+PHJlY3QgeD0iMTMyLjU1MyIgeT0iNDEuMjk3IiB3aWR0aD0iOCIgaGVpZ2h0PSIxMjEuMzk4IiBmaWxsPSIjMDAwIiBmaWxsLW9wYWNpdHk9IjAiLz48bGluZSB4MT0iMTM2LjA1MyIgeTE9IjQxLjI5NyIgeDI9IjEzNi4wNTMiIHkyPSIxNjIuNjk1IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjAuNTtzdHJva2UtZGFzaGFycmF5OjUsNTsiLz48L2c+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iNTQuNTMiIGhlaWdodD0iMzAuMjk3IiBmaWxsPSIjRTJFMkYwIiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjAuNTsiIHJ4PSIyLjUiIHJ5PSIyLjUiLz48dGV4dCB4PSIxNyIgeT0iMjkuOTk1IiBmaWxsPSIjMDAwIiBmb250LXNpemU9IjE0IiB0ZXh0TGVuZ3RoPSI0MC41MyI+Q2xpZW50PC90ZXh0PjxyZWN0IHg9IjExNy45NzkiIHk9IjEwIiB3aWR0aD0iMzYuMTQ4IiBoZWlnaHQ9IjMwLjI5NyIgZmlsbD0iI0UyRTJGMCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7IiByeD0iMi41IiByeT0iMi41Ii8+PHRleHQgeD0iMTI0Ljk3OSIgeT0iMjkuOTk1IiBmaWxsPSIjMDAwIiBmb250LXNpemU9IjE0IiB0ZXh0TGVuZ3RoPSIyMi4xNDgiPkFQSTwvdGV4dD48cmVjdCB4PSIxMCIgeT0iMTYyLjY5NSIgd2lkdGg9IjU0LjUzIiBoZWlnaHQ9IjMwLjI5NyIgZmlsbD0iI0UyRTJGMCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7IiByeD0iMi41IiByeT0iMi41Ii8+PHRleHQgeD0iMTciIHk9IjE4Mi42OSIgZmlsbD0iIzAwMCIgZm9udC1zaXplPSIxNCIgdGV4dExlbmd0aD0iNDAuNTMiPkNsaWVudDwvdGV4dD48cmVjdCB4PSIxMTcuOTc5IiB5PSIxNjIuNjk1IiB3aWR0aD0iMzYuMTQ4IiBoZWlnaHQ9IjMwLjI5NyIgZmlsbD0iI0UyRTJGMCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7IiByeD0iMi41IiByeT0iMi41Ii8+PHRleHQgeD0iMTI0Ljk3OSIgeT0iMTgyLjY5IiBmaWxsPSIjMDAwIiBmb250LXNpemU9IjE0IiB0ZXh0TGVuZ3RoPSIyMi4xNDgiPkFQSTwvdGV4dD48cGF0aCBkPSJNMjEuMjY1LDUzLjI5NyBMOTcuODg5LDUzLjI5NyBMOTcuODg5LDYwLjQzIEw4Ny44ODksNzAuNDMgTDIxLjI2NSw3MC40MyBMMjEuMjY1LDUzLjI5NyIgc3R5bGU9InN0cm9rZTojMDAwO3N0cm9rZS13aWR0aDoxLjU7IiBmaWxsPSIjRUVFIi8+PHJlY3QgeD0iMjEuMjY1IiB5PSI1My4yOTciIHdpZHRoPSIxODguMTI2IiBoZWlnaHQ9Ijg1LjM5OCIgZmlsbD0ibm9uZSIgc3R5bGU9InN0cm9rZTojMDAwO3N0cm9rZS13aWR0aDoxLjU7Ii8+PHRleHQgeD0iMzYuMjY1IiB5PSI2Ni4zNjQiIGZpbGw9IiMwMDAiIGZvbnQtc2l6ZT0iMTMiIHRleHRMZW5ndGg9IjMxLjYyNCIgZm9udC13ZWlnaHQ9IjcwMCI+bG9vcDwvdGV4dD48dGV4dCB4PSIxMTIuODg5IiB5PSI2NS41MDciIGZpbGw9IiMwMDAiIGZvbnQtc2l6ZT0iMTEiIHRleHRMZW5ndGg9IjgwLjUwMiIgZm9udC13ZWlnaHQ9IjcwMCI+W0VhY2ggY2h1bmtdPC90ZXh0Pjxwb2x5Z29uIHBvaW50cz0iMTI0LjA1Myw5Ny41NjMsMTM0LjA1MywxMDEuNTYzLDEyNC4wNTMsMTA1LjU2MywxMjguMDUzLDEwMS41NjMiIGZpbGw9IiMxODE4MTgiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTtzdHJva2UtbGluZWpvaW46bWl0ZXI7c3Ryb2tlLW1pdGVybGltaXQ6MTA7Ii8+PGxpbmUgeDE9IjM3LjI2NSIgeTE9IjEwMS41NjMiIHgyPSIxMzAuMDUzIiB5Mj0iMTAxLjU2MyIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIvPjx0ZXh0IHg9IjQ0LjI2NSIgeT0iOTYuNDk3IiBmaWxsPSIjMDAwIiBmb250LXNpemU9IjEzIiB0ZXh0TGVuZ3RoPSI3NC43ODgiPnNlbmQgY2h1bms8L3RleHQ+PHBvbHlnb24gcG9pbnRzPSI0OC4yNjUsMTI2LjY5NSwzOC4yNjUsMTMwLjY5NSw0OC4yNjUsMTM0LjY5NSw0NC4yNjUsMTMwLjY5NSIgZmlsbD0iIzE4MTgxOCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxO3N0cm9rZS1saW5lam9pbjptaXRlcjtzdHJva2UtbWl0ZXJsaW1pdDoxMDsiLz48bGluZSB4MT0iNDIuMjY1IiB5MT0iMTMwLjY5NSIgeDI9IjEzNS4wNTMiIHkyPSIxMzAuNjk1IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLWRhc2hhcnJheToyLDI7Ii8+PHRleHQgeD0iNTQuMjY1IiB5PSIxMjUuNjI5IiBmaWxsPSIjMDAwIiBmb250LXNpemU9IjEzIiB0ZXh0TGVuZ3RoPSIyOS4wMjgiPm5leHQ8L3RleHQ+PD9wbGFudHVtbC1zcmMgQXFXaUFpYkNwWW44cDJqSFNDeDlKQ3FodUlmMDRkOEN5RUpBb1N5bEs3MURKQ3ZHSUN1ZXBTbGNLZTBnTEQycjB5YlJBSElkdmdOMHZPMFkyaGYwNk9XUUF1TXlyOGVJQmcwMjAwMDA/PjwvZz48L3N2Zz4=&quot; alt=&quot;PlantUML loop group containing a chunk interaction&quot; data-rendered-source=&quot;rendered/fragments/keep-loop.svg&quot;&gt;
+        &lt;pre class=&quot;source&quot;&gt;&lt;code&gt;loop Each chunk
+  Client -&amp;gt; API: send chunk
+  API --&amp;gt; Client: next
+end&lt;/code&gt;&lt;/pre&gt;
+      &lt;/article&gt;
+      &lt;article class=&quot;plantuml-example&quot;&gt;
+        &lt;h3&gt;Parallel&lt;/h3&gt;
+        &lt;img src=&quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2ZXJzaW9uPSIxLjEiIGRhdGEtZGlhZ3JhbS10eXBlPSJTRVFVRU5DRSIgc3R5bGU9IndpZHRoOjI1NnB4O2hlaWdodDoyMzVweDtiYWNrZ3JvdW5kOiNGRkZGRkY7IiB3aWR0aD0iMjU2cHgiIGhlaWdodD0iMjM1cHgiIHZpZXdCb3g9IjAgMCAyNTYgMjM1IiB6b29tQW5kUGFuPSJtYWduaWZ5IiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBjb250ZW50U3R5bGVUeXBlPSJ0ZXh0L2NzcyI+PD9wbGFudHVtbCAxLjIwMjYuN2JldGE4Pz48ZGVmcy8+PGcgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGxlbmd0aEFkanVzdD0ic3BhY2luZyI+PGc+PHRpdGxlPkFQSTwvdGl0bGU+PHJlY3QgeD0iMjUuNSIgeT0iNDEuMjk3IiB3aWR0aD0iOCIgaGVpZ2h0PSIxNTIuMjAzIiBmaWxsPSIjMDAwIiBmaWxsLW9wYWNpdHk9IjAiLz48bGluZSB4MT0iMjkiIHkxPSI0MS4yOTciIHgyPSIyOSIgeTI9IjE5My41IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjAuNTtzdHJva2UtZGFzaGFycmF5OjUsNTsiLz48L2c+PGc+PHRpdGxlPldhcmVob3VzZTwvdGl0bGU+PHJlY3QgeD0iMTAwLjA3OSIgeT0iNDEuMjk3IiB3aWR0aD0iOCIgaGVpZ2h0PSIxNTIuMjAzIiBmaWxsPSIjMDAwIiBmaWxsLW9wYWNpdHk9IjAiLz48bGluZSB4MT0iMTAzLjU3OSIgeTE9IjQxLjI5NyIgeDI9IjEwMy41NzkiIHkyPSIxOTMuNSIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7c3Ryb2tlLWRhc2hhcnJheTo1LDU7Ii8+PC9nPjxnPjx0aXRsZT5QYXltZW50czwvdGl0bGU+PHJlY3QgeD0iMTk4LjE5MSIgeT0iNDEuMjk3IiB3aWR0aD0iOCIgaGVpZ2h0PSIxNTIuMjAzIiBmaWxsPSIjMDAwIiBmaWxsLW9wYWNpdHk9IjAiLz48bGluZSB4MT0iMjAxLjY5MSIgeTE9IjQxLjI5NyIgeDI9IjIwMS42OTEiIHkyPSIxOTMuNSIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7c3Ryb2tlLWRhc2hhcnJheTo1LDU7Ii8+PC9nPjxyZWN0IHg9IjEwLjkyNiIgeT0iMTAiIHdpZHRoPSIzNi4xNDgiIGhlaWdodD0iMzAuMjk3IiBmaWxsPSIjRTJFMkYwIiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjAuNTsiIHJ4PSIyLjUiIHJ5PSIyLjUiLz48dGV4dCB4PSIxNy45MjYiIHk9IjI5Ljk5NSIgZmlsbD0iIzAwMCIgZm9udC1zaXplPSIxNCIgdGV4dExlbmd0aD0iMjIuMTQ4Ij5BUEk8L3RleHQ+PHJlY3QgeD0iNTcuMDc0IiB5PSIxMCIgd2lkdGg9IjkzLjAxIiBoZWlnaHQ9IjMwLjI5NyIgZmlsbD0iI0UyRTJGMCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7IiByeD0iMi41IiByeT0iMi41Ii8+PHRleHQgeD0iNjQuMDc0IiB5PSIyOS45OTUiIGZpbGw9IiMwMDAiIGZvbnQtc2l6ZT0iMTQiIHRleHRMZW5ndGg9Ijc5LjAxIj5XYXJlaG91c2U8L3RleHQ+PHJlY3QgeD0iMTYwLjA4NCIgeT0iMTAiIHdpZHRoPSI4My4yMTQiIGhlaWdodD0iMzAuMjk3IiBmaWxsPSIjRTJFMkYwIiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjAuNTsiIHJ4PSIyLjUiIHJ5PSIyLjUiLz48dGV4dCB4PSIxNjcuMDg0IiB5PSIyOS45OTUiIGZpbGw9IiMwMDAiIGZvbnQtc2l6ZT0iMTQiIHRleHRMZW5ndGg9IjY5LjIxNCI+UGF5bWVudHM8L3RleHQ+PHJlY3QgeD0iMTAuOTI2IiB5PSIxOTMuNSIgd2lkdGg9IjM2LjE0OCIgaGVpZ2h0PSIzMC4yOTciIGZpbGw9IiNFMkUyRjAiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MC41OyIgcng9IjIuNSIgcnk9IjIuNSIvPjx0ZXh0IHg9IjE3LjkyNiIgeT0iMjEzLjQ5NSIgZmlsbD0iIzAwMCIgZm9udC1zaXplPSIxNCIgdGV4dExlbmd0aD0iMjIuMTQ4Ij5BUEk8L3RleHQ+PHJlY3QgeD0iNTcuMDc0IiB5PSIxOTMuNSIgd2lkdGg9IjkzLjAxIiBoZWlnaHQ9IjMwLjI5NyIgZmlsbD0iI0UyRTJGMCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7IiByeD0iMi41IiByeT0iMi41Ii8+PHRleHQgeD0iNjQuMDc0IiB5PSIyMTMuNDk1IiBmaWxsPSIjMDAwIiBmb250LXNpemU9IjE0IiB0ZXh0TGVuZ3RoPSI3OS4wMSI+V2FyZWhvdXNlPC90ZXh0PjxyZWN0IHg9IjE2MC4wODQiIHk9IjE5My41IiB3aWR0aD0iODMuMjE0IiBoZWlnaHQ9IjMwLjI5NyIgZmlsbD0iI0UyRTJGMCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7IiByeD0iMi41IiByeT0iMi41Ii8+PHRleHQgeD0iMTY3LjA4NCIgeT0iMjEzLjQ5NSIgZmlsbD0iIzAwMCIgZm9udC1zaXplPSIxNCIgdGV4dExlbmd0aD0iNjkuMjE0Ij5QYXltZW50czwvdGV4dD48cGF0aCBkPSJNMTMsNTMuMjk3IEw4Mi40ODksNTMuMjk3IEw4Mi40ODksNjAuNDMgTDcyLjQ4OSw3MC40MyBMMTMsNzAuNDMgTDEzLDUzLjI5NyIgc3R5bGU9InN0cm9rZTojMDAwO3N0cm9rZS13aWR0aDoxLjU7IiBmaWxsPSIjRUVFIi8+PHJlY3QgeD0iMTMiIHk9IjUzLjI5NyIgd2lkdGg9IjIyMy44NDIiIGhlaWdodD0iMTE2LjIwMyIgZmlsbD0ibm9uZSIgc3R5bGU9InN0cm9rZTojMDAwO3N0cm9rZS13aWR0aDoxLjU7Ii8+PHRleHQgeD0iMjgiIHk9IjY2LjM2NCIgZmlsbD0iIzAwMCIgZm9udC1zaXplPSIxMyIgdGV4dExlbmd0aD0iMjQuNDg5IiBmb250LXdlaWdodD0iNzAwIj5wYXI8L3RleHQ+PHRleHQgeD0iOTcuNDg5IiB5PSI2NS41MDciIGZpbGw9IiMwMDAiIGZvbnQtc2l6ZT0iMTEiIHRleHRMZW5ndGg9IjEyMy4zNTMiIGZvbnQtd2VpZ2h0PSI3MDAiPltSZXNlcnZlIGludmVudG9yeV08L3RleHQ+PGxpbmUgeDE9IjEzIiB5MT0iMTIwLjU2MyIgeDI9IjIzNi44NDIiIHkyPSIxMjAuNTYzIiBzdHlsZT0ic3Ryb2tlOiMwMDA7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLWRhc2hhcnJheToyLDI7Ii8+PHRleHQgeD0iMTgiIHk9IjEzMi43NzMiIGZpbGw9IiMwMDAiIGZvbnQtc2l6ZT0iMTEiIHRleHRMZW5ndGg9IjExMi40NDkiIGZvbnQtd2VpZ2h0PSI3MDAiPltDaGFyZ2UgcGF5bWVudF08L3RleHQ+PHBvbHlnb24gcG9pbnRzPSI5MS41NzksOTcuNTYzLDEwMS41NzksMTAxLjU2Myw5MS41NzksMTA1LjU2Myw5NS41NzksMTAxLjU2MyIgZmlsbD0iIzE4MTgxOCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxO3N0cm9rZS1saW5lam9pbjptaXRlcjtzdHJva2UtbWl0ZXJsaW1pdDoxMDsiLz48bGluZSB4MT0iMjkiIHkxPSIxMDEuNTYzIiB4Mj0iOTcuNTc5IiB5Mj0iMTAxLjU2MyIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIvPjx0ZXh0IHg9IjM2IiB5PSI5Ni40OTciIGZpbGw9IiMwMDAiIGZvbnQtc2l6ZT0iMTMiIHRleHRMZW5ndGg9IjQ5LjE1Ij5yZXNlcnZlPC90ZXh0Pjxwb2x5Z29uIHBvaW50cz0iMTg5LjY5MSwxNTcuNSwxOTkuNjkxLDE2MS41LDE4OS42OTEsMTY1LjUsMTkzLjY5MSwxNjEuNSIgZmlsbD0iIzE4MTgxOCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxO3N0cm9rZS1saW5lam9pbjptaXRlcjtzdHJva2UtbWl0ZXJsaW1pdDoxMDsiLz48bGluZSB4MT0iMjkiIHkxPSIxNjEuNSIgeDI9IjE5NS42OTEiIHkyPSIxNjEuNSIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIvPjx0ZXh0IHg9IjM2IiB5PSIxNTYuNDM0IiBmaWxsPSIjMDAwIiBmb250LXNpemU9IjEzIiB0ZXh0TGVuZ3RoPSI0NC45NDgiPmNoYXJnZTwvdGV4dD48P3BsYW50dW1sLXNyYyBMT214MmUwbTUwSnhkNjhsdTBLaTFCNm80bmxoWG91UXExWFVlazNqX0k1Z2tTRmlVRDVlTS1sNUhVSExRVm5kRHc4U3ZZTm1Ib2xQOWhlT0plWVFXUmVJcmdxN2N0S3BFM0Q4aWxVVEdjX0JTMG40Q09ac1hCeXBoX3pxS3hJTk9VWXc3RzAwPz48L2c+PC9zdmc+&quot; alt=&quot;PlantUML parallel group with inventory and payment sections&quot; data-rendered-source=&quot;rendered/fragments/keep-parallel.svg&quot;&gt;
+        &lt;pre class=&quot;source&quot;&gt;&lt;code&gt;par Reserve inventory
+  API -&amp;gt; Warehouse: reserve
+else Charge payment
+  API -&amp;gt; Payments: charge
+end&lt;/code&gt;&lt;/pre&gt;
+      &lt;/article&gt;
+    &lt;/div&gt;
+
+    &lt;div class=&quot;merge-result&quot;&gt;
+      &lt;p&gt;&lt;span class=&quot;viz-badge&quot;&gt;one model&lt;/span&gt;&lt;/p&gt;
+      &lt;pre class=&quot;model&quot;&gt;&lt;code&gt;Group {
+  type: string
+  label: string
+  sections: Section[]
+}
+
+Section {
+  label?: string
+  rows: (Connection | Group)[]
+}&lt;/code&gt;&lt;/pre&gt;
+      &lt;p class=&quot;text-muted&quot;&gt;No separate &lt;code&gt;Alt&lt;/code&gt;, &lt;code&gt;Loop&lt;/code&gt;, &lt;code&gt;Critical&lt;/code&gt;, or &lt;code&gt;Parallel&lt;/code&gt; AST nodes. A branching group has several sections; a simple group has one.&lt;/p&gt;
+    &lt;/div&gt;
+  &lt;/section&gt;
+
+  &lt;section class=&quot;report-section&quot; aria-labelledby=&quot;evidence-heading&quot;&gt;
+    &lt;p class=&quot;eyebrow&quot;&gt;Corpus remapped by control family&lt;/p&gt;
+    &lt;h2 id=&quot;evidence-heading&quot;&gt;Frequency informs defaults, not architecture&lt;/h2&gt;
+    &lt;p class=&quot;lede&quot;&gt;The 100-diagram corpus remains useful after changing the unit of analysis. It validates the three canvas controls, shows that groups need optional sections, and identifies two genuinely different controls that can wait.&lt;/p&gt;
+
+    &lt;div role=&quot;img&quot; aria-label=&quot;Usage by control family across one hundred diagrams. Actors and connections appear in all one hundred diagrams, groups in eighty-six, multi-section groups in seventy-six, lifeline spans in five, and timeline markers in three.&quot;&gt;
+      &lt;div class=&quot;coverage-bar&quot;&gt;&lt;span&gt;Actors&lt;/span&gt;&lt;span class=&quot;bar-track&quot;&gt;&lt;span class=&quot;bar-fill&quot; style=&quot;--bar-width:100%&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;bar-value&quot;&gt;100&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;coverage-bar&quot;&gt;&lt;span&gt;Connections&lt;/span&gt;&lt;span class=&quot;bar-track&quot;&gt;&lt;span class=&quot;bar-fill&quot; style=&quot;--bar-width:100%&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;bar-value&quot;&gt;100&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;coverage-bar&quot;&gt;&lt;span&gt;Any group&lt;/span&gt;&lt;span class=&quot;bar-track&quot;&gt;&lt;span class=&quot;bar-fill secondary&quot; style=&quot;--bar-width:86%&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;bar-value&quot;&gt;86&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;coverage-bar&quot;&gt;&lt;span&gt;Multi-section group&lt;/span&gt;&lt;span class=&quot;bar-track&quot;&gt;&lt;span class=&quot;bar-fill secondary&quot; style=&quot;--bar-width:76%&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;bar-value&quot;&gt;76&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;coverage-bar&quot;&gt;&lt;span&gt;Lifeline span/state&lt;/span&gt;&lt;span class=&quot;bar-track&quot;&gt;&lt;span class=&quot;bar-fill rare&quot; style=&quot;--bar-width:5%&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;bar-value&quot;&gt;5&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;coverage-bar&quot;&gt;&lt;span&gt;Timeline marker/gap&lt;/span&gt;&lt;span class=&quot;bar-track&quot;&gt;&lt;span class=&quot;bar-fill rare&quot; style=&quot;--bar-width:3%&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;bar-value&quot;&gt;3&lt;/span&gt;&lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;div class=&quot;two-column&quot;&gt;
+      &lt;article class=&quot;evidence-item&quot;&gt;
+        &lt;h3&gt;What the study does tell us&lt;/h3&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Actors and connections are unavoidable.&lt;/li&gt;
+          &lt;li&gt;A generic group is central: 86 diagrams used at least one grouping across all ten domains.&lt;/li&gt;
+          &lt;li&gt;Sections are part of the group control: 76 diagrams needed alternative or parallel branches.&lt;/li&gt;
+          &lt;li&gt;Observed frequencies can order presets in menus and choose defaults.&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/article&gt;
+      &lt;article class=&quot;evidence-item&quot;&gt;
+        &lt;h3&gt;What it cannot decide&lt;/h3&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Whether &lt;code&gt;loop&lt;/code&gt; deserves support but &lt;code&gt;critical&lt;/code&gt; does not; both are group values.&lt;/li&gt;
+          &lt;li&gt;How many icons or arrowheads eventually belong in their selectors.&lt;/li&gt;
+          &lt;li&gt;Whether pills matter: the prompt suppressed optional clutter and PlantUML lacks this compact attached primitive.&lt;/li&gt;
+          &lt;li&gt;The direct Interview Harness need is sufficient product evidence for pills, without making the library IH-specific.&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/article&gt;
+    &lt;/div&gt;
+  &lt;/section&gt;
+
+  &lt;section class=&quot;report-section&quot; aria-labelledby=&quot;pill-heading&quot;&gt;
+    &lt;p class=&quot;eyebrow&quot;&gt;New syntax primitive&lt;/p&gt;
+    &lt;h2 id=&quot;pill-heading&quot;&gt;Pills are attached metadata, not free-floating notes&lt;/h2&gt;
+    &lt;p class=&quot;lede&quot;&gt;The visible tag stays compact; the detail is available as a tooltip. The library treats tags as arbitrary text and exposes stable pill IDs and events, allowing embedding products to attach their own workflows.&lt;/p&gt;
+
+    &lt;div class=&quot;two-column&quot;&gt;
+      &lt;section&gt;
+        &lt;h3&gt;Source sketch&lt;/h3&gt;
+        &lt;pre class=&quot;syntax&quot;&gt;&lt;code&gt;actor API ((comment: any text))
+actor Worker
+
+API -&amp;gt; Worker: start job ((critical: something else))
+Worker --&amp;gt; API: completed&lt;/code&gt;&lt;/pre&gt;
+      &lt;/section&gt;
+      &lt;section&gt;
+        &lt;h3&gt;Parsing rule&lt;/h3&gt;
+        &lt;pre class=&quot;model&quot;&gt;&lt;code&gt;pill       := &quot;((&quot; tag &quot;:&quot; detail &quot;))&quot;
+actor      := actor-declaration pill*
+connection := arrow-expression pill*
+
+Pill {
+  id: string
+  tag: string
+  detail: string
+}&lt;/code&gt;&lt;/pre&gt;
+      &lt;/section&gt;
+    &lt;/div&gt;
+
+    &lt;ul class=&quot;boundary-list&quot;&gt;
+      &lt;li&gt;The first colon separates the visible tag from tooltip detail; later colons remain part of the detail.&lt;/li&gt;
+      &lt;li&gt;Pills are selectable, keyboard reachable, editable, reorderable, and removable through one shared inspector.&lt;/li&gt;
+      &lt;li&gt;A &lt;code&gt;comment&lt;/code&gt; pill is ordinary document data. The host may associate it with a review thread, but the core package does not know about interviews or comments.&lt;/li&gt;
+      &lt;li&gt;Free-floating PlantUML notes remain unnecessary for MVP because pills cover compact attachment and the host covers long-form discussion.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/section&gt;
+
+  &lt;section class=&quot;report-section&quot; aria-labelledby=&quot;model-heading&quot;&gt;
+    &lt;p class=&quot;eyebrow&quot;&gt;Canonical document model&lt;/p&gt;
+    &lt;h2 id=&quot;model-heading&quot;&gt;Keep the schema open where the UI is a selector&lt;/h2&gt;
+
+    &lt;div class=&quot;two-column&quot;&gt;
+      &lt;section&gt;
+        &lt;h3&gt;Core AST&lt;/h3&gt;
+        &lt;pre class=&quot;model&quot;&gt;&lt;code&gt;Document {
+  actors: Actor[]
+  rows: (Connection | Group)[]
+}
+
+Actor {
+  id: string
+  label: string
+  icon?: QualifiedIconId
+  pills: Pill[]
+}
+
+Connection {
+  id: string
+  from: ActorId
+  to: ActorId
+  label: string
+  arrow: ArrowStyle
+  pills: Pill[]
+}
+
+Group {
+  id: string
+  type: string
+  label: string
+  sections: Section[]
+}&lt;/code&gt;&lt;/pre&gt;
+      &lt;/section&gt;
+      &lt;section&gt;
+        &lt;h3&gt;Late-bound catalogs&lt;/h3&gt;
+        &lt;dl class=&quot;property-list&quot;&gt;
+          &lt;dt&gt;Icons&lt;/dt&gt;&lt;dd&gt;The document stores a qualified stable ID. The renderer receives an icon resolver; the editor can lazy-load a searchable catalog separately from core.&lt;/dd&gt;
+          &lt;dt&gt;Arrows&lt;/dt&gt;&lt;dd&gt;The schema stores an arrow style. Exact tokens, heads, line patterns, and selector order are finalized after the base editor works.&lt;/dd&gt;
+          &lt;dt&gt;Groups&lt;/dt&gt;&lt;dd&gt;The model accepts a string type. The editor offers friendly presets plus a custom value, so new labels do not require schema changes.&lt;/dd&gt;
+          &lt;dt&gt;Pills&lt;/dt&gt;&lt;dd&gt;Tags are open text. Hosts may layer meaning on recognized tags without changing portable diagram data.&lt;/dd&gt;
+        &lt;/dl&gt;
+      &lt;/section&gt;
+    &lt;/div&gt;
+  &lt;/section&gt;
+
+  &lt;section class=&quot;report-section&quot; aria-labelledby=&quot;boundary-heading&quot;&gt;
+    &lt;p class=&quot;eyebrow&quot;&gt;The real MVP boundary&lt;/p&gt;
+    &lt;h2 id=&quot;boundary-heading&quot;&gt;Defer different controls, not cheap selector values&lt;/h2&gt;
+
+    &lt;div class=&quot;two-column&quot;&gt;
+      &lt;article class=&quot;evidence-item&quot;&gt;
+        &lt;h3&gt;Include now&lt;/h3&gt;
+        &lt;ul&gt;
+          &lt;li&gt;Actor add, remove, rename, reorder, icon selection, and pill attachment.&lt;/li&gt;
+          &lt;li&gt;Connection add, retarget, relabel, reorder, self-target, arrow selection, and pill attachment.&lt;/li&gt;
+          &lt;li&gt;Generic group create, type, label, section add/remove, nest, move, resize/reparent, and delete.&lt;/li&gt;
+          &lt;li&gt;Bidirectional canonical text editing with stable IDs, diagnostics, undo, and redo.&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/article&gt;
+      &lt;article class=&quot;evidence-item&quot;&gt;
+        &lt;h3&gt;Defer as genuinely different controls&lt;/h3&gt;
+        &lt;ul&gt;
+          &lt;li&gt;&lt;strong&gt;Timeline marker:&lt;/strong&gt; a gap, phase divider, or elapsed-time row. Three corpus diagrams used one.&lt;/li&gt;
+          &lt;li&gt;&lt;strong&gt;Lifeline span/state:&lt;/strong&gt; activation or creation/destruction intervals tied to row ranges. Five diagrams used one.&lt;/li&gt;
+          &lt;li&gt;&lt;strong&gt;Cross-diagram navigation:&lt;/strong&gt; references with actual link behavior belong to the host contract.&lt;/li&gt;
+          &lt;li&gt;&lt;strong&gt;Free placement:&lt;/strong&gt; arbitrary coordinates, floating notes, and decorative shapes would create a different editor.&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/article&gt;
+    &lt;/div&gt;
+  &lt;/section&gt;
+
+  &lt;section class=&quot;report-section&quot; aria-labelledby=&quot;plan-heading&quot;&gt;
+    &lt;p class=&quot;eyebrow&quot;&gt;Revised implementation order&lt;/p&gt;
+    &lt;h2 id=&quot;plan-heading&quot;&gt;Build by interaction topology&lt;/h2&gt;
+
+    &lt;div class=&quot;implementation-grid&quot;&gt;
+      &lt;article class=&quot;implementation-step&quot;&gt;
+        &lt;p class=&quot;step-number&quot;&gt;01&lt;/p&gt;
+        &lt;h3&gt;Model the four controls&lt;/h3&gt;
+        &lt;p&gt;Freeze actor, connection, group/section, and pill schemas with stable IDs and source spans. Keep icon, arrow, group type, and pill tag values open.&lt;/p&gt;
+      &lt;/article&gt;
+      &lt;article class=&quot;implementation-step&quot;&gt;
+        &lt;p class=&quot;step-number&quot;&gt;02&lt;/p&gt;
+        &lt;h3&gt;Ship one baseline rendering&lt;/h3&gt;
+        &lt;p&gt;Uniform actors, one arrow, one group appearance, and pill tags. Prove layout, selection geometry, text synchronization, and nesting before growing catalogs.&lt;/p&gt;
+      &lt;/article&gt;
+      &lt;article class=&quot;implementation-step&quot;&gt;
+        &lt;p class=&quot;step-number&quot;&gt;03&lt;/p&gt;
+        &lt;h3&gt;Complete WYSIWYG operations&lt;/h3&gt;
+        &lt;p&gt;Add, move, reorder, retarget, wrap in group, add section, reparent, attach pill, edit, delete, copy/paste, undo/redo, and keyboard navigation.&lt;/p&gt;
+      &lt;/article&gt;
+      &lt;article class=&quot;implementation-step&quot;&gt;
+        &lt;p class=&quot;step-number&quot;&gt;04&lt;/p&gt;
+        &lt;h3&gt;Add the icon resolver and picker&lt;/h3&gt;
+        &lt;p&gt;Choose a version-pinned public collection, persist qualified IDs, keep the renderer resolver-based, and split the searchable catalog from the lightweight runtime.&lt;/p&gt;
+      &lt;/article&gt;
+      &lt;article class=&quot;implementation-step&quot;&gt;
+        &lt;p class=&quot;step-number&quot;&gt;05&lt;/p&gt;
+        &lt;h3&gt;Polish selectors&lt;/h3&gt;
+        &lt;p&gt;Add the generous group preset list, arrow styles, icon search/categories, defaults informed by the corpus, and graceful fallbacks for unknown values.&lt;/p&gt;
+      &lt;/article&gt;
+      &lt;article class=&quot;implementation-step&quot;&gt;
+        &lt;p class=&quot;step-number&quot;&gt;06&lt;/p&gt;
+        &lt;h3&gt;Evaluate new control families&lt;/h3&gt;
+        &lt;p&gt;Only after the core is usable, test whether timeline markers or lifeline spans solve real editing needs that cannot be represented by groups, connections, or pills.&lt;/p&gt;
+      &lt;/article&gt;
+    &lt;/div&gt;
+  &lt;/section&gt;
+
+  &lt;footer class=&quot;report-section&quot;&gt;
+    &lt;p class=&quot;eyebrow&quot;&gt;Bottom line&lt;/p&gt;
+    &lt;h2&gt;The small product is not the one with few labels&lt;/h2&gt;
+    &lt;p class=&quot;lede&quot;&gt;It is the one with few interaction models. Actors can carry many icons, connections can carry many arrow styles, and groups can carry many type labels without making the editor conceptually larger. Pills add one compact, reusable attachment model and eliminate the need for free-floating notes.&lt;/p&gt;
+    &lt;div class=&quot;source-links&quot; aria-label=&quot;Experiment evidence&quot;&gt;
+      &lt;a href=&quot;protocol.md&quot;&gt;Study protocol&lt;/a&gt;
+      &lt;a href=&quot;results.json&quot;&gt;Parsed corpus&lt;/a&gt;
+      &lt;a href=&quot;render-summary-corpus.json&quot;&gt;PlantUML render audit&lt;/a&gt;
+    &lt;/div&gt;
+  &lt;/footer&gt;
+&lt;/div&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handleLeave = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>

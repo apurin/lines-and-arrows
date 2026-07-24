@@ -1,0 +1,797 @@
+<div id="control-topology-study">
+  <style>
+    #control-topology-study {
+      color: var(--foreground);
+      width: 100%;
+    }
+
+    #control-topology-study * {
+      box-sizing: border-box;
+    }
+
+    #control-topology-study .report-header,
+    #control-topology-study .report-section {
+      padding-block: 2.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #control-topology-study .report-header {
+      padding-top: 0.5rem;
+    }
+
+    #control-topology-study .report-section:last-child {
+      border-bottom: 0;
+    }
+
+    #control-topology-study .eyebrow {
+      color: var(--muted-foreground);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 0 0 0.75rem;
+    }
+
+    #control-topology-study .lede {
+      max-width: 72ch;
+      margin-block: 0.75rem 0;
+      color: var(--muted-foreground);
+    }
+
+    #control-topology-study .decision-rule {
+      margin-top: 1.5rem;
+      border-left: 3px solid var(--viz-series-1);
+      padding-left: 1rem;
+      max-width: 68ch;
+    }
+
+    #control-topology-study .metric-grid,
+    #control-topology-study .control-grid,
+    #control-topology-study .two-column,
+    #control-topology-study .implementation-grid {
+      margin-top: 1.5rem;
+    }
+
+    #control-topology-study .control-grid,
+    #control-topology-study .two-column,
+    #control-topology-study .implementation-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.5rem 2rem;
+    }
+
+    #control-topology-study .control-item,
+    #control-topology-study .implementation-step,
+    #control-topology-study .evidence-item {
+      min-width: 0;
+      padding-top: 1rem;
+      border-top: 2px solid var(--border);
+    }
+
+    #control-topology-study .control-item h3,
+    #control-topology-study .implementation-step h3,
+    #control-topology-study .evidence-item h3 {
+      margin-top: 0;
+    }
+
+    #control-topology-study .control-item p,
+    #control-topology-study .implementation-step p,
+    #control-topology-study .evidence-item p,
+    #control-topology-study .metric-context {
+      color: var(--muted-foreground);
+    }
+
+    #control-topology-study .control-number,
+    #control-topology-study .step-number {
+      color: var(--muted-foreground);
+      margin-bottom: 0.35rem;
+    }
+
+    #control-topology-study .property-list {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 0.55rem 1rem;
+      margin: 1rem 0 0;
+    }
+
+    #control-topology-study .property-list dt {
+      font-weight: 500;
+    }
+
+    #control-topology-study .property-list dd {
+      margin: 0;
+      color: var(--muted-foreground);
+    }
+
+    #control-topology-study .sequence-stage {
+      margin-top: 1.75rem;
+      padding-block: 1rem 1.5rem;
+      position: relative;
+    }
+
+    #control-topology-study .actors {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.75rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    #control-topology-study .actor-control {
+      display: grid;
+      justify-items: center;
+      align-content: start;
+      gap: 0.45rem;
+      min-width: 0;
+      text-align: center;
+    }
+
+    #control-topology-study .actor-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: var(--foreground);
+      background: var(--background);
+    }
+
+    #control-topology-study .actor-name {
+      font-weight: 500;
+      overflow-wrap: anywhere;
+    }
+
+    #control-topology-study .stage-body {
+      position: relative;
+      margin-top: 0.5rem;
+      padding-block: 1rem 0.5rem;
+    }
+
+    #control-topology-study .lifelines {
+      position: absolute;
+      inset: 0 0 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      pointer-events: none;
+    }
+
+    #control-topology-study .lifeline {
+      width: 1px;
+      height: 100%;
+      margin-inline: auto;
+      border-left: 1px dashed var(--border);
+    }
+
+    #control-topology-study .group-control {
+      position: relative;
+      margin: 0.5rem 7%;
+      border: 1px solid var(--border);
+      padding: 0.75rem;
+      min-height: 10rem;
+      background: color-mix(in srgb, var(--background) 92%, transparent);
+    }
+
+    #control-topology-study .group-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 1.1rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    #control-topology-study .group-label {
+      color: var(--muted-foreground);
+    }
+
+    #control-topology-study .message-control {
+      display: grid;
+      grid-template-columns: minmax(3.5rem, 1fr) minmax(8rem, 2fr) minmax(3.5rem, 1fr);
+      align-items: center;
+      gap: 0.5rem;
+      margin-block: 1.25rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    #control-topology-study .message-endpoint:first-child {
+      text-align: end;
+    }
+
+    #control-topology-study .message-endpoint:last-child {
+      text-align: start;
+    }
+
+    #control-topology-study .message-line {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      min-width: 0;
+    }
+
+    #control-topology-study .message-shaft {
+      border-top: 1px solid var(--foreground);
+      min-width: 0;
+    }
+
+    #control-topology-study .message-head {
+      width: 0;
+      height: 0;
+      border-top: 0.28rem solid transparent;
+      border-bottom: 0.28rem solid transparent;
+      border-left: 0.55rem solid var(--foreground);
+    }
+
+    #control-topology-study .message-label {
+      grid-column: 2;
+      text-align: center;
+      color: var(--muted-foreground);
+      margin-top: -0.8rem;
+      padding-inline: 0.35rem;
+      overflow-wrap: anywhere;
+    }
+
+    #control-topology-study .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      justify-content: center;
+    }
+
+    #control-topology-study .message-pill {
+      grid-column: 2;
+      justify-self: center;
+      margin-top: 0.35rem;
+    }
+
+    #control-topology-study .anatomy-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem 1.1rem;
+      margin-top: 1rem;
+      color: var(--muted-foreground);
+    }
+
+    #control-topology-study .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    #control-topology-study .legend-mark {
+      width: 0.8rem;
+      height: 0.8rem;
+      border: 1px solid var(--border);
+    }
+
+    #control-topology-study .legend-mark.actor {
+      border-radius: 50%;
+    }
+
+    #control-topology-study .legend-mark.connection {
+      width: 1.2rem;
+      height: 0;
+      border: 0;
+      border-top: 1px solid var(--foreground);
+    }
+
+    #control-topology-study .legend-mark.group {
+      background: color-mix(in srgb, var(--viz-series-1) 12%, transparent);
+    }
+
+    #control-topology-study .legend-mark.pill {
+      width: 1.25rem;
+      border-radius: 999px;
+      background: var(--muted);
+    }
+
+    #control-topology-study .evidence-flow {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    #control-topology-study .plantuml-example {
+      min-width: 0;
+    }
+
+    #control-topology-study .plantuml-example img {
+      display: block;
+      width: 100%;
+      height: 11rem;
+      object-fit: contain;
+    }
+
+    #control-topology-study pre.source,
+    #control-topology-study pre.syntax,
+    #control-topology-study pre.model {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--muted-foreground);
+      border-left: 2px solid var(--border);
+      padding: 0.75rem 0 0.75rem 0.9rem;
+      margin: 0.75rem 0 0;
+      background: transparent;
+    }
+
+    #control-topology-study pre.syntax {
+      color: var(--foreground);
+      border-left-color: var(--viz-series-1);
+    }
+
+    #control-topology-study .merge-result {
+      margin-top: 1.25rem;
+      border-left: 3px solid var(--viz-series-1);
+      padding-left: 1rem;
+    }
+
+    #control-topology-study .coverage-bar {
+      display: grid;
+      grid-template-columns: minmax(8rem, 1fr) minmax(10rem, 2fr) 4rem;
+      gap: 0.75rem;
+      align-items: center;
+      padding-block: 0.5rem;
+    }
+
+    #control-topology-study .bar-track {
+      height: 0.65rem;
+      background: var(--muted);
+      position: relative;
+    }
+
+    #control-topology-study .bar-fill {
+      position: absolute;
+      inset-block: 0;
+      inset-inline-start: 0;
+      width: var(--bar-width);
+      background: var(--viz-series-1);
+    }
+
+    #control-topology-study .bar-fill.secondary {
+      background: var(--viz-series-2);
+    }
+
+    #control-topology-study .bar-fill.rare {
+      background: var(--muted-foreground);
+    }
+
+    #control-topology-study .bar-value {
+      text-align: end;
+      color: var(--muted-foreground);
+    }
+
+    #control-topology-study .boundary-list {
+      margin-top: 1.25rem;
+      padding-left: 1.25rem;
+    }
+
+    #control-topology-study .boundary-list li + li {
+      margin-top: 0.65rem;
+    }
+
+    #control-topology-study .source-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 760px) {
+      #control-topology-study .control-grid,
+      #control-topology-study .two-column,
+      #control-topology-study .implementation-grid,
+      #control-topology-study .evidence-flow {
+        grid-template-columns: 1fr;
+      }
+
+      #control-topology-study .plantuml-example img {
+        height: auto;
+        max-height: 13rem;
+      }
+    }
+
+    @media (max-width: 460px) {
+      #control-topology-study .group-control {
+        margin-inline: 0;
+      }
+
+      #control-topology-study .message-control {
+        grid-template-columns: minmax(2.8rem, 0.8fr) minmax(6rem, 2fr) minmax(2.8rem, 0.8fr);
+      }
+
+      #control-topology-study .coverage-bar {
+        grid-template-columns: 1fr 3.5rem;
+      }
+
+      #control-topology-study .bar-track {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+    }
+  </style>
+
+  <header class="report-header">
+    <p class="eyebrow">Corrected product frame</p>
+    <h2>Four controls, many selectable flavors</h2>
+    <p class="lede">The experiment should decide which editing operations deserve first-class controls. It should not mistake values inside those controls—group labels, icons, or arrowheads—for separate product capabilities.</p>
+    <p class="decision-rule"><strong>Primitive test:</strong> if two constructs are selected, moved, edited, nested, and deleted in the same way, they are one control with a property selector—not two features.</p>
+
+    <div class="viz-grid metric-grid">
+      <section class="card viz-stat">
+        <p class="text-muted">Core canvas controls</p>
+        <p class="viz-stat-value">3</p>
+        <p class="metric-context">actor · connection · group</p>
+      </section>
+      <section class="card viz-stat">
+        <p class="text-muted">Cross-cutting attachment</p>
+        <p class="viz-stat-value">1</p>
+        <p class="metric-context">pill on an actor or connection</p>
+      </section>
+      <section class="card viz-stat">
+        <p class="text-muted">Group usage</p>
+        <p class="viz-stat-value">86%</p>
+        <p class="metric-context">one generic group control covers it</p>
+      </section>
+    </div>
+  </header>
+
+  <section class="report-section" aria-labelledby="anatomy-heading">
+    <p class="eyebrow">Control anatomy</p>
+    <h2 id="anatomy-heading">The editor sees objects and attachments</h2>
+    <p class="lede">This single interaction contains every core control. “Critical” is not a fifth primitive: it is the selected type of the group and the visible label of a pill.</p>
+
+    <div class="sequence-stage" role="group" aria-label="Sequence editor anatomy with three icon-bearing actors, a generic critical group, one arrow connection, a comment pill on API, and a critical pill on the connection.">
+      <div class="actors">
+        <div class="actor-control">
+          <span class="actor-icon"><i data-lucide="server" aria-hidden="true"></i></span>
+          <span class="actor-name">API</span>
+          <span class="pill-row"><button type="button" class="btn btn-ghost" data-tooltip="any text">comment</button></span>
+        </div>
+        <div class="actor-control">
+          <span class="actor-icon"><i data-lucide="cpu" aria-hidden="true"></i></span>
+          <span class="actor-name">Worker</span>
+        </div>
+        <div class="actor-control">
+          <span class="actor-icon"><i data-lucide="database" aria-hidden="true"></i></span>
+          <span class="actor-name">Jobs</span>
+        </div>
+      </div>
+
+      <div class="stage-body">
+        <div class="lifelines" aria-hidden="true">
+          <span class="lifeline"></span><span class="lifeline"></span><span class="lifeline"></span>
+        </div>
+        <div class="group-control">
+          <div class="group-header">
+            <span class="viz-badge">group</span>
+            <span class="group-label">type:</span>
+            <strong>critical</strong>
+            <span class="group-label">· startup handoff</span>
+          </div>
+          <div class="message-control">
+            <span class="message-endpoint">API</span>
+            <span class="message-line"><span class="message-shaft"></span><span class="message-head"></span></span>
+            <span class="message-endpoint">Worker</span>
+            <span class="message-label">start job</span>
+            <span class="message-pill"><button type="button" class="btn btn-ghost" data-tooltip="something else">critical</button></span>
+          </div>
+          <div class="message-control">
+            <span class="message-endpoint">Worker</span>
+            <span class="message-line"><span class="message-shaft"></span><span class="message-head"></span></span>
+            <span class="message-endpoint">Jobs</span>
+            <span class="message-label">claim work</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="anatomy-legend" aria-label="Control legend">
+      <span class="legend-item"><span class="legend-mark actor"></span>actor control</span>
+      <span class="legend-item"><span class="legend-mark connection"></span>connection control</span>
+      <span class="legend-item"><span class="legend-mark group"></span>group control</span>
+      <span class="legend-item"><span class="legend-mark pill"></span>pill attachment</span>
+    </div>
+  </section>
+
+  <section class="report-section" aria-labelledby="controls-heading">
+    <p class="eyebrow">Actual MVP surface</p>
+    <h2 id="controls-heading">Build these controls once</h2>
+
+    <div class="control-grid">
+      <article class="control-item">
+        <p class="control-number">01 · canvas object</p>
+        <h3>Actor</h3>
+        <p>One uniform actor control. Meaning comes from a readable label and an icon slot, not a hardcoded UML taxonomy.</p>
+        <dl class="property-list">
+          <dt>Identity</dt><dd>Stable ID and display label.</dd>
+          <dt>Icon</dt><dd>Qualified, version-stable icon ID such as <code>collection:name</code>.</dd>
+          <dt>Order</dt><dd>Horizontal position among actors.</dd>
+          <dt>Attachments</dt><dd>Zero or more pills.</dd>
+        </dl>
+      </article>
+
+      <article class="control-item">
+        <p class="control-number">02 · timeline object</p>
+        <h3>Connection</h3>
+        <p>One arrow control with endpoints and text. Solid, dashed, open, synchronous, asynchronous, and future arrowheads are flavor choices added during visual polish.</p>
+        <dl class="property-list">
+          <dt>Endpoints</dt><dd>Source and target actor; equality creates a self-connection.</dd>
+          <dt>Label</dt><dd>Human-readable interaction text.</dd>
+          <dt>Arrow</dt><dd>A visual/semantic style value, not a new primitive.</dd>
+          <dt>Attachments</dt><dd>Zero or more pills.</dd>
+        </dl>
+      </article>
+
+      <article class="control-item">
+        <p class="control-number">03 · structural object</p>
+        <h3>Group</h3>
+        <p>One nestable container with a type selector. <code>loop</code>, <code>opt</code>, <code>critical</code>, <code>par</code>, <code>alt</code>, <code>break</code>, <code>ref</code>, and custom labels share the same editing control.</p>
+        <dl class="property-list">
+          <dt>Type</dt><dd>Preset or custom value controlling header and presentation.</dd>
+          <dt>Label</dt><dd>Readable condition, purpose, or reference.</dd>
+          <dt>Sections</dt><dd>One by default; add branches when needed.</dd>
+          <dt>Children</dt><dd>Connections and nested groups.</dd>
+        </dl>
+      </article>
+
+      <article class="control-item">
+        <p class="control-number">04 · cross-cutting attachment</p>
+        <h3>Pill</h3>
+        <p>A compact visible tag whose detail appears on hover or keyboard focus. It replaces diagram notes without forcing annotation text into the sequence layout.</p>
+        <dl class="property-list">
+          <dt>Tag</dt><dd>Short visible text such as <code>comment</code> or <code>critical</code>.</dd>
+          <dt>Detail</dt><dd>Tooltip text after the first colon.</dd>
+          <dt>Anchor</dt><dd>Actor or connection in MVP; model can remain extensible.</dd>
+          <dt>Multiplicity</dt><dd>Multiple pills preserve source order.</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <section class="report-section" aria-labelledby="group-heading">
+    <p class="eyebrow">Reinterpreting PlantUML</p>
+    <h2 id="group-heading">Three drawings, one group editor</h2>
+    <p class="lede">These PlantUML constructs differ in labels and section count, but their WYSIWYG operations are the same: create a region, label it, choose its type, add or remove sections, move rows, nest, and delete.</p>
+
+    <div class="evidence-flow">
+      <article class="plantuml-example">
+        <h3>Alternative</h3>
+        <img src="rendered/fragments/keep-alternative.svg" alt="PlantUML alternative group with available and sold-out sections">
+        <pre class="source"><code>alt Inventory available
+  API --&gt; User: confirmed
+else Sold out
+  API --&gt; User: unavailable
+end</code></pre>
+      </article>
+      <article class="plantuml-example">
+        <h3>Loop</h3>
+        <img src="rendered/fragments/keep-loop.svg" alt="PlantUML loop group containing a chunk interaction">
+        <pre class="source"><code>loop Each chunk
+  Client -&gt; API: send chunk
+  API --&gt; Client: next
+end</code></pre>
+      </article>
+      <article class="plantuml-example">
+        <h3>Parallel</h3>
+        <img src="rendered/fragments/keep-parallel.svg" alt="PlantUML parallel group with inventory and payment sections">
+        <pre class="source"><code>par Reserve inventory
+  API -&gt; Warehouse: reserve
+else Charge payment
+  API -&gt; Payments: charge
+end</code></pre>
+      </article>
+    </div>
+
+    <div class="merge-result">
+      <p><span class="viz-badge">one model</span></p>
+      <pre class="model"><code>Group {
+  type: string
+  label: string
+  sections: Section[]
+}
+
+Section {
+  label?: string
+  rows: (Connection | Group)[]
+}</code></pre>
+      <p class="text-muted">No separate <code>Alt</code>, <code>Loop</code>, <code>Critical</code>, or <code>Parallel</code> AST nodes. A branching group has several sections; a simple group has one.</p>
+    </div>
+  </section>
+
+  <section class="report-section" aria-labelledby="evidence-heading">
+    <p class="eyebrow">Corpus remapped by control family</p>
+    <h2 id="evidence-heading">Frequency informs defaults, not architecture</h2>
+    <p class="lede">The 100-diagram corpus remains useful after changing the unit of analysis. It validates the three canvas controls, shows that groups need optional sections, and identifies two genuinely different controls that can wait.</p>
+
+    <div role="img" aria-label="Usage by control family across one hundred diagrams. Actors and connections appear in all one hundred diagrams, groups in eighty-six, multi-section groups in seventy-six, lifeline spans in five, and timeline markers in three.">
+      <div class="coverage-bar"><span>Actors</span><span class="bar-track"><span class="bar-fill" style="--bar-width:100%"></span></span><span class="bar-value">100</span></div>
+      <div class="coverage-bar"><span>Connections</span><span class="bar-track"><span class="bar-fill" style="--bar-width:100%"></span></span><span class="bar-value">100</span></div>
+      <div class="coverage-bar"><span>Any group</span><span class="bar-track"><span class="bar-fill secondary" style="--bar-width:86%"></span></span><span class="bar-value">86</span></div>
+      <div class="coverage-bar"><span>Multi-section group</span><span class="bar-track"><span class="bar-fill secondary" style="--bar-width:76%"></span></span><span class="bar-value">76</span></div>
+      <div class="coverage-bar"><span>Lifeline span/state</span><span class="bar-track"><span class="bar-fill rare" style="--bar-width:5%"></span></span><span class="bar-value">5</span></div>
+      <div class="coverage-bar"><span>Timeline marker/gap</span><span class="bar-track"><span class="bar-fill rare" style="--bar-width:3%"></span></span><span class="bar-value">3</span></div>
+    </div>
+
+    <div class="two-column">
+      <article class="evidence-item">
+        <h3>What the study does tell us</h3>
+        <ul>
+          <li>Actors and connections are unavoidable.</li>
+          <li>A generic group is central: 86 diagrams used at least one grouping across all ten domains.</li>
+          <li>Sections are part of the group control: 76 diagrams needed alternative or parallel branches.</li>
+          <li>Observed frequencies can order presets in menus and choose defaults.</li>
+        </ul>
+      </article>
+      <article class="evidence-item">
+        <h3>What it cannot decide</h3>
+        <ul>
+          <li>Whether <code>loop</code> deserves support but <code>critical</code> does not; both are group values.</li>
+          <li>How many icons or arrowheads eventually belong in their selectors.</li>
+          <li>Whether pills matter: the prompt suppressed optional clutter and PlantUML lacks this compact attached primitive.</li>
+          <li>The direct Interview Harness need is sufficient product evidence for pills, without making the library IH-specific.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="report-section" aria-labelledby="pill-heading">
+    <p class="eyebrow">New syntax primitive</p>
+    <h2 id="pill-heading">Pills are attached metadata, not free-floating notes</h2>
+    <p class="lede">The visible tag stays compact; the detail is available as a tooltip. The library treats tags as arbitrary text and exposes stable pill IDs and events, allowing embedding products to attach their own workflows.</p>
+
+    <div class="two-column">
+      <section>
+        <h3>Source sketch</h3>
+        <pre class="syntax"><code>actor API ((comment: any text))
+actor Worker
+
+API -&gt; Worker: start job ((critical: something else))
+Worker --&gt; API: completed</code></pre>
+      </section>
+      <section>
+        <h3>Parsing rule</h3>
+        <pre class="model"><code>pill       := "((" tag ":" detail "))"
+actor      := actor-declaration pill*
+connection := arrow-expression pill*
+
+Pill {
+  id: string
+  tag: string
+  detail: string
+}</code></pre>
+      </section>
+    </div>
+
+    <ul class="boundary-list">
+      <li>The first colon separates the visible tag from tooltip detail; later colons remain part of the detail.</li>
+      <li>Pills are selectable, keyboard reachable, editable, reorderable, and removable through one shared inspector.</li>
+      <li>A <code>comment</code> pill is ordinary document data. The host may associate it with a review thread, but the core package does not know about interviews or comments.</li>
+      <li>Free-floating PlantUML notes remain unnecessary for MVP because pills cover compact attachment and the host covers long-form discussion.</li>
+    </ul>
+  </section>
+
+  <section class="report-section" aria-labelledby="model-heading">
+    <p class="eyebrow">Canonical document model</p>
+    <h2 id="model-heading">Keep the schema open where the UI is a selector</h2>
+
+    <div class="two-column">
+      <section>
+        <h3>Core AST</h3>
+        <pre class="model"><code>Document {
+  actors: Actor[]
+  rows: (Connection | Group)[]
+}
+
+Actor {
+  id: string
+  label: string
+  icon?: QualifiedIconId
+  pills: Pill[]
+}
+
+Connection {
+  id: string
+  from: ActorId
+  to: ActorId
+  label: string
+  arrow: ArrowStyle
+  pills: Pill[]
+}
+
+Group {
+  id: string
+  type: string
+  label: string
+  sections: Section[]
+}</code></pre>
+      </section>
+      <section>
+        <h3>Late-bound catalogs</h3>
+        <dl class="property-list">
+          <dt>Icons</dt><dd>The document stores a qualified stable ID. The renderer receives an icon resolver; the editor can lazy-load a searchable catalog separately from core.</dd>
+          <dt>Arrows</dt><dd>The schema stores an arrow style. Exact tokens, heads, line patterns, and selector order are finalized after the base editor works.</dd>
+          <dt>Groups</dt><dd>The model accepts a string type. The editor offers friendly presets plus a custom value, so new labels do not require schema changes.</dd>
+          <dt>Pills</dt><dd>Tags are open text. Hosts may layer meaning on recognized tags without changing portable diagram data.</dd>
+        </dl>
+      </section>
+    </div>
+  </section>
+
+  <section class="report-section" aria-labelledby="boundary-heading">
+    <p class="eyebrow">The real MVP boundary</p>
+    <h2 id="boundary-heading">Defer different controls, not cheap selector values</h2>
+
+    <div class="two-column">
+      <article class="evidence-item">
+        <h3>Include now</h3>
+        <ul>
+          <li>Actor add, remove, rename, reorder, icon selection, and pill attachment.</li>
+          <li>Connection add, retarget, relabel, reorder, self-target, arrow selection, and pill attachment.</li>
+          <li>Generic group create, type, label, section add/remove, nest, move, resize/reparent, and delete.</li>
+          <li>Bidirectional canonical text editing with stable IDs, diagnostics, undo, and redo.</li>
+        </ul>
+      </article>
+      <article class="evidence-item">
+        <h3>Defer as genuinely different controls</h3>
+        <ul>
+          <li><strong>Timeline marker:</strong> a gap, phase divider, or elapsed-time row. Three corpus diagrams used one.</li>
+          <li><strong>Lifeline span/state:</strong> activation or creation/destruction intervals tied to row ranges. Five diagrams used one.</li>
+          <li><strong>Cross-diagram navigation:</strong> references with actual link behavior belong to the host contract.</li>
+          <li><strong>Free placement:</strong> arbitrary coordinates, floating notes, and decorative shapes would create a different editor.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="report-section" aria-labelledby="plan-heading">
+    <p class="eyebrow">Revised implementation order</p>
+    <h2 id="plan-heading">Build by interaction topology</h2>
+
+    <div class="implementation-grid">
+      <article class="implementation-step">
+        <p class="step-number">01</p>
+        <h3>Model the four controls</h3>
+        <p>Freeze actor, connection, group/section, and pill schemas with stable IDs and source spans. Keep icon, arrow, group type, and pill tag values open.</p>
+      </article>
+      <article class="implementation-step">
+        <p class="step-number">02</p>
+        <h3>Ship one baseline rendering</h3>
+        <p>Uniform actors, one arrow, one group appearance, and pill tags. Prove layout, selection geometry, text synchronization, and nesting before growing catalogs.</p>
+      </article>
+      <article class="implementation-step">
+        <p class="step-number">03</p>
+        <h3>Complete WYSIWYG operations</h3>
+        <p>Add, move, reorder, retarget, wrap in group, add section, reparent, attach pill, edit, delete, copy/paste, undo/redo, and keyboard navigation.</p>
+      </article>
+      <article class="implementation-step">
+        <p class="step-number">04</p>
+        <h3>Add the icon resolver and picker</h3>
+        <p>Choose a version-pinned public collection, persist qualified IDs, keep the renderer resolver-based, and split the searchable catalog from the lightweight runtime.</p>
+      </article>
+      <article class="implementation-step">
+        <p class="step-number">05</p>
+        <h3>Polish selectors</h3>
+        <p>Add the generous group preset list, arrow styles, icon search/categories, defaults informed by the corpus, and graceful fallbacks for unknown values.</p>
+      </article>
+      <article class="implementation-step">
+        <p class="step-number">06</p>
+        <h3>Evaluate new control families</h3>
+        <p>Only after the core is usable, test whether timeline markers or lifeline spans solve real editing needs that cannot be represented by groups, connections, or pills.</p>
+      </article>
+    </div>
+  </section>
+
+  <footer class="report-section">
+    <p class="eyebrow">Bottom line</p>
+    <h2>The small product is not the one with few labels</h2>
+    <p class="lede">It is the one with few interaction models. Actors can carry many icons, connections can carry many arrow styles, and groups can carry many type labels without making the editor conceptually larger. Pills add one compact, reusable attachment model and eliminate the need for free-floating notes.</p>
+    <div class="source-links" aria-label="Experiment evidence">
+      <a href="protocol.md">Study protocol</a>
+      <a href="results.json">Parsed corpus</a>
+      <a href="render-summary-corpus.json">PlantUML render audit</a>
+    </div>
+  </footer>
+</div>

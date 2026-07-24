@@ -1,0 +1,77 @@
+[
+  {
+    "id": "keep-roles",
+    "title": "Four useful participant roles",
+    "source": "@startuml\nactor Customer\nparticipant \"Checkout API\" as API\ndatabase Orders\nqueue \"Order events\" as Events\nCustomer -> API: place order\nAPI -> Orders: save\nAPI -> Events: publish\n@enduml"
+  },
+  {
+    "id": "keep-message-semantics",
+    "title": "Call, self-action, and reply",
+    "source": "@startuml\nparticipant Client\nparticipant API\nClient -> API: request\nAPI -> API: validate\nAPI --> Client: result\n@enduml"
+  },
+  {
+    "id": "keep-async-send",
+    "title": "Asynchronous send",
+    "source": "@startuml\nparticipant API\nqueue Events\nparticipant Worker\nAPI ->> Events: publish order\nEvents ->> Worker: deliver order\nWorker --> Events: acknowledged\n@enduml"
+  },
+  {
+    "id": "keep-alternative",
+    "title": "Alternative outcomes",
+    "source": "@startuml\nparticipant User\nparticipant API\nUser -> API: place order\nalt Inventory available\n  API --> User: confirmed\nelse Sold out\n  API --> User: unavailable\nend\n@enduml"
+  },
+  {
+    "id": "keep-loop",
+    "title": "Repeated interaction",
+    "source": "@startuml\nparticipant Client\nparticipant API\nloop Each chunk\n  Client -> API: send chunk\n  API --> Client: next\nend\n@enduml"
+  },
+  {
+    "id": "keep-parallel",
+    "title": "Parallel branches",
+    "source": "@startuml\nparticipant API\nparticipant Warehouse\nparticipant Payments\npar Reserve inventory\n  API -> Warehouse: reserve\nelse Charge payment\n  API -> Payments: charge\nend\n@enduml"
+  },
+  {
+    "id": "keep-critical",
+    "title": "Critical region",
+    "source": "@startuml\nparticipant Session\ndatabase TokenStore\ncritical Rotate atomically\n  Session -> TokenStore: consume old token\n  Session -> TokenStore: issue replacement\nend\n@enduml"
+  },
+  {
+    "id": "keep-optional",
+    "title": "Optional path",
+    "source": "@startuml\nparticipant API\nparticipant Mailer\nopt Receipt requested\n  API -> Mailer: send receipt\nend\n@enduml"
+  },
+  {
+    "id": "later-delay",
+    "title": "Meaningful time gap",
+    "source": "@startuml\nparticipant Client\nparticipant API\nClient -> API: start job\n... up to 30 seconds later ...\nAPI --> Client: completed\n@enduml"
+  },
+  {
+    "id": "simplify-participant-zoo",
+    "title": "PlantUML participant shape zoo",
+    "source": "@startuml\nactor User\nboundary Gateway\ncontrol Coordinator\nentity Order\ndatabase Store\nqueue Events\ncollections Results\nUser -> Gateway: submit\nGateway -> Coordinator: handle\nCoordinator -> Order: update\nCoordinator -> Store: persist\nCoordinator -> Events: publish\nCoordinator -> Results: append\n@enduml"
+  },
+  {
+    "id": "drop-activation",
+    "title": "Explicit activation bars",
+    "source": "@startuml\nparticipant Client\nparticipant API\ndatabase Store\nClient -> API: request\nactivate API\nAPI -> Store: query\nStore --> API: row\nAPI --> Client: result\ndeactivate API\n@enduml"
+  },
+  {
+    "id": "drop-note",
+    "title": "Diagram note",
+    "source": "@startuml\nparticipant API\ndatabase Store\nAPI -> Store: commit\nnote over API, Store: Runs in one transaction\nStore --> API: durable\n@enduml"
+  },
+  {
+    "id": "drop-lifecycle",
+    "title": "Participant lifecycle",
+    "source": "@startuml\nparticipant API\ncreate Worker\nAPI -> Worker: start job\nWorker --> API: completed\ndestroy Worker\n@enduml"
+  },
+  {
+    "id": "drop-break",
+    "title": "Special break fragment",
+    "source": "@startuml\nparticipant Sensor\nparticipant Monitor\nparticipant Runner\nloop Each cycle\n  Sensor -> Monitor: metrics\n  break Threshold exceeded\n    Monitor -> Runner: stop run\n  end\nend\n@enduml"
+  },
+  {
+    "id": "drop-reference-numbering",
+    "title": "Reference and source numbering",
+    "source": "@startuml\nautonumber\nparticipant Client\nparticipant API\nClient -> API: begin checkout\nref over Client, API: OAuth login\nAPI --> Client: ready\n@enduml"
+  }
+]

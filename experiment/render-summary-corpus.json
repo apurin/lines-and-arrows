@@ -1,0 +1,701 @@
+{
+  "server": "https://www.plantuml.com/plantuml/svg",
+  "startedAt": "2026-07-22T18:07:24.573Z",
+  "finishedAt": "2026-07-22T18:07:42.496Z",
+  "mode": "corpus",
+  "count": 100,
+  "successCount": 95,
+  "failedCount": 5,
+  "rendered": [
+    {
+      "id": "01-app-class-interactions:01",
+      "title": "1. Command dispatch and local change publication",
+      "sourceBytes": 806,
+      "svgBytes": 12285,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/01-app-class-interactions-01.svg"
+    },
+    {
+      "id": "01-app-class-interactions:02",
+      "title": "2. Atomic multi-range formatting command",
+      "sourceBytes": 872,
+      "svgBytes": 15871,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/01-app-class-interactions-02.svg"
+    },
+    {
+      "id": "01-app-class-interactions:03",
+      "title": "3. Selective undo in the presence of remote edits",
+      "sourceBytes": 997,
+      "svgBytes": 14209,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/01-app-class-interactions-03.svg"
+    },
+    {
+      "id": "01-app-class-interactions:04",
+      "title": "4. Version-aware autosave",
+      "sourceBytes": 991,
+      "svgBytes": 12484,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/01-app-class-interactions-04.svg"
+    },
+    {
+      "id": "01-app-class-interactions:05",
+      "title": "5. Document opening and crash recovery",
+      "sourceBytes": 1271,
+      "svgBytes": 16287,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/01-app-class-interactions-05.svg"
+    },
+    {
+      "id": "01-app-class-interactions:06",
+      "title": "6. Optimistic local synchronization",
+      "sourceBytes": 1277,
+      "svgBytes": 16933,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/01-app-class-interactions-06.svg"
+    },
+    {
+      "id": "01-app-class-interactions:07",
+      "title": "7. Causally ordered remote operation delivery",
+      "sourceBytes": 1070,
+      "svgBytes": 14970,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/01-app-class-interactions-07.svg"
+    },
+    {
+      "id": "01-app-class-interactions:08",
+      "title": "8. Offline editing and reconnection",
+      "sourceBytes": 1183,
+      "svgBytes": 19081,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/01-app-class-interactions-08.svg"
+    },
+    {
+      "id": "01-app-class-interactions:09",
+      "title": "9. Durable server commit before broadcast",
+      "sourceBytes": 1328,
+      "svgBytes": 18810,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/01-app-class-interactions-09.svg"
+    },
+    {
+      "id": "01-app-class-interactions:10",
+      "title": "10. Concurrent-safe snapshot compaction",
+      "sourceBytes": 1282,
+      "svgBytes": 14906,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/01-app-class-interactions-10.svg"
+    },
+    {
+      "id": "02-thread-concurrency:01",
+      "title": "1. Normal task lifecycle",
+      "sourceBytes": 473,
+      "svgBytes": 9131,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/02-thread-concurrency-01.svg"
+    },
+    {
+      "id": "02-thread-concurrency:02",
+      "title": "2. Bounded queue backpressure",
+      "sourceBytes": 464,
+      "svgBytes": 7957,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/02-thread-concurrency-02.svg"
+    },
+    {
+      "id": "02-thread-concurrency:03",
+      "title": "3. Contention on a shared queue",
+      "sourceBytes": 386,
+      "svgBytes": 7337,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/02-thread-concurrency-03.svg"
+    },
+    {
+      "id": "02-thread-concurrency:04",
+      "title": "4. Cancelling a queued task",
+      "sourceBytes": 495,
+      "svgBytes": 9230,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/02-thread-concurrency-04.svg"
+    },
+    {
+      "id": "02-thread-concurrency:05",
+      "title": "5. Cooperative cancellation during execution",
+      "sourceBytes": 442,
+      "svgBytes": 7783,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/02-thread-concurrency-05.svg"
+    },
+    {
+      "id": "02-thread-concurrency:06",
+      "title": "6. Transient failure and successful retry",
+      "sourceBytes": 546,
+      "svgBytes": 9604,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/02-thread-concurrency-06.svg"
+    },
+    {
+      "id": "02-thread-concurrency:07",
+      "title": "7. Retry budget exhausted",
+      "sourceBytes": 489,
+      "svgBytes": 8360,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/02-thread-concurrency-07.svg"
+    },
+    {
+      "id": "02-thread-concurrency:08",
+      "title": "8. Graceful shutdown with draining",
+      "sourceBytes": 550,
+      "svgBytes": 10691,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/02-thread-concurrency-08.svg"
+    },
+    {
+      "id": "02-thread-concurrency:09",
+      "title": "9. Immediate shutdown",
+      "sourceBytes": 610,
+      "svgBytes": 11295,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/02-thread-concurrency-09.svg"
+    },
+    {
+      "id": "02-thread-concurrency:10",
+      "title": "10. Work stealing under uneven load",
+      "sourceBytes": 375,
+      "svgBytes": 9267,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/02-thread-concurrency-10.svg"
+    },
+    {
+      "id": "03-streaming-io:01",
+      "title": "1. Backpressured upload pipeline",
+      "sourceBytes": 760,
+      "svgBytes": 12324,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/03-streaming-io-01.svg"
+    },
+    {
+      "id": "03-streaming-io:02",
+      "title": "2. Demand-driven download",
+      "sourceBytes": 427,
+      "svgBytes": 7977,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/03-streaming-io-02.svg"
+    },
+    {
+      "id": "03-streaming-io:03",
+      "title": "3. High- and low-water buffering",
+      "sourceBytes": 495,
+      "svgBytes": 8163,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/03-streaming-io-03.svg"
+    },
+    {
+      "id": "03-streaming-io:04",
+      "title": "4. Incremental checksum and atomic commit",
+      "sourceBytes": 692,
+      "svgBytes": 11719,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/03-streaming-io-04.svg"
+    },
+    {
+      "id": "03-streaming-io:05",
+      "title": "5. Idempotent chunk retry",
+      "sourceBytes": 593,
+      "svgBytes": 9512,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/03-streaming-io-05.svg"
+    },
+    {
+      "id": "03-streaming-io:06",
+      "title": "6. Cancellation propagation and cleanup",
+      "sourceBytes": 506,
+      "svgBytes": 8755,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/03-streaming-io-06.svg"
+    },
+    {
+      "id": "03-streaming-io:07",
+      "title": "7. Partial writes and durable finalization",
+      "sourceBytes": 480,
+      "svgBytes": 7858,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/03-streaming-io-07.svg"
+    },
+    {
+      "id": "03-streaming-io:08",
+      "title": "8. Resumable download after interruption",
+      "sourceBytes": 613,
+      "svgBytes": 9952,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/03-streaming-io-08.svg"
+    },
+    {
+      "id": "03-streaming-io:09",
+      "title": "9. Concurrent chunks and ordered assembly",
+      "sourceBytes": 726,
+      "svgBytes": 11730,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/03-streaming-io-09.svg"
+    },
+    {
+      "id": "03-streaming-io:10",
+      "title": "10. Slow-consumer timeout",
+      "sourceBytes": 618,
+      "svgBytes": 11229,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/03-streaming-io-10.svg"
+    },
+    {
+      "id": "04-soa-saga:01",
+      "title": "1. Orchestrated fulfilment happy path",
+      "sourceBytes": 960,
+      "svgBytes": 13091,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/04-soa-saga-01.svg"
+    },
+    {
+      "id": "04-soa-saga:02",
+      "title": "2. Choreographed fulfilment through domain events",
+      "sourceBytes": 787,
+      "svgBytes": 12657,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/04-soa-saga-02.svg"
+    },
+    {
+      "id": "04-soa-saga:03",
+      "title": "3. Inventory rejection before payment",
+      "sourceBytes": 670,
+      "svgBytes": 9905,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/04-soa-saga-03.svg"
+    },
+    {
+      "id": "04-soa-saga:04",
+      "title": "4. Payment rejection compensates inventory",
+      "sourceBytes": 727,
+      "svgBytes": 9771,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/04-soa-saga-04.svg"
+    },
+    {
+      "id": "04-soa-saga:05",
+      "title": "5. Shipment failure triggers multi-step compensation",
+      "sourceBytes": 770,
+      "svgBytes": 9601,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/04-soa-saga-05.svg"
+    },
+    {
+      "id": "04-soa-saga:06",
+      "title": "6. Ambiguous payment timeout with idempotent retry",
+      "sourceBytes": 682,
+      "svgBytes": 8210,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/04-soa-saga-06.svg"
+    },
+    {
+      "id": "04-soa-saga:07",
+      "title": "7. Transactional outbox and consumer deduplication",
+      "sourceBytes": 747,
+      "svgBytes": 13104,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/04-soa-saga-07.svg"
+    },
+    {
+      "id": "04-soa-saga:08",
+      "title": "8. Out-of-order events guarded by saga version",
+      "sourceBytes": 661,
+      "svgBytes": 9682,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/04-soa-saga-08.svg"
+    },
+    {
+      "id": "04-soa-saga:09",
+      "title": "9. Degraded fraud dependency routes order to review",
+      "sourceBytes": 701,
+      "svgBytes": 12443,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/04-soa-saga-09.svg"
+    },
+    {
+      "id": "04-soa-saga:10",
+      "title": "10. Coordinator crash and durable saga recovery",
+      "error": "04-soa-saga:10: server returned 400 — PlantUML version 1.2026.7beta8 / efde38d [2026-07-08 21:04:53 UTC] [From string (line 12) ] @startuml participant \"Saga Coordinator\" as Saga database \"Saga Store\" as Store participant \"Inventory Service\" as Inventory participant \"Payment Se"
+    },
+    {
+      "id": "05-scientific-sequencing:01",
+      "title": "1. Sample accession and chain of custody",
+      "sourceBytes": 765,
+      "svgBytes": 9516,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/05-scientific-sequencing-01.svg"
+    },
+    {
+      "id": "05-scientific-sequencing:02",
+      "title": "2. DNA extraction with process controls",
+      "sourceBytes": 931,
+      "svgBytes": 10656,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/05-scientific-sequencing-02.svg"
+    },
+    {
+      "id": "05-scientific-sequencing:03",
+      "title": "3. Library construction and index assignment",
+      "sourceBytes": 896,
+      "svgBytes": 10951,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/05-scientific-sequencing-03.svg"
+    },
+    {
+      "id": "05-scientific-sequencing:04",
+      "title": "4. Normalization, pooling, and flow-cell loading",
+      "sourceBytes": 978,
+      "svgBytes": 11768,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/05-scientific-sequencing-04.svg"
+    },
+    {
+      "id": "05-scientific-sequencing:05",
+      "title": "5. Sequencing cycle and live run monitoring",
+      "sourceBytes": 951,
+      "svgBytes": 11741,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/05-scientific-sequencing-05.svg"
+    },
+    {
+      "id": "05-scientific-sequencing:06",
+      "title": "6. Demultiplexing and read-file delivery",
+      "sourceBytes": 834,
+      "svgBytes": 11881,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/05-scientific-sequencing-06.svg"
+    },
+    {
+      "id": "05-scientific-sequencing:07",
+      "title": "7. Quality-control and contamination triage",
+      "sourceBytes": 1016,
+      "svgBytes": 12602,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/05-scientific-sequencing-07.svg"
+    },
+    {
+      "id": "05-scientific-sequencing:08",
+      "title": "8. Reproducible sequence analysis",
+      "sourceBytes": 984,
+      "svgBytes": 12803,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/05-scientific-sequencing-08.svg"
+    },
+    {
+      "id": "05-scientific-sequencing:09",
+      "title": "9. Replication and discordance resolution",
+      "sourceBytes": 1179,
+      "svgBytes": 13484,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/05-scientific-sequencing-09.svg"
+    },
+    {
+      "id": "05-scientific-sequencing:10",
+      "title": "10. Scientific result review and release",
+      "sourceBytes": 1177,
+      "svgBytes": 14527,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/05-scientific-sequencing-10.svg"
+    },
+    {
+      "id": "06-social-moderation:01",
+      "title": "1. Safe report intake",
+      "sourceBytes": 558,
+      "svgBytes": 8197,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/06-social-moderation-01.svg"
+    },
+    {
+      "id": "06-social-moderation:02",
+      "title": "2. Risk-based triage",
+      "sourceBytes": 885,
+      "svgBytes": 11501,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/06-social-moderation-02.svg"
+    },
+    {
+      "id": "06-social-moderation:03",
+      "title": "3. Moderator adjudication",
+      "sourceBytes": 865,
+      "svgBytes": 11374,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/06-social-moderation-03.svg"
+    },
+    {
+      "id": "06-social-moderation:04",
+      "title": "4. Coordinated-reporting abuse defense",
+      "sourceBytes": 820,
+      "svgBytes": 10098,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/06-social-moderation-04.svg"
+    },
+    {
+      "id": "06-social-moderation:05",
+      "title": "5. Consensus for an ambiguous case",
+      "sourceBytes": 907,
+      "svgBytes": 13281,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/06-social-moderation-05.svg"
+    },
+    {
+      "id": "06-social-moderation:06",
+      "title": "6. Community-mediated conflict resolution",
+      "sourceBytes": 1073,
+      "svgBytes": 13061,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/06-social-moderation-06.svg"
+    },
+    {
+      "id": "06-social-moderation:07",
+      "title": "7. Emergency safety escalation",
+      "sourceBytes": 1006,
+      "svgBytes": 12819,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/06-social-moderation-07.svg"
+    },
+    {
+      "id": "06-social-moderation:08",
+      "title": "8. Cross-community incident coordination",
+      "sourceBytes": 974,
+      "svgBytes": 12402,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/06-social-moderation-08.svg"
+    },
+    {
+      "id": "06-social-moderation:09",
+      "title": "9. Independent appeal review",
+      "sourceBytes": 1028,
+      "svgBytes": 12199,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/06-social-moderation-09.svg"
+    },
+    {
+      "id": "06-social-moderation:10",
+      "title": "10. Role-specific outcome notification",
+      "sourceBytes": 1002,
+      "svgBytes": 12678,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/06-social-moderation-10.svg"
+    },
+    {
+      "id": "07-agentic-tool-use:01",
+      "title": "1. Task intake and repository orientation",
+      "sourceBytes": 634,
+      "svgBytes": 9602,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/07-agentic-tool-use-01.svg"
+    },
+    {
+      "id": "07-agentic-tool-use:02",
+      "title": "2. Tracing a behavior through local code",
+      "sourceBytes": 697,
+      "svgBytes": 9901,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/07-agentic-tool-use-02.svg"
+    },
+    {
+      "id": "07-agentic-tool-use:03",
+      "title": "3. Preserving unrelated work",
+      "sourceBytes": 712,
+      "svgBytes": 9914,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/07-agentic-tool-use-03.svg"
+    },
+    {
+      "id": "07-agentic-tool-use:04",
+      "title": "4. Patch and targeted-test cycle",
+      "sourceBytes": 621,
+      "svgBytes": 10033,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/07-agentic-tool-use-04.svg"
+    },
+    {
+      "id": "07-agentic-tool-use:05",
+      "title": "5. Researching an unstable external dependency",
+      "sourceBytes": 839,
+      "svgBytes": 10916,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/07-agentic-tool-use-05.svg"
+    },
+    {
+      "id": "07-agentic-tool-use:06",
+      "title": "6. Approval-gated privileged action",
+      "sourceBytes": 709,
+      "svgBytes": 10885,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/07-agentic-tool-use-06.svg"
+    },
+    {
+      "id": "07-agentic-tool-use:07",
+      "title": "7. Recovering from a transient tool failure",
+      "sourceBytes": 792,
+      "svgBytes": 11012,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/07-agentic-tool-use-07.svg"
+    },
+    {
+      "id": "07-agentic-tool-use:08",
+      "title": "8. Diagnosing and repairing a failing test suite",
+      "sourceBytes": 818,
+      "svgBytes": 10692,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/07-agentic-tool-use-08.svg"
+    },
+    {
+      "id": "07-agentic-tool-use:09",
+      "title": "9. Handling a user scope change mid-task",
+      "sourceBytes": 793,
+      "svgBytes": 10874,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/07-agentic-tool-use-09.svg"
+    },
+    {
+      "id": "07-agentic-tool-use:10",
+      "title": "10. Final verification and handoff",
+      "sourceBytes": 729,
+      "svgBytes": 10049,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/07-agentic-tool-use-10.svg"
+    },
+    {
+      "id": "08-passkey-security:01",
+      "title": "1. Passkey enrollment",
+      "sourceBytes": 1088,
+      "svgBytes": 13898,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/08-passkey-security-01.svg"
+    },
+    {
+      "id": "08-passkey-security:02",
+      "title": "2. Passwordless sign-in",
+      "sourceBytes": 1053,
+      "svgBytes": 14222,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/08-passkey-security-02.svg"
+    },
+    {
+      "id": "08-passkey-security:03",
+      "title": "3. Authorization with step-up authentication",
+      "sourceBytes": 1223,
+      "svgBytes": 14642,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/08-passkey-security-03.svg"
+    },
+    {
+      "id": "08-passkey-security:04",
+      "title": "4. Session renewal and token rotation",
+      "sourceBytes": 1016,
+      "svgBytes": 13353,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/08-passkey-security-04.svg"
+    },
+    {
+      "id": "08-passkey-security:05",
+      "title": "5. Adaptive risk decision after valid authentication",
+      "sourceBytes": 1113,
+      "svgBytes": 13740,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/08-passkey-security-05.svg"
+    },
+    {
+      "id": "08-passkey-security:06",
+      "title": "6. Cross-device passkey authentication",
+      "sourceBytes": 934,
+      "svgBytes": 12086,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/08-passkey-security-06.svg"
+    },
+    {
+      "id": "08-passkey-security:07",
+      "title": "7. Adding a passkey from a new device",
+      "sourceBytes": 1228,
+      "svgBytes": 14176,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/08-passkey-security-07.svg"
+    },
+    {
+      "id": "08-passkey-security:08",
+      "title": "8. Account recovery without a passkey",
+      "sourceBytes": 1323,
+      "svgBytes": 14412,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/08-passkey-security-08.svg"
+    },
+    {
+      "id": "08-passkey-security:09",
+      "title": "9. Passkey revocation and last-credential safety",
+      "sourceBytes": 1149,
+      "svgBytes": 12478,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/08-passkey-security-09.svg"
+    },
+    {
+      "id": "08-passkey-security:10",
+      "title": "10. WebAuthn security-failure handling",
+      "sourceBytes": 1301,
+      "svgBytes": 13512,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/08-passkey-security-10.svg"
+    },
+    {
+      "id": "09-embedded-drone:01",
+      "title": "1. Preflight Initialization and Arming",
+      "error": "09-embedded-drone:01: server returned 400 — PlantUML version 1.2026.7beta8 / efde38d [2026-07-08 21:04:53 UTC] [From string (line 13) ] @startuml actor Operator participant \"Flight Manager\" as FM participant \"Sensor Hub\" as Sensors participant \"Navigation Estimator\" as Nav participan"
+    },
+    {
+      "id": "09-embedded-drone:02",
+      "title": "2. Time-Aligned Sensor Acquisition",
+      "error": "09-embedded-drone:02: server returned 400 — PlantUML version 1.2026.7beta8 / efde38d [2026-07-08 21:04:53 UTC] [From string (line 20) ] @startuml participant \"Hardware Clock\" as Clock participant IMU participant \"Barometer / Magnetometer\" as SlowSensors participant GNSS participant \""
+    },
+    {
+      "id": "09-embedded-drone:03",
+      "title": "3. Multi-Rate State Estimation",
+      "sourceBytes": 881,
+      "svgBytes": 10792,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/09-embedded-drone-03.svg"
+    },
+    {
+      "id": "09-embedded-drone:04",
+      "title": "4. Cascaded Flight-Control Loop",
+      "sourceBytes": 904,
+      "svgBytes": 11321,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/09-embedded-drone-04.svg"
+    },
+    {
+      "id": "09-embedded-drone:05",
+      "title": "5. Obstacle-Aware Trajectory Revision",
+      "sourceBytes": 861,
+      "svgBytes": 10888,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/09-embedded-drone-05.svg"
+    },
+    {
+      "id": "09-embedded-drone:06",
+      "title": "6. Command and Telemetry Exchange",
+      "error": "09-embedded-drone:06: server returned 400 — PlantUML version 1.2026.7beta8 / efde38d [2026-07-08 21:04:53 UTC] [From string (line 21) ] @startuml actor \"Ground Station\" as Ground participant \"Radio Link\" as Radio participant \"Command Gateway\" as Gateway participant \"Flight Manager\" a"
+    },
+    {
+      "id": "09-embedded-drone:07",
+      "title": "7. Sensor Fault Detection and Isolation",
+      "error": "09-embedded-drone:07: server returned 400 — PlantUML version 1.2026.7beta8 / efde38d [2026-07-08 21:04:53 UTC] [From string (line 10) ] @startuml participant \"Primary IMU\" as IMU1 participant \"Backup IMU\" as IMU2 participant \"Fusion Estimator\" as Estimator participant \"Fault Monitor\""
+    },
+    {
+      "id": "09-embedded-drone:08",
+      "title": "8. Battery Protection and Energy-Aware Recovery",
+      "sourceBytes": 1072,
+      "svgBytes": 11971,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/09-embedded-drone-08.svg"
+    },
+    {
+      "id": "09-embedded-drone:09",
+      "title": "9. Lost-Link Failsafe State Machine",
+      "sourceBytes": 921,
+      "svgBytes": 11494,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/09-embedded-drone-09.svg"
+    },
+    {
+      "id": "09-embedded-drone:10",
+      "title": "10. Propulsion Fault and Controlled Landing",
+      "sourceBytes": 1069,
+      "svgBytes": 11933,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/09-embedded-drone-10.svg"
+    },
+    {
+      "id": "10-emergency-care:01",
+      "title": "1. Pre-arrival notification and team readiness",
+      "sourceBytes": 826,
+      "svgBytes": 9384,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/10-emergency-care-01.svg"
+    },
+    {
+      "id": "10-emergency-care:02",
+      "title": "2. Triage, prioritization, and waiting-room reassessment",
+      "sourceBytes": 1030,
+      "svgBytes": 11437,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/10-emergency-care-02.svg"
+    },
+    {
+      "id": "10-emergency-care:03",
+      "title": "3. Primary survey and coordinated resuscitation",
+      "sourceBytes": 1126,
+      "svgBytes": 13173,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/10-emergency-care-03.svg"
+    },
+    {
+      "id": "10-emergency-care:04",
+      "title": "4. Hypothesis-driven diagnostic workup",
+      "sourceBytes": 1048,
+      "svgBytes": 11850,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/10-emergency-care-04.svg"
+    },
+    {
+      "id": "10-emergency-care:05",
+      "title": "5. Closed-loop medication treatment",
+      "sourceBytes": 1195,
+      "svgBytes": 13093,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/10-emergency-care-05.svg"
+    },
+    {
+      "id": "10-emergency-care:06",
+      "title": "6. Time-critical stroke pathway",
+      "sourceBytes": 1229,
+      "svgBytes": 13294,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/10-emergency-care-06.svg"
+    },
+    {
+      "id": "10-emergency-care:07",
+      "title": "7. Continuous monitoring and deterioration escalation",
+      "sourceBytes": 1208,
+      "svgBytes": 12709,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/10-emergency-care-07.svg"
+    },
+    {
+      "id": "10-emergency-care:08",
+      "title": "8. Consultation and disposition coordination",
+      "sourceBytes": 1029,
+      "svgBytes": 10886,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/10-emergency-care-08.svg"
+    },
+    {
+      "id": "10-emergency-care:09",
+      "title": "9. Safe discharge and follow-up",
+      "sourceBytes": 1093,
+      "svgBytes": 11802,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/10-emergency-care-09.svg"
+    },
+    {
+      "id": "10-emergency-care:10",
+      "title": "10. Admission transfer and clinical handoff",
+      "sourceBytes": 1151,
+      "svgBytes": 11529,
+      "output": "../../../../../tmp/lines-and-arrows-plantuml-corpus/10-emergency-care-10.svg"
+    }
+  ]
+}

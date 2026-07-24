@@ -1,0 +1,35 @@
+{
+  "name": "@lines-and-arrows/core",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "A small renderer-agnostic sequence diagram language and SVG viewer.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js"
+    },
+    "./element": {
+      "types": "./src/index.d.ts",
+      "import": "./src/element.js"
+    }
+  },
+  "files": [
+    "src",
+    "README.md",
+    "syntax.md",
+    "ux.md"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "check": "node --test"
+  },
+  "keywords": [
+    "sequence-diagram",
+    "svg",
+    "diagram",
+    "visualization"
+  ],
+  "license": "UNLICENSED"
+}
