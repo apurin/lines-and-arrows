@@ -10,7 +10,9 @@ import {
   ACTOR_LABEL_MARGIN_X,
   ACTOR_METADATA_MARGIN_X,
   actorLabelWidth,
+  messageLabelMetrics,
   metadataMetrics,
+  selfMessageWidth,
 } from "../src/metadata.js";
 
 const COMPLETE_SOURCE = `@Customer
@@ -224,5 +226,53 @@ ${longName} -> API: Submit`),
       service.width +
       api.width +
       layout.options.actorGap,
+  );
+});
+
+test("widens self-messages and reserves room before the next lifeline", () => {
+  const layout = layoutDiagram(
+    parse(`@API
+@Worker
+
+API -> API: Reconcile outstanding evidence
+  tag needs review now
+  tooltip Review the local result
+API -> Worker: Continue`),
+  );
+  const [api, worker] = layout.actors;
+  const selfMessage = layout.rows[0];
+  const loopWidth = selfMessageWidth(selfMessage);
+
+  assert.ok(
+    loopWidth >= messageLabelMetrics(selfMessage.label).width,
+  );
+  assert.ok(
+    loopWidth >=
+      metadataMetrics(
+        selfMessage.tag,
+        selfMessage.tooltip,
+      ).width,
+  );
+  assert.ok(worker.centerX - api.centerX > loopWidth);
+});
+
+test("reserves canvas space for a rightmost self-message", () => {
+  const layout = layoutDiagram(
+    parse(`@API
+@Worker
+
+API -> Worker: Start
+Worker -> Worker: Check evidence
+  tag local review
+  tooltip This stays on the worker`),
+  );
+  const worker = layout.actors[1];
+  const selfMessage = layout.rows[1];
+
+  assert.ok(
+    layout.width >=
+      worker.centerX +
+        selfMessageWidth(selfMessage) +
+        layout.options.marginX,
   );
 });

@@ -65,6 +65,19 @@ const editor = new DiagramEditor(source);
 const editable = renderEditor(container, editor.document, {
   editor,
   theme: "light",
+  iconResolver(name) {
+    return `/icons/${name}.svg`;
+  },
+  iconCatalog: [
+    "user",
+    "cloud",
+    "database",
+    {
+      name: "warning",
+      label: "Warning",
+      keywords: ["alert", "risk"],
+    },
+  ],
   onChange({ source: nextSource }) {
     console.log(nextSource);
   },
@@ -77,16 +90,21 @@ editable.redo();
 `renderDiagram` accepts either source text or a parsed document. The optional
 `iconResolver(name, theme)` callback returns an image URL for actor and
 configured tooltip icons. Tooltips use a built-in lowercase `i` when
-`tooltip-icon` is omitted or cannot be resolved. `renderEditor` uses the same
+`tooltip-icon` is omitted or cannot be resolved. `iconCatalog` provides the
+searchable choices shown by the visual editor. Entries may be icon-name strings
+or objects with `name`, `label`, and `keywords`. `renderEditor` uses the same
 inputs and options plus an optional persistent `DiagramEditor` instance.
 
 The custom element emits `la-select`, `la-change`, and `la-error` events. Its
-`source`, `mode`, `theme`, `selectedIds`, `canUndo`, and `canRedo` properties
-make it usable without coupling an application to its shadow DOM.
+`source`, `mode`, `theme`, `iconResolver`, `iconCatalog`, `selectedIds`,
+`canUndo`, and `canRedo` properties make it usable without coupling an
+application to its shadow DOM.
 
 ## Edit controls
 
 - Select an actor, message, gap, group, or section to open its compact editor.
+- Use the icon button beside an actor name or tooltip to open the searchable
+  icon palette.
 - Drag a selected actor horizontally to reorder it.
 - Hover a lifeline between timeline items, then drag its arrow circle to an
   actor to create an unnamed connection, including back to the same actor.

@@ -4,6 +4,7 @@ import { serialize } from "./serialize.js";
 export const ROOT_CONTAINER_ID = "root";
 
 let generatedId = 0;
+const GROUP_TYPE_PATTERN = /^[a-z][a-z0-9-]*$/;
 
 function nextId(kind) {
   generatedId += 1;
@@ -26,6 +27,16 @@ function requiredText(value, label) {
   const text = String(value ?? "").trim();
   if (!text) {
     throw new Error(`${label} cannot be empty.`);
+  }
+  return text;
+}
+
+function requiredGroupType(value) {
+  const text = requiredText(value, "Group type");
+  if (!GROUP_TYPE_PATTERN.test(text)) {
+    throw new Error(
+      "Group type must start with a lowercase letter and contain only lowercase letters, numbers, or hyphens.",
+    );
   }
   return text;
 }
@@ -552,7 +563,7 @@ export class DiagramEditor {
         }
       } else {
         if (Object.hasOwn(patch, "groupType")) {
-          item.groupType = requiredText(patch.groupType, "Group type");
+          item.groupType = requiredGroupType(patch.groupType);
         }
         if (Object.hasOwn(patch, "label")) {
           item.label = requiredText(patch.label, "Group label");
@@ -664,7 +675,7 @@ export class DiagramEditor {
       const group = {
         type: "group",
         id: nextId("item"),
-        groupType: requiredText(groupType, "Group type"),
+        groupType: requiredGroupType(groupType),
         label: requiredText(label, "Group label"),
         items: grouped,
         sections: [],

@@ -112,6 +112,14 @@ export interface ChangeDetail {
   canRedo: boolean;
 }
 
+export interface IconCatalogItem {
+  name: string;
+  label?: string;
+  keywords?: string[];
+}
+
+export type IconCatalogEntry = string | IconCatalogItem;
+
 export interface RenderOptions {
   theme?: ThemeName;
   label?: string;
@@ -120,6 +128,7 @@ export interface RenderOptions {
     iconName: string,
     resolvedTheme: "light" | "dark",
   ) => string | null | undefined;
+  iconCatalog?: IconCatalogEntry[];
   onSelect?: (detail: SelectionDetail) => void;
   layout?: Record<string, number>;
 }
@@ -347,6 +356,7 @@ export class LinesAndArrowsElement extends HTMLElement {
   theme: ThemeName;
   mode: EditorMode;
   iconResolver: RenderOptions["iconResolver"];
+  iconCatalog: IconCatalogEntry[];
   readonly selectedId: string | null;
   readonly selectedIds: string[];
   readonly canUndo: boolean;

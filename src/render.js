@@ -1,5 +1,9 @@
 import { layoutDiagram } from "./layout.js";
-import { metadataMetrics } from "./metadata.js";
+import {
+  messageLabelMetrics,
+  metadataMetrics,
+  selfMessageWidth,
+} from "./metadata.js";
 import { parse } from "./parser.js";
 import { resolveTheme } from "./theme.js";
 
@@ -788,32 +792,17 @@ function renderGroupHeader(
     Math.floor(availableLabelWidth / (11 * 0.56)),
   );
   const visibleLabel = truncate(group.label, labelCharacters);
+  const labelWidth = textWidth(visibleLabel, 11);
   const header = svgElement("g", {
     class: "la-group-header",
     "pointer-events": "none",
   });
   const backplatePadding = 6;
 
-  if (visibleLabel) {
-    header.append(
-      svgElement("rect", {
-        class: "la-group-label-shape",
-        x: left - backplatePadding,
-        y: y - 14,
-        width:
-          textWidth(visibleLabel, 11) +
-          backplatePadding * 2,
-        height: 20,
-        rx: 5,
-        fill: surface,
-      }),
-    );
-  }
-
   header.append(
     svgElement("rect", {
       class: "la-group-type-shape",
-      x: right - typeWidth - backplatePadding,
+      x: left - backplatePadding,
       y: y - 14,
       width: typeWidth + backplatePadding * 2,
       height: 20,
@@ -822,9 +811,24 @@ function renderGroupHeader(
     }),
   );
 
+  if (visibleLabel) {
+    header.append(
+      svgElement("rect", {
+        class: "la-group-label-shape",
+        x: right - labelWidth - backplatePadding,
+        y: y - 14,
+        width: labelWidth + backplatePadding * 2,
+        height: 20,
+        rx: 5,
+        fill: surface,
+      }),
+    );
+  }
+
   const label = svgElement("text", {
-    x: left,
+    x: right,
     y,
+    "text-anchor": "end",
     "font-size": 11,
     "font-weight": 650,
     fill: tokens.text,
@@ -832,9 +836,8 @@ function renderGroupHeader(
   label.textContent = visibleLabel;
 
   const type = svgElement("text", {
-    x: right,
+    x: left,
     y,
-    "text-anchor": "end",
     "font-size": 11,
     "font-weight": 700,
     fill: tokens.mutedText,
@@ -919,7 +922,7 @@ function messagePath(row, sourceX, targetX) {
     };
   }
 
-  const loopWidth = 42;
+  const loopWidth = selfMessageWidth(row);
   const top = row.y - 13;
   const bottom = row.y + 13;
   return {
@@ -934,6 +937,7 @@ function messagePath(row, sourceX, targetX) {
     endX: sourceX,
     endY: bottom,
     direction: -1,
+    loopWidth,
   };
 }
 
@@ -998,7 +1002,7 @@ function renderMessage(
       : Math.min(source.centerX, target.centerX) - 8;
   const hitWidth =
     source.centerX === target.centerX
-      ? 58
+      ? geometry.loopWidth + 16
       : Math.abs(target.centerX - source.centerX) + 16;
 
   group.append(
@@ -1083,8 +1087,10 @@ function renderMessage(
   }
 
   if (row.label) {
-    const visibleLabel = truncate(row.label, 46);
-    const labelWidth = textWidth(visibleLabel, 11, 40) + 16;
+    const {
+      visibleLabel,
+      width: labelWidth,
+    } = messageLabelMetrics(row.label);
     group.append(
       svgElement("rect", {
         x: geometry.labelX - labelWidth / 2,

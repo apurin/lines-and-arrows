@@ -185,6 +185,42 @@ test("wraps only contiguous sibling items and ungroups without loss", () => {
   assert.equal(editor.document.items[1].id, ids[1]);
 });
 
+test("requires syntax-safe one-token group types", () => {
+  const editor = new DiagramEditor(SOURCE);
+  const group = editor.document.items[1];
+  const originalSource = editor.source;
+
+  assert.throws(
+    () =>
+      editor.updateItem(group.id, {
+        groupType: "critical path",
+      }),
+    /Group type must start with a lowercase letter/,
+  );
+  assert.equal(editor.source, originalSource);
+
+  const ids = [
+    editor.document.items[0].id,
+    editor.document.items[1].id,
+  ];
+  assert.throws(
+    () =>
+      editor.wrapItems(
+        ROOT_CONTAINER_ID,
+        ids,
+        "review group",
+        "Review path",
+      ),
+    /Group type must start with a lowercase letter/,
+  );
+
+  editor.updateItem(group.id, {
+    groupType: "critical-path2",
+  });
+  assert.match(editor.source, /^critical-path2 Processing$/m);
+  assert.doesNotThrow(() => parse(editor.source));
+});
+
 test("creates, edits, reorders, and removes group sections", () => {
   const editor = new DiagramEditor(SOURCE);
   const group = editor.document.items[1];

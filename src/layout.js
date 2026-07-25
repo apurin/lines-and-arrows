@@ -3,6 +3,7 @@ import {
   ACTOR_METADATA_MARGIN_X,
   actorLabelWidth,
   metadataMetrics,
+  selfMessageWidth,
 } from "./metadata.js";
 
 const DEFAULTS = {
@@ -11,15 +12,47 @@ const DEFAULTS = {
   actorGap: 70,
   marginX: 58,
   marginTop: 34,
-  timelineTopGap: 38,
-  messageHeight: 58,
-  gapHeight: 66,
-  groupHeaderHeight: 34,
-  sectionHeaderHeight: 30,
-  groupPaddingBottom: 14,
-  groupGap: 14,
-  bottomPadding: 42,
+  timelineTopGap: 34,
+  messageHeight: 54,
+  messageMetadataHeight: 16,
+  gapHeight: 60,
+  groupHeaderHeight: 30,
+  sectionHeaderHeight: 27,
+  groupPaddingBottom: 11,
+  groupGap: 10,
+  bottomPadding: 36,
 };
+
+const SELF_MESSAGE_LIFELINE_GAP = 18;
+
+function collectSelfMessageWidths(items, widths) {
+  for (const item of items) {
+    if (item.type === "message") {
+      if (item.source === item.target) {
+        widths.set(
+          item.source,
+          Math.max(
+            widths.get(item.source) ?? 0,
+            selfMessageWidth(item),
+          ),
+        );
+      }
+      continue;
+    }
+
+    if (item.type !== "group") {
+      continue;
+    }
+
+    if (item.sections.length > 0) {
+      for (const section of item.sections) {
+        collectSelfMessageWidths(section.items, widths);
+      }
+    } else {
+      collectSelfMessageWidths(item.items, widths);
+    }
+  }
+}
 
 function layoutItems(
   items,
@@ -30,7 +63,10 @@ function layoutItems(
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index];
     if (item.type === "message") {
-      const metadataAllowance = item.tag || item.tooltip ? 18 : 0;
+      const metadataAllowance =
+        item.tag || item.tooltip
+          ? state.options.messageMetadataHeight
+          : 0;
       const height = state.options.messageHeight + metadataAllowance;
       const top = state.y;
       const y = top + state.options.messageHeight / 2;
@@ -114,6 +150,8 @@ function layoutItems(
 
 export function layoutDiagram(document, overrides = {}) {
   const options = { ...DEFAULTS, ...overrides };
+  const selfMessageWidths = new Map();
+  collectSelfMessageWidths(document.items, selfMessageWidths);
   const actorWidths = document.actors.map((actor) =>
     Math.max(
       options.actorWidth,
@@ -122,18 +160,6 @@ export function layoutDiagram(document, overrides = {}) {
         ACTOR_METADATA_MARGIN_X * 2,
     ),
   );
-  const actorsWidth = actorWidths.reduce(
-    (total, actorWidth) => total + actorWidth,
-    0,
-  );
-  const laneWidth =
-    actorsWidth +
-    Math.max(0, document.actors.length - 1) * options.actorGap;
-  const width = Math.max(
-    420,
-    options.marginX * 2 + laneWidth,
-  );
-
   let actorX = options.marginX;
   const actors = document.actors.map((actor, index) => {
     const actorWidth = actorWidths[index];
@@ -147,9 +173,40 @@ export function layoutDiagram(document, overrides = {}) {
       width: actorWidth,
       height: options.actorHeight,
     };
-    actorX += actorWidth + options.actorGap;
+    const nextActorWidth = actorWidths[index + 1];
+    const defaultNextX =
+      actorX + actorWidth + options.actorGap;
+    if (nextActorWidth === undefined) {
+      actorX = defaultNextX;
+    } else {
+      const loopWidth = selfMessageWidths.get(actor.name) ?? 0;
+      const nextXAfterLoop =
+        centerX +
+        loopWidth +
+        SELF_MESSAGE_LIFELINE_GAP -
+        nextActorWidth / 2;
+      actorX = Math.max(defaultNextX, nextXAfterLoop);
+    }
     return layoutActor;
   });
+  const rightmostActor = actors.at(-1);
+  const actorRight = rightmostActor
+    ? rightmostActor.x + rightmostActor.width
+    : options.marginX;
+  const selfMessageRight = actors.reduce(
+    (right, actor) =>
+      Math.max(
+        right,
+        actor.centerX +
+          (selfMessageWidths.get(actor.name) ?? 0),
+      ),
+    actorRight,
+  );
+  const width = Math.max(
+    420,
+    actorRight + options.marginX,
+    selfMessageRight + options.marginX,
+  );
 
   const state = {
     options,

@@ -5,6 +5,7 @@ import {
   findSectionLocation,
   getContainer,
 } from "./editor.js";
+import { SELF_MESSAGE_MIN_WIDTH } from "./metadata.js";
 import { renderDiagram } from "./render.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -161,6 +162,19 @@ const EDIT_STYLES = `
     font-weight: 650;
   }
 
+  .la-edit-control-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    align-items: stretch;
+  }
+
+  .la-edit-control-row > input,
+  .la-edit-control-row > select,
+  .la-edit-control-row > textarea {
+    min-width: 0;
+  }
+
   .la-edit-popover[data-titleless="true"]
     > .la-edit-field:first-child {
     margin-top: 0;
@@ -192,6 +206,125 @@ const EDIT_STYLES = `
   .la-edit-field textarea:focus {
     border-color: var(--la-selection);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--la-selection) 18%, transparent);
+  }
+
+  .la-icon-picker {
+    position: relative;
+  }
+
+  .la-icon-picker-trigger,
+  .la-icon-option {
+    display: grid;
+    box-sizing: border-box;
+    padding: 0;
+    place-items: center;
+    border: 1px solid var(--la-section-line);
+    outline: none;
+    background: color-mix(
+      in srgb,
+      var(--la-canvas) 82%,
+      var(--la-group-fill)
+    );
+    color: var(--la-text);
+    cursor: pointer;
+  }
+
+  .la-icon-picker-trigger {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  .la-icon-picker-trigger:hover,
+  .la-icon-picker-trigger:focus-visible,
+  .la-icon-option:hover,
+  .la-icon-option:focus-visible {
+    border-color: var(--la-selection);
+  }
+
+  .la-icon-picker-trigger[aria-expanded="true"],
+  .la-icon-option[aria-selected="true"] {
+    border-color: var(--la-selection);
+    background: var(--la-accent-soft);
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--la-selection) 18%, transparent);
+  }
+
+  .la-icon-picker-popover {
+    position: absolute;
+    z-index: 6;
+    top: calc(100% + 6px);
+    right: 0;
+    box-sizing: border-box;
+    width: 232px;
+    padding: 8px;
+    border: 1px solid var(--la-section-line);
+    border-radius: 11px;
+    background: var(--la-canvas);
+    box-shadow: 0 12px 30px
+      color-mix(in srgb, var(--la-text) 18%, transparent);
+  }
+
+  .la-icon-picker-popover[hidden],
+  .la-icon-option[hidden],
+  .la-icon-picker-empty[hidden] {
+    display: none;
+  }
+
+  .la-icon-search {
+    font-weight: 520;
+  }
+
+  .la-icon-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 32px);
+    gap: 4px;
+    max-height: 176px;
+    margin-top: 7px;
+    overflow: auto;
+  }
+
+  .la-icon-option {
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+  }
+
+  .la-icon-visual {
+    display: block;
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    opacity: 0.82;
+  }
+
+  .la-icon-glyph {
+    display: grid;
+    width: 16px;
+    height: 16px;
+    place-items: center;
+  }
+
+  .la-icon-glyph > * {
+    grid-area: 1 / 1;
+  }
+
+  .la-frame[data-theme="dark"] .la-icon-visual {
+    filter: invert(1) brightness(1.16);
+  }
+
+  .la-icon-fallback {
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1;
+  }
+
+  .la-icon-picker-empty {
+    margin: 8px 2px 2px;
+    color: var(--la-muted-text);
+    font-size: 10px;
+    font-weight: 560;
+    text-align: center;
   }
 
   .la-arrow-picker {
@@ -576,11 +709,8 @@ function addPopover(frame, layout, anchor, title) {
 
 function addField(popover, label, value, onChange, options = {}) {
   fieldSequence += 1;
-  const wrapper = document.createElement("label");
+  const wrapper = document.createElement("div");
   wrapper.className = "la-edit-field";
-  const text = document.createElement("span");
-  text.textContent = label;
-  wrapper.append(text);
 
   let control;
   if (options.choices) {
@@ -606,6 +736,23 @@ function addField(popover, label, value, onChange, options = {}) {
   if (options.placeholder && "placeholder" in control) {
     control.placeholder = options.placeholder;
   }
+  if (options.pattern && "pattern" in control) {
+    control.pattern = options.pattern;
+  }
+  if (options.inputTransform) {
+    control.addEventListener("input", () => {
+      const transformed = options.inputTransform(control.value);
+      if (control.value !== transformed) {
+        control.value = transformed;
+      }
+    });
+  }
+
+  const text = document.createElement("label");
+  text.htmlFor = control.id;
+  text.textContent = label;
+  wrapper.append(text);
+
   let committedValue = control.value;
   const commit = () => {
     if (control.value === committedValue) {
@@ -614,8 +761,19 @@ function addField(popover, label, value, onChange, options = {}) {
     committedValue = control.value;
     onChange(control.value);
   };
+
+  const trailing = options.trailing?.({
+    control,
+    commit,
+  });
+
   control.addEventListener("change", commit);
-  control.addEventListener("blur", commit);
+  control.addEventListener("blur", (event) => {
+    if (trailing?.contains(event.relatedTarget)) {
+      return;
+    }
+    commit();
+  });
   control.addEventListener("keydown", (event) => {
     const shouldCommit =
       (!options.multiline && event.key === "Enter") ||
@@ -627,9 +785,280 @@ function addField(popover, label, value, onChange, options = {}) {
       commit();
     }
   });
-  wrapper.append(control);
+
+  if (trailing) {
+    const row = document.createElement("div");
+    row.className = "la-edit-control-row";
+    row.append(control, trailing);
+    wrapper.append(row);
+  } else {
+    wrapper.append(control);
+  }
   popover.append(wrapper);
   return control;
+}
+
+function normalizeIconCatalog(entries = []) {
+  const icons = [];
+  const seen = new Set();
+
+  for (const entry of entries) {
+    const source =
+      typeof entry === "string" ? { name: entry } : entry;
+    const name = String(source?.name ?? "").trim();
+    if (!name || seen.has(name)) {
+      continue;
+    }
+    seen.add(name);
+
+    const label =
+      String(source.label ?? "")
+        .trim() ||
+      name
+        .split("-")
+        .filter(Boolean)
+        .join(" ");
+    const keywords = Array.isArray(source.keywords)
+      ? source.keywords.map((value) => String(value))
+      : [];
+    icons.push({
+      name,
+      label,
+      search: [name, label, ...keywords]
+        .join(" ")
+        .toLocaleLowerCase(),
+    });
+  }
+  return icons;
+}
+
+function normalizeGroupTypeInput(value) {
+  return String(value ?? "")
+    .toLocaleLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^[^a-z]+/, "");
+}
+
+function iconVisual(
+  name,
+  resolver,
+  theme,
+  fallbackText,
+) {
+  const visual = document.createElement("span");
+  visual.className = "la-icon-glyph";
+  visual.setAttribute("aria-hidden", "true");
+
+  const fallback = document.createElement("span");
+  fallback.className = "la-icon-fallback";
+  fallback.textContent = fallbackText;
+  visual.append(fallback);
+
+  let url = null;
+  if (name && resolver) {
+    try {
+      url = resolver(name, theme);
+    } catch {
+      url = null;
+    }
+  }
+  if (!url) {
+    return visual;
+  }
+
+  const image = document.createElement("img");
+  image.className = "la-icon-visual";
+  image.alt = "";
+  image.addEventListener("load", () => {
+    fallback.hidden = true;
+  });
+  image.addEventListener("error", () => {
+    image.remove();
+  });
+  image.src = url;
+  visual.append(image);
+  return visual;
+}
+
+function createIconPicker(
+  popover,
+  currentName,
+  onSelect,
+  options,
+) {
+  const catalog = normalizeIconCatalog(options.catalog);
+  const frame = popover.closest(".la-frame");
+  const theme = frame?.dataset.theme ?? "light";
+  const picker = document.createElement("div");
+  picker.className = "la-icon-picker";
+
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "la-icon-picker-trigger";
+  trigger.setAttribute("aria-label", options.label);
+  trigger.setAttribute("aria-haspopup", "dialog");
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.title = currentName
+    ? `${options.label}: ${currentName}`
+    : options.label;
+  trigger.append(
+    iconVisual(
+      currentName,
+      options.resolver,
+      theme,
+      currentName
+        ? currentName.slice(0, 1).toUpperCase()
+        : options.defaultText,
+    ),
+  );
+
+  const panel = document.createElement("div");
+  panel.className = "la-icon-picker-popover";
+  panel.hidden = true;
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-label", options.label);
+
+  const search = document.createElement("input");
+  search.type = "search";
+  search.className = "la-icon-search";
+  search.placeholder = "Search icons";
+  search.setAttribute("aria-label", "Search icons");
+
+  const grid = document.createElement("div");
+  grid.className = "la-icon-grid";
+  grid.setAttribute("role", "listbox");
+  grid.setAttribute("aria-label", "Available icons");
+
+  const iconButtons = [];
+  const appendOption = (
+    name,
+    label,
+    searchText,
+    fallbackText,
+  ) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "la-icon-option";
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-label", label);
+    button.setAttribute(
+      "aria-selected",
+      String((currentName ?? null) === name),
+    );
+    button.title = label;
+    button.dataset.search = searchText;
+    button.dataset.catalogIcon = String(name !== null);
+    button.append(
+      iconVisual(
+        name,
+        options.resolver,
+        theme,
+        fallbackText,
+      ),
+    );
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onSelect(name);
+    });
+    grid.append(button);
+    iconButtons.push(button);
+  };
+
+  appendOption(
+    null,
+    options.clearLabel,
+    options.clearLabel.toLocaleLowerCase(),
+    options.defaultText,
+  );
+  for (const icon of catalog) {
+    appendOption(
+      icon.name,
+      icon.label,
+      icon.search,
+      icon.label.slice(0, 1).toUpperCase(),
+    );
+  }
+
+  const empty = document.createElement("p");
+  empty.className = "la-icon-picker-empty";
+  empty.textContent = catalog.length
+    ? "No matching icons"
+    : "No icon catalog configured";
+  empty.hidden = true;
+
+  const filter = () => {
+    const query = search.value.trim().toLocaleLowerCase();
+    let visibleCatalogIcons = 0;
+    for (const button of iconButtons) {
+      const matches =
+        !query || button.dataset.search.includes(query);
+      button.hidden = !matches;
+      if (matches && button.dataset.catalogIcon === "true") {
+        visibleCatalogIcons += 1;
+      }
+    }
+    empty.hidden = visibleCatalogIcons > 0;
+  };
+  search.addEventListener("input", filter);
+
+  const close = (commit = true, restoreFocus = false) => {
+    if (panel.hidden) {
+      return;
+    }
+    panel.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+    if (commit) {
+      options.onClose?.();
+    }
+    if (restoreFocus) {
+      trigger.focus();
+    }
+  };
+  picker.closePicker = close;
+
+  const open = () => {
+    for (const other of popover.querySelectorAll(
+      ".la-icon-picker",
+    )) {
+      if (other !== picker) {
+        other.closePicker?.();
+      }
+    }
+    search.value = "";
+    filter();
+    panel.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+    queueMicrotask(() => search.focus());
+  };
+
+  trigger.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (panel.hidden) {
+      open();
+    } else {
+      close(true, true);
+    }
+  });
+  panel.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      close(true, true);
+    }
+  });
+  frame?.addEventListener("pointerdown", (event) => {
+    if (!picker.contains(event.target)) {
+      close();
+    }
+  });
+
+  panel.append(search, grid, empty);
+  picker.append(trigger, panel);
+  return picker;
 }
 
 function addArrowPicker(popover, value, onChange) {
@@ -1244,19 +1673,41 @@ export function renderEditor(target, input, options = {}) {
     );
 
     if (model.type === "actor") {
-      addField(popover, "Name", model.name, (value) =>
-        run(
-          () => editor.updateActor(id, { name: value }),
-          undefined,
-          popover,
-        ),
-      );
-      addField(popover, "Icon", model.icon, (value) =>
-        run(
-          () => editor.updateActor(id, { icon: value }),
-          undefined,
-          popover,
-        ),
+      addField(
+        popover,
+        "Name",
+        model.name,
+        (value) =>
+          run(
+            () => editor.updateActor(id, { name: value }),
+            undefined,
+            popover,
+          ),
+        {
+          trailing: ({ control, commit }) =>
+            createIconPicker(
+              popover,
+              model.icon,
+              (icon) =>
+                run(
+                  () =>
+                    editor.updateActor(id, {
+                      name: control.value,
+                      icon,
+                    }),
+                  undefined,
+                  popover,
+                ),
+              {
+                catalog: options.iconCatalog,
+                resolver: options.iconResolver,
+                label: "Choose actor icon",
+                clearLabel: "No actor icon",
+                defaultText: "+",
+                onClose: commit,
+              },
+            ),
+        },
       );
       addField(popover, "Tag", model.tag, (value) =>
         run(
@@ -1275,21 +1726,32 @@ export function renderEditor(target, input, options = {}) {
             undefined,
             popover,
           ),
-      );
-      if (model.tooltip || model.tooltipIcon) {
-        addField(
-          popover,
-          "Tooltip icon",
-          model.tooltipIcon,
-          (value) =>
-            run(
-              () => editor.updateActor(id, { tooltipIcon: value }),
-              undefined,
+        {
+          trailing: ({ control, commit }) =>
+            createIconPicker(
               popover,
+              model.tooltipIcon,
+              (tooltipIcon) =>
+                run(
+                  () =>
+                    editor.updateActor(id, {
+                      tooltip: control.value,
+                      tooltipIcon,
+                    }),
+                  undefined,
+                  popover,
+                ),
+              {
+                catalog: options.iconCatalog,
+                resolver: options.iconResolver,
+                label: "Choose tooltip icon",
+                clearLabel: "Default information icon",
+                defaultText: "i",
+                onClose: commit,
+              },
             ),
-          { placeholder: "info" },
-        );
-      }
+        },
+      );
       addActions(popover, [
         {
           label: "Delete actor and messages",
@@ -1336,21 +1798,32 @@ export function renderEditor(target, input, options = {}) {
             undefined,
             popover,
           ),
-      );
-      if (model.tooltip || model.tooltipIcon) {
-        addField(
-          popover,
-          "Tooltip icon",
-          model.tooltipIcon,
-          (value) =>
-            run(
-              () => editor.updateItem(id, { tooltipIcon: value }),
-              undefined,
+        {
+          trailing: ({ control, commit }) =>
+            createIconPicker(
               popover,
+              model.tooltipIcon,
+              (tooltipIcon) =>
+                run(
+                  () =>
+                    editor.updateItem(id, {
+                      tooltip: control.value,
+                      tooltipIcon,
+                    }),
+                  undefined,
+                  popover,
+                ),
+              {
+                catalog: options.iconCatalog,
+                resolver: options.iconResolver,
+                label: "Choose tooltip icon",
+                clearLabel: "Default information icon",
+                defaultText: "i",
+                onClose: commit,
+              },
             ),
-          { placeholder: "info" },
-        );
-      }
+        },
+      );
       addActions(popover, [
         {
           label: "Delete",
@@ -1382,12 +1855,20 @@ export function renderEditor(target, input, options = {}) {
     }
 
     if (model.type === "group") {
-      addField(popover, "Type", model.groupType, (value) =>
-        run(
-          () => editor.updateItem(id, { groupType: value }),
-          undefined,
-          popover,
-        ),
+      addField(
+        popover,
+        "Type",
+        model.groupType,
+        (value) =>
+          run(
+            () => editor.updateItem(id, { groupType: value }),
+            undefined,
+            popover,
+          ),
+        {
+          pattern: "[a-z][a-z0-9-]*",
+          inputTransform: normalizeGroupTypeInput,
+        },
       );
       addField(popover, "Label", model.label, (value) =>
         run(
@@ -1586,8 +2067,8 @@ export function renderEditor(target, input, options = {}) {
     const pathData = selfMessage
       ? [
           `M ${source.centerX} ${top}`,
-          `L ${source.centerX + 42} ${top}`,
-          `L ${source.centerX + 42} ${bottom}`,
+          `L ${source.centerX + SELF_MESSAGE_MIN_WIDTH} ${top}`,
+          `L ${source.centerX + SELF_MESSAGE_MIN_WIDTH} ${bottom}`,
           `L ${target.centerX} ${bottom}`,
         ].join(" ")
       : `M ${source.centerX} ${y} L ${target.centerX} ${y}`;

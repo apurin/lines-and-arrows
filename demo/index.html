@@ -258,6 +258,7 @@
 
     <script type="module">
       import { defineLinesAndArrows } from "../src/index.js";
+      import { phosphorIconCatalog } from "./phosphor-icon-catalog.js";
 
       defineLinesAndArrows();
 
@@ -313,6 +314,7 @@ API --> Customer: Present result`;
         "https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold";
 
       diagram.iconResolver = (name) => `${iconBase}/${name}-bold.svg`;
+      diagram.iconCatalog = phosphorIconCatalog;
       diagram.source = source;
       sourceInput.value = source;
 

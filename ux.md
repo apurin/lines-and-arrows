@@ -74,10 +74,12 @@ a separate destructive command.
 
 Selecting an object opens one compact editor close to that object:
 
-- actors expose name, icon, tag, and tooltip;
+- actors expose name with its icon button, tag, and tooltip with its icon
+  button;
 - messages expose three graphical arrow-style buttons, optional label, tag, and
-  tooltip; endpoints are edited directly on the connection. The titleless
-  editor is centered close to the selected connection;
+  tooltip with its icon button; endpoints are edited directly on the
+  connection. The titleless editor is centered close to the selected
+  connection;
 - gaps expose their label;
 - groups expose their open type and label, plus section and ungroup actions;
 - sections expose their label and safe removal.
@@ -94,6 +96,13 @@ hover or focus. It uses a lowercase `i` by default and may use any identifier
 supported by the actor icon resolver. Actor metadata is centered on the bottom
 edge of its panel. Tags and tooltip controls use one theme color at the same
 intensity on actors, the canvas, groups, and nested groups.
+
+Pressing an icon button opens a compact popup with a search field and tight
+icon grid. The actor-name row shows the selected actor icon; the tooltip row
+shows its selected icon or the default information symbol. Selecting a grid
+item applies it immediately. The first grid item clears the actor icon or
+restores the tooltip default. Hosts provide the searchable catalog separately
+from the resolver so the editor stays independent of a particular icon set.
 Actor panels expand when necessary to keep that metadata row inside the panel
 with a small margin on each side.
 They also expand to show the complete actor name without truncation. Wider actor

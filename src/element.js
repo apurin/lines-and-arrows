@@ -11,6 +11,7 @@ export class LinesAndArrowsElement extends HTMLElementBase {
 
   #source = "";
   #iconResolver = null;
+  #iconCatalog = [];
   #controller = null;
   #editor = null;
   #mediaQuery = null;
@@ -82,6 +83,20 @@ export class LinesAndArrowsElement extends HTMLElementBase {
       throw new TypeError("iconResolver must be a function or null.");
     }
     this.#iconResolver = value;
+    if (this.isConnected) {
+      this.#render();
+    }
+  }
+
+  get iconCatalog() {
+    return [...this.#iconCatalog];
+  }
+
+  set iconCatalog(value) {
+    if (value !== null && !Array.isArray(value)) {
+      throw new TypeError("iconCatalog must be an array or null.");
+    }
+    this.#iconCatalog = value ? [...value] : [];
     if (this.isConnected) {
       this.#render();
     }
@@ -162,6 +177,7 @@ export class LinesAndArrowsElement extends HTMLElementBase {
         theme: this.theme,
         label: this.getAttribute("label") || "Sequence diagram",
         iconResolver: this.#iconResolver,
+        iconCatalog: this.#iconCatalog,
       };
 
       if (this.mode === "edit") {
