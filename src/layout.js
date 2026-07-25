@@ -1,5 +1,7 @@
 import {
+  ACTOR_LABEL_MARGIN_X,
   ACTOR_METADATA_MARGIN_X,
+  actorLabelWidth,
   metadataMetrics,
 } from "./metadata.js";
 
@@ -115,6 +117,7 @@ export function layoutDiagram(document, overrides = {}) {
   const actorWidths = document.actors.map((actor) =>
     Math.max(
       options.actorWidth,
+      actorLabelWidth(actor.name) + ACTOR_LABEL_MARGIN_X * 2,
       metadataMetrics(actor.tag, actor.tooltip).width +
         ACTOR_METADATA_MARGIN_X * 2,
     ),

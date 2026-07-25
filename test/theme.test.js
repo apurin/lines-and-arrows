@@ -41,4 +41,11 @@ for (const [name, theme] of Object.entries(themes)) {
     assert.ok(contrast(theme.canvas, theme.text) >= 7);
     assert.ok(contrast(theme.canvas, theme.mutedText) >= 4.5);
   });
+
+  test(`${name} theme keeps tag text readable`, () => {
+    assert.ok(
+      contrast(theme.tagFill, theme.tagText) >= 4.5,
+      `${name} tag text must meet WCAG AA contrast`,
+    );
+  });
 }

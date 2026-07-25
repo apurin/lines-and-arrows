@@ -192,6 +192,7 @@ function createMessage(document, properties = {}) {
     label: optionalText(properties.label),
     tag: optionalText(properties.tag),
     tooltip: optionalText(properties.tooltip),
+    tooltipIcon: optionalText(properties.tooltipIcon),
     line: 0,
   };
 }
@@ -373,6 +374,7 @@ export class DiagramEditor {
         icon: null,
         tag: null,
         tooltip: null,
+        tooltipIcon: null,
         line: 0,
       };
       const target = Math.max(0, Math.min(index, document.actors.length));
@@ -410,7 +412,12 @@ export class DiagramEditor {
         });
       }
 
-      for (const property of ["icon", "tag", "tooltip"]) {
+      for (const property of [
+        "icon",
+        "tag",
+        "tooltip",
+        "tooltipIcon",
+      ]) {
         if (Object.hasOwn(patch, property)) {
           actor[property] = optionalText(patch[property]);
         }
@@ -530,7 +537,11 @@ export class DiagramEditor {
         if (Object.hasOwn(patch, "label")) {
           item.label = optionalText(patch.label);
         }
-        for (const property of ["tag", "tooltip"]) {
+        for (const property of [
+          "tag",
+          "tooltip",
+          "tooltipIcon",
+        ]) {
           if (Object.hasOwn(patch, property)) {
             item[property] = optionalText(patch[property]);
           }

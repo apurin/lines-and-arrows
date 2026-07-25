@@ -43,12 +43,17 @@ test("renames an actor and every message reference atomically", () => {
     (candidate) => candidate.name === "API",
   );
 
-  editor.updateActor(actor.id, { name: "Gateway", tooltip: "Public edge" });
+  editor.updateActor(actor.id, {
+    name: "Gateway",
+    tooltip: "Public edge",
+    tooltipIcon: "info",
+  });
 
   assert.match(editor.source, /@Gateway/);
   assert.doesNotMatch(editor.source, /@API/);
   assert.match(editor.source, /Client -> Gateway: Start/);
   assert.match(editor.source, /Gateway -> Worker: Dispatch/);
+  assert.match(editor.source, /  tooltip-icon info/);
   assert.equal(editor.canUndo, true);
 
   editor.undo();
@@ -85,6 +90,7 @@ test("adds, moves, updates, and removes timeline items", () => {
     label: "Delivery lost",
     tag: "failed",
     tooltip: "The receiver never acknowledged delivery",
+    tooltipIcon: "warning",
   });
   editor.moveItem(messageId, ROOT_CONTAINER_ID, 4);
 
@@ -96,10 +102,12 @@ test("adds, moves, updates, and removes timeline items", () => {
     editor.source,
     /  tooltip The receiver never acknowledged delivery/,
   );
+  assert.match(editor.source, /  tooltip-icon warning/);
   assert.equal(
     location.item.tooltip,
     "The receiver never acknowledged delivery",
   );
+  assert.equal(location.item.tooltipIcon, "warning");
 
   editor.removeItem(messageId);
   assert.doesNotMatch(editor.source, /Delivery lost/);

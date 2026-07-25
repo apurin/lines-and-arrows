@@ -7,7 +7,9 @@ import {
 } from "../src/parser.js";
 import { layoutDiagram } from "../src/layout.js";
 import {
+  ACTOR_LABEL_MARGIN_X,
   ACTOR_METADATA_MARGIN_X,
+  actorLabelWidth,
   metadataMetrics,
 } from "../src/metadata.js";
 
@@ -15,6 +17,7 @@ const COMPLETE_SOURCE = `@Customer
   icon user
   tag review
   tooltip Reviews the result
+  tooltip-icon chat-circle
 
 @API
   icon cloud
@@ -28,6 +31,7 @@ const COMPLETE_SOURCE = `@Customer
 Customer -> API: Submit report
   tag critical
   tooltip Retain original evidence
+  tooltip-icon warning
 
 critical Process report
   API -> Worker: Start analysis
@@ -54,7 +58,9 @@ test("parses the complete view-mode language sample", () => {
     ["Customer", "API", "Worker", "Queue"],
   );
   assert.equal(document.actors[0].tag, "review");
+  assert.equal(document.actors[0].tooltipIcon, "chat-circle");
   assert.equal(document.items.length, 3);
+  assert.equal(document.items[0].tooltipIcon, "warning");
   assert.equal(document.items[1].type, "group");
   assert.equal(document.items[1].groupType, "critical");
   assert.equal(document.items[1].items[1].groupType, "parallel");
@@ -156,7 +162,7 @@ test("lays out timeline rows in increasing vertical order", () => {
 test("reserves a metadata row for a tooltip without a tag", () => {
   const layout = layoutDiagram(
     parse(`Client -> API: Start
-  tooltip Visible through the eye control
+  tooltip Visible through the information control
 API --> Client: Complete`),
   );
 
@@ -190,5 +196,33 @@ Customer -> API: Submit`),
   assert.equal(
     api.x - (customer.x + customer.width),
     layout.options.actorGap,
+  );
+});
+
+test("expands actor panels and diagram width to contain long names", () => {
+  const longName = "Primary Billing and Reconciliation Service";
+  const layout = layoutDiagram(
+    parse(`@${longName}
+@API
+
+${longName} -> API: Submit`),
+  );
+  const [service, api] = layout.actors;
+
+  assert.ok(service.width > layout.options.actorWidth);
+  assert.ok(
+    service.width >=
+      actorLabelWidth(longName) + ACTOR_LABEL_MARGIN_X * 2,
+  );
+  assert.equal(
+    api.x - (service.x + service.width),
+    layout.options.actorGap,
+  );
+  assert.equal(
+    layout.width,
+    layout.options.marginX * 2 +
+      service.width +
+      api.width +
+      layout.options.actorGap,
   );
 });

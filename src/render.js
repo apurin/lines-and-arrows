@@ -425,6 +425,7 @@ function renderMetadata(
   parent,
   tag,
   tooltip,
+  tooltipIcon,
   x,
   y,
   tokens,
@@ -512,22 +513,43 @@ function renderMetadata(
       stroke: "transparent",
       "stroke-width": 1,
     }),
-    svgElement("ellipse", {
-      cx: triggerSize / 2,
-      cy: triggerSize / 2,
-      rx: 4.4,
-      ry: 3,
-      fill: "none",
-      stroke: tokens.tagText,
-      "stroke-width": 1.2,
-    }),
-    svgElement("circle", {
-      cx: triggerSize / 2,
-      cy: triggerSize / 2,
-      r: 1.35,
-      fill: tokens.tagText,
-    }),
   );
+
+  const fallback = svgElement("text", {
+    class: "la-tooltip-trigger-fallback",
+    x: triggerSize / 2,
+    y: triggerSize / 2 + 3.7,
+    "text-anchor": "middle",
+    "font-size": 11,
+    "font-weight": 750,
+    fill: tokens.tagText,
+    "pointer-events": "none",
+  });
+  fallback.textContent = "i";
+  trigger.append(fallback);
+
+  const iconUrl = tooltipIcon
+    ? options.iconResolver?.(tooltipIcon, tokens.name)
+    : null;
+  if (iconUrl) {
+    const image = svgElement("image", {
+      class: "la-tooltip-trigger-icon",
+      href: iconUrl,
+      x: 3,
+      y: 3,
+      width: triggerSize - 6,
+      height: triggerSize - 6,
+      opacity: 0.82,
+      "pointer-events": "none",
+    });
+    if (tokens.name === "dark") {
+      image.style.filter = "invert(1) brightness(1.18)";
+    }
+    image.addEventListener("load", () => {
+      fallback.setAttribute("opacity", "0");
+    });
+    trigger.append(image);
+  }
 
   let hovered = false;
   let focused = false;
@@ -670,13 +692,14 @@ function renderActor(
     fill: tokens.actorText,
     "pointer-events": "none",
   });
-  label.textContent = truncate(actor.name, 15);
+  label.textContent = actor.name;
   group.append(label);
 
   renderMetadata(
     group,
     actor.tag,
     actor.tooltip,
+    actor.tooltipIcon,
     actor.width / 2,
     actor.height - 12,
     tokens,
@@ -685,6 +708,7 @@ function renderActor(
       offsetX: actor.x,
       offsetY: actor.y,
       tooltipLayer,
+      iconResolver: options.iconResolver,
       tooltipSide: "above",
       bounds: {
         left: 8,
@@ -741,31 +765,84 @@ function renderGroupBackground(parent, group, tokens, selection) {
   );
 }
 
-function renderGroupHeader(parent, group, tokens) {
-  const x = group.left + 16;
-  const y = group.top + 22;
-
-  const type = svgElement("text", {
-    x,
-    y,
-    "font-size": 11,
-    "font-weight": 750,
-    fill: tokens.text,
+function renderGroupHeader(
+  parent,
+  group,
+  tokens,
+  headerHeight,
+) {
+  const surface =
+    group.depth % 2 === 0
+      ? tokens.groupFill
+      : tokens.groupNestedFill;
+  const left = group.left + 16;
+  const right = group.right - 16;
+  const y = group.top + headerHeight / 2 + 4;
+  const typeWidth = textWidth(group.groupType, 11);
+  const availableLabelWidth = Math.max(
+    36,
+    right - left - typeWidth - 18,
+  );
+  const labelCharacters = Math.max(
+    6,
+    Math.floor(availableLabelWidth / (11 * 0.56)),
+  );
+  const visibleLabel = truncate(group.label, labelCharacters);
+  const header = svgElement("g", {
+    class: "la-group-header",
     "pointer-events": "none",
   });
-  type.textContent = group.groupType;
-  parent.append(type);
+  const backplatePadding = 6;
+
+  if (visibleLabel) {
+    header.append(
+      svgElement("rect", {
+        class: "la-group-label-shape",
+        x: left - backplatePadding,
+        y: y - 14,
+        width:
+          textWidth(visibleLabel, 11) +
+          backplatePadding * 2,
+        height: 20,
+        rx: 5,
+        fill: surface,
+      }),
+    );
+  }
+
+  header.append(
+    svgElement("rect", {
+      class: "la-group-type-shape",
+      x: right - typeWidth - backplatePadding,
+      y: y - 14,
+      width: typeWidth + backplatePadding * 2,
+      height: 20,
+      rx: 5,
+      fill: surface,
+    }),
+  );
 
   const label = svgElement("text", {
-    x: x + textWidth(group.groupType, 11) + 10,
+    x: left,
     y,
     "font-size": 11,
-    "font-weight": 500,
-    fill: tokens.mutedText,
-    "pointer-events": "none",
+    "font-weight": 650,
+    fill: tokens.text,
   });
-  label.textContent = truncate(group.label, 42);
-  parent.append(label);
+  label.textContent = visibleLabel;
+
+  const type = svgElement("text", {
+    x: right,
+    y,
+    "text-anchor": "end",
+    "font-size": 11,
+    "font-weight": 700,
+    fill: tokens.mutedText,
+  });
+  type.textContent = group.groupType;
+
+  header.append(label, type);
+  parent.append(header);
 }
 
 function renderSection(parent, section, tokens, selection) {
@@ -890,6 +967,7 @@ function renderMessage(
   prefix,
   selection,
   tooltipLayer,
+  options,
 ) {
   const source = layout.actorByName.get(row.source);
   const target = layout.actorByName.get(row.target);
@@ -1038,6 +1116,7 @@ function renderMessage(
     group,
     row.tag,
     row.tooltip,
+    row.tooltipIcon,
     geometry.labelX,
     row.y + (isSelfMessage ? 17 : 7),
     tokens,
@@ -1046,6 +1125,7 @@ function renderMessage(
       offsetX: 0,
       offsetY: 0,
       tooltipLayer,
+      iconResolver: options.iconResolver,
       tooltipSide: "above",
       bounds: {
         left: 8,
@@ -1261,7 +1341,12 @@ export function renderDiagram(target, input, options = {}) {
   renderLifelines(svg, layout, tokens);
 
   for (const group of layout.groups) {
-    renderGroupHeader(svg, group, tokens);
+    renderGroupHeader(
+      svg,
+      group,
+      tokens,
+      layout.options.groupHeaderHeight,
+    );
   }
   for (const section of layout.sections) {
     renderSection(svg, section, tokens, selection);
@@ -1276,6 +1361,7 @@ export function renderDiagram(target, input, options = {}) {
         prefix,
         selection,
         tooltipLayer,
+        options,
       );
     } else {
       renderGap(svg, row, layout, tokens, selection);

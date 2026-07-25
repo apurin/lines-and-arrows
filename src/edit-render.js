@@ -8,6 +8,7 @@ import {
 import { renderDiagram } from "./render.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+const TIMELINE_INSERTION_CONTROL_OFFSET = 12;
 
 const EDIT_STYLES = `
   .la-frame[data-mode="edit"] {
@@ -327,6 +328,10 @@ function containerBounds(layout, parentId) {
       left: layout.contentLeft,
       right: layout.contentRight,
       depth: 0,
+      controlX:
+        layout.groups.length > 0
+          ? layout.contentLeft - TIMELINE_INSERTION_CONTROL_OFFSET
+          : layout.contentLeft + TIMELINE_INSERTION_CONTROL_OFFSET,
     };
   }
 
@@ -334,10 +339,16 @@ function containerBounds(layout, parentId) {
     (candidate) => candidate.id === parentId,
   );
   if (section) {
+    const group = layout.groups.find(
+      (candidate) => candidate.id === section.parentId,
+    );
     return {
       left: section.left,
       right: section.right,
       depth: section.depth,
+      controlX:
+        (group?.left ?? section.left) -
+        TIMELINE_INSERTION_CONTROL_OFFSET,
     };
   }
 
@@ -349,6 +360,8 @@ function containerBounds(layout, parentId) {
       left: group.left + 14,
       right: group.right - 14,
       depth: group.depth + 1,
+      controlX:
+        group.left - TIMELINE_INSERTION_CONTROL_OFFSET,
     };
   }
   return null;
@@ -590,6 +603,9 @@ function addField(popover, label, value, onChange, options = {}) {
   control.id = `la-field-${fieldSequence}`;
   control.dataset.field = label;
   control.value = value ?? "";
+  if (options.placeholder && "placeholder" in control) {
+    control.placeholder = options.placeholder;
+  }
   let committedValue = control.value;
   const commit = () => {
     if (control.value === committedValue) {
@@ -737,11 +753,15 @@ function insertionMark(slot, label, onActivate, direction = "horizontal") {
   });
 
   if (direction === "horizontal") {
+    const controlX =
+      slot.controlX ??
+      slot.left + TIMELINE_INSERTION_CONTROL_OFFSET;
+    const hitLeft = Math.min(slot.left, controlX - 10);
     group.append(
       svgElement("rect", {
-        x: slot.left,
+        x: hitLeft,
         y: slot.y - 9,
-        width: slot.right - slot.left,
+        width: slot.right - hitLeft,
         height: 18,
         fill: "transparent",
         "pointer-events": "all",
@@ -759,7 +779,7 @@ function insertionMark(slot, label, onActivate, direction = "horizontal") {
       }),
       svgElement("circle", {
         class: "la-insertion-circle",
-        cx: slot.left + 12,
+        cx: controlX,
         cy: slot.y,
         r: 8,
         fill: "var(--la-selection)",
@@ -768,7 +788,7 @@ function insertionMark(slot, label, onActivate, direction = "horizontal") {
     );
     const plus = svgElement("text", {
       class: "la-insertion-plus",
-      x: slot.left + 12,
+      x: controlX,
       y: slot.y + 3.5,
       "text-anchor": "middle",
       "font-size": 12,
@@ -1256,6 +1276,20 @@ export function renderEditor(target, input, options = {}) {
             popover,
           ),
       );
+      if (model.tooltip || model.tooltipIcon) {
+        addField(
+          popover,
+          "Tooltip icon",
+          model.tooltipIcon,
+          (value) =>
+            run(
+              () => editor.updateActor(id, { tooltipIcon: value }),
+              undefined,
+              popover,
+            ),
+          { placeholder: "info" },
+        );
+      }
       addActions(popover, [
         {
           label: "Delete actor and messages",
@@ -1303,6 +1337,20 @@ export function renderEditor(target, input, options = {}) {
             popover,
           ),
       );
+      if (model.tooltip || model.tooltipIcon) {
+        addField(
+          popover,
+          "Tooltip icon",
+          model.tooltipIcon,
+          (value) =>
+            run(
+              () => editor.updateItem(id, { tooltipIcon: value }),
+              undefined,
+              popover,
+            ),
+          { placeholder: "info" },
+        );
+      }
       addActions(popover, [
         {
           label: "Delete",

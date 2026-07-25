@@ -10,6 +10,7 @@ export interface Actor {
   icon: string | null;
   tag: string | null;
   tooltip: string | null;
+  tooltipIcon: string | null;
   line: number;
   inferred?: boolean;
 }
@@ -23,6 +24,7 @@ export interface Message {
   label: string | null;
   tag: string | null;
   tooltip: string | null;
+  tooltipIcon: string | null;
   line: number;
 }
 
@@ -242,7 +244,12 @@ export class DiagramEditor {
   addActor(index?: number): string;
   updateActor(
     id: string,
-    patch: Partial<Pick<Actor, "name" | "icon" | "tag" | "tooltip">>,
+    patch: Partial<
+      Pick<
+        Actor,
+        "name" | "icon" | "tag" | "tooltip" | "tooltipIcon"
+      >
+    >,
   ): string;
   moveActor(id: string, index: number): string;
   removeActor(id: string): null;
@@ -261,6 +268,7 @@ export class DiagramEditor {
       label?: string | null;
       tag?: string | null;
       tooltip?: string | null;
+      tooltipIcon?: string | null;
     },
   ): string;
   updateItem(
@@ -268,7 +276,13 @@ export class DiagramEditor {
     patch: Partial<
       Pick<
         Message,
-        "source" | "target" | "arrow" | "label" | "tag" | "tooltip"
+        | "source"
+        | "target"
+        | "arrow"
+        | "label"
+        | "tag"
+        | "tooltip"
+        | "tooltipIcon"
       > & Pick<Group, "groupType"> & Pick<Gap, "label">
     >,
   ): string;

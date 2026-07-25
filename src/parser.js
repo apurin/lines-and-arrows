@@ -132,7 +132,7 @@ function parseActor(cursor) {
   const properties = parseProperties(
     cursor,
     1,
-    new Set(["icon", "tag", "tooltip"]),
+    new Set(["icon", "tag", "tooltip", "tooltip-icon"]),
   );
 
   return {
@@ -141,6 +141,7 @@ function parseActor(cursor) {
     icon: properties.icon ?? null,
     tag: properties.tag ?? null,
     tooltip: properties.tooltip ?? null,
+    tooltipIcon: properties["tooltip-icon"] ?? null,
     line: line.number,
   };
 }
@@ -158,7 +159,7 @@ function parseMessage(cursor, line, match, path) {
   const properties = parseProperties(
     cursor,
     line.indent + 1,
-    new Set(["tag", "tooltip"]),
+    new Set(["tag", "tooltip", "tooltip-icon"]),
   );
 
   return {
@@ -170,6 +171,7 @@ function parseMessage(cursor, line, match, path) {
     label,
     tag: properties.tag ?? null,
     tooltip: properties.tooltip ?? null,
+    tooltipIcon: properties["tooltip-icon"] ?? null,
     line: line.number,
   };
 }
@@ -386,6 +388,7 @@ function resolveActors(explicitActors, items) {
           icon: null,
           tag: null,
           tooltip: null,
+          tooltipIcon: null,
           line: message.line,
           inferred: true,
         };

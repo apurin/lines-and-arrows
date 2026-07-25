@@ -21,7 +21,11 @@ In edit mode, hovering between actor headers reveals a small circular button
 with a plus at that insertion position.
 
 Hovering over an insertion line between timeline items reveals the same
-circular plus button. It creates a gap or group at that exact position.
+circular plus button. It creates a gap or group at that exact position. Inside
+a group or section, the button sits just outside its immediate group's left
+border while the insertion line stays within that container. Top-level buttons
+keep their original position when the diagram has no groups; with groups, they
+share the outside left rail.
 
 At the same insertion position, hovering over an actor lifeline reveals a tiny
 circle with an arrow. Dragging it to an actor creates an unnamed connection
@@ -78,11 +82,22 @@ Selecting an object opens one compact editor close to that object:
 - groups expose their open type and label, plus section and ungroup actions;
 - sections expose their label and safe removal.
 
-Tags and tooltip eyes share one compact metadata row. The eye appears only when
-tooltip text exists and reveals that text immediately on hover or focus. Actor
-metadata is centered on the bottom edge of its panel.
+Group lifelines continue through the header. Compact surface-colored
+backplates immediately around the non-empty label and the group type mask the
+lifelines beneath their text, matching the treatment of section labels. Empty
+labels add no label backplate. The group label is left-aligned and its type is
+right-aligned.
+
+Tags and tooltip controls share one compact metadata row. The tooltip control
+appears only when tooltip text exists and reveals that text immediately on
+hover or focus. It uses a lowercase `i` by default and may use any identifier
+supported by the actor icon resolver. Actor metadata is centered on the bottom
+edge of its panel. Tags and tooltip controls use one theme color at the same
+intensity on actors, the canvas, groups, and nested groups.
 Actor panels expand when necessary to keep that metadata row inside the panel
 with a small margin on each side.
+They also expand to show the complete actor name without truncation. Wider actor
+panels widen the diagram rather than compressing neighboring columns.
 
 Text fields commit on blur or Enter. Tooltip controls are single-line because
 each source property occupies one line. Invalid edits stay visible with a local

@@ -2,8 +2,19 @@ const TAG_MAX_LENGTH = 16;
 const TAG_FONT_SIZE = 10;
 const TAG_MIN_TEXT_WIDTH = 30;
 const TAG_HORIZONTAL_PADDING = 20;
+const ACTOR_LABEL_FONT_SIZE = 13;
+const ACTOR_LABEL_WIDTH_FACTOR = 0.56;
 
 export const ACTOR_METADATA_MARGIN_X = 8;
+export const ACTOR_LABEL_MARGIN_X = 16;
+
+export function actorLabelWidth(name) {
+  return (
+    Array.from(String(name ?? "")).length *
+    ACTOR_LABEL_FONT_SIZE *
+    ACTOR_LABEL_WIDTH_FACTOR
+  );
+}
 
 export function metadataMetrics(tag, tooltip) {
   const text = String(tag ?? "");

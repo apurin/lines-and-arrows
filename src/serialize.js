@@ -3,7 +3,9 @@ function propertyLines(item, names, indent) {
   const lines = [];
 
   for (const name of names) {
-    const value = item[name];
+    const property =
+      name === "tooltip-icon" ? "tooltipIcon" : name;
+    const value = item[property];
     if (value !== null && value !== undefined && String(value).trim()) {
       lines.push(`${prefix}${name} ${String(value).trim()}`);
     }
@@ -24,7 +26,13 @@ function timelineLines(items, indent) {
           label ? `: ${label}` : ""
         }`,
       );
-      lines.push(...propertyLines(item, ["tag", "tooltip"], indent + 1));
+      lines.push(
+        ...propertyLines(
+          item,
+          ["tag", "tooltip", "tooltip-icon"],
+          indent + 1,
+        ),
+      );
       continue;
     }
 
@@ -60,7 +68,11 @@ export function serialize(document) {
   const needsDeclarations =
     document.explicitActors ||
     document.actors.some(
-      (actor) => actor.icon || actor.tag || actor.tooltip,
+      (actor) =>
+        actor.icon ||
+        actor.tag ||
+        actor.tooltip ||
+        actor.tooltipIcon,
     );
 
   if (needsDeclarations) {
@@ -69,7 +81,11 @@ export function serialize(document) {
         .map((actor) =>
           [
             `@${actor.name}`,
-            ...propertyLines(actor, ["icon", "tag", "tooltip"], 1),
+            ...propertyLines(
+              actor,
+              ["icon", "tag", "tooltip", "tooltip-icon"],
+              1,
+            ),
           ].join("\n"),
         )
         .join("\n\n"),

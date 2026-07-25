@@ -75,9 +75,10 @@ editable.redo();
 ```
 
 `renderDiagram` accepts either source text or a parsed document. The optional
-`iconResolver(name, theme)` callback returns an image URL for an actor icon.
-`renderEditor` uses the same inputs and options plus an optional persistent
-`DiagramEditor` instance.
+`iconResolver(name, theme)` callback returns an image URL for actor and
+configured tooltip icons. Tooltips use a built-in lowercase `i` when
+`tooltip-icon` is omitted or cannot be resolved. `renderEditor` uses the same
+inputs and options plus an optional persistent `DiagramEditor` instance.
 
 The custom element emits `la-select`, `la-change`, and `la-error` events. Its
 `source`, `mode`, `theme`, `selectedIds`, `canUndo`, and `canRedo` properties
@@ -92,7 +93,8 @@ make it usable without coupling an application to its shadow DOM.
 - Drag either endpoint of a selected connection to another actor to retarget it.
 - Drag the four-dot handle on a selected timeline item or section to reposition
   it.
-- Hover or focus the eye beside a tag to reveal its tooltip immediately.
+- Hover or focus the information control beside a tag to reveal its tooltip
+  immediately.
 - Hover between actors or timeline items to reveal structural insertion
   controls.
 - Drag across contiguous sibling timeline items, then choose **Group**.

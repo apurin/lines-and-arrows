@@ -21,7 +21,7 @@ The language stores:
 - nested groups and group sections;
 - semantic gaps in the timeline;
 - one optional tag and one optional tooltip on an actor or message;
-- an optional icon identifier on an actor.
+- an optional icon identifier on an actor or tooltip.
 
 The language does not store:
 
@@ -44,6 +44,7 @@ tooltips.
   icon server
   tag comment
   tooltip Public entry point
+  tooltip-icon chat-circle
 
 @Worker
   icon gear
@@ -54,6 +55,7 @@ tooltips.
 Customer -> API: Start job
   tag critical
   tooltip Must be acknowledged before the interview continues
+  tooltip-icon warning
 
 critical Job execution
   API -> Worker: Start job
@@ -106,11 +108,13 @@ Actor properties are optional:
 | `icon IDENTIFIER` | A stable icon-catalog identifier. |
 | `tag TEXT` | A short, visible label. |
 | `tooltip TEXT` | Additional detail exposed on hover, focus, or an equivalent interaction. |
+| `tooltip-icon IDENTIFIER` | An optional icon-catalog identifier for the tooltip control. |
 
-An actor may have at most one `icon`, one `tag`, and one `tooltip`. Property
-order does not change meaning. Canonical output uses `icon`, `tag`, then
-`tooltip`. When a tooltip is present, renderers expose a compact eye control
-beside the tag, or by itself when there is no tag.
+An actor may have at most one of each property. Property order does not change
+meaning. Canonical output uses `icon`, `tag`, `tooltip`, then `tooltip-icon`.
+When a tooltip is present, renderers expose a compact information control
+beside the tag, or by itself when there is no tag. Without `tooltip-icon`, the
+control uses a lowercase `i`.
 
 The text following `@` is both the actor's visible name and its identity in the
 source. Renaming an actor in the visual editor must update every reference to it
@@ -125,8 +129,8 @@ Actor declarations are optional:
 - Declarations must appear before the first timeline item.
 
 An unknown icon identifier does not invalidate a diagram. A renderer should use
-its generic actor treatment and preserve the identifier when the document is
-written again.
+its generic actor treatment or the default tooltip information icon and
+preserve the identifier when the document is written again.
 
 ## Messages
 
@@ -143,17 +147,18 @@ Omit the `:` when the message has no label. When it is present, the first `:`
 after the target separates the target from the label, and the label must not be
 empty.
 
-A message may have one `tag` and one `tooltip`:
+A message may have one `tag`, one `tooltip`, and one `tooltip-icon`:
 
 ```lines-and-arrows
 API -> Worker: Start job
   tag critical
   tooltip This operation must be idempotent
+  tooltip-icon warning
 ```
 
 The properties have the same meaning as actor tags and tooltips. A tag remains
 short and visible; a tooltip carries the detail. A tooltip may exist without a
-tag. Renderers show its eye control in the message metadata row.
+tag. Renderers show its information control in the message metadata row.
 
 ### Arrow forms
 
@@ -284,10 +289,11 @@ comments         = { comment | blank } ;
 
 actors           = actor, { comments, actor } ;
 actor            = "@", actor-name, newline, { actor-property | comment } ;
-actor-property   = indent, ( icon | tag | tooltip ), newline ;
+actor-property   = indent, ( icon | tag | tooltip | tooltip-icon ), newline ;
 icon             = "icon", space, text ;
 tag              = "tag", space, text ;
 tooltip          = "tooltip", space, text ;
+tooltip-icon     = "tooltip-icon", space, text ;
 
 timeline         = { timeline-item | comment | blank } ;
 timeline-item    = message | group | gap ;
@@ -295,7 +301,7 @@ timeline-item    = message | group | gap ;
 message          = actor-name, space, arrow, space, actor-name,
                    [ ":", [ space ], text ], newline,
                    { message-property | comment } ;
-message-property = indent, ( tag | tooltip ), newline ;
+message-property = indent, ( tag | tooltip | tooltip-icon ), newline ;
 arrow            = "->" | "-->" | "->x" ;
 
 group            = group-type, space, text, newline,
@@ -320,7 +326,7 @@ A parser must report, at minimum:
 
 - malformed indentation or tabs;
 - duplicate actor properties;
-- duplicate message tags or tooltips;
+- duplicate message tags, tooltips, or tooltip icons;
 - unknown actor references in a document with explicit declarations;
 - empty names, explicit labels, groups, sections, or gaps;
 - mixed direct items and sections in one group;
@@ -329,8 +335,8 @@ A parser must report, at minimum:
 
 A parse-write round trip must preserve document meaning. A canonical writer may
 normalize indentation, blank lines, and property order, but must not change
-actor order, timeline order, hierarchy, text, arrow forms, icon identifiers,
-tags, or tooltips.
+actor order, timeline order, hierarchy, text, arrow forms, actor or tooltip
+icon identifiers, tags, or tooltips.
 
 ## Renderer contract
 
@@ -344,7 +350,8 @@ conforming renderer:
    proportional time;
 5. exposes tags and tooltip detail, including to keyboard and assistive
    technology users;
-6. preserves unknown group types and icon identifiers on write;
+6. preserves unknown group types and actor or tooltip icon identifiers on
+   write;
 7. never writes layout or theme choices back into the source.
 
 PlantUML import and export are adapters around this format, not the definition
