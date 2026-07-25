@@ -1,15 +1,18 @@
+import { DiagramEditor } from "./editor.js";
+import { renderEditor } from "./edit-render.js";
 import { renderDiagram } from "./render.js";
 
 const HTMLElementBase = globalThis.HTMLElement ?? class {};
 
 export class LinesAndArrowsElement extends HTMLElementBase {
   static get observedAttributes() {
-    return ["theme", "label"];
+    return ["theme", "label", "mode"];
   }
 
   #source = "";
   #iconResolver = null;
   #controller = null;
+  #editor = null;
   #mediaQuery = null;
   #handleThemeChange = () => this.#render();
 
@@ -48,6 +51,7 @@ export class LinesAndArrowsElement extends HTMLElementBase {
 
   set source(value) {
     this.#source = String(value ?? "");
+    this.#editor = null;
     if (this.isConnected) {
       this.#render();
     }
@@ -59,6 +63,14 @@ export class LinesAndArrowsElement extends HTMLElementBase {
 
   set theme(value) {
     this.setAttribute("theme", value || "auto");
+  }
+
+  get mode() {
+    return this.getAttribute("mode") === "edit" ? "edit" : "view";
+  }
+
+  set mode(value) {
+    this.setAttribute("mode", value === "edit" ? "edit" : "view");
   }
 
   get iconResolver() {
@@ -79,12 +91,42 @@ export class LinesAndArrowsElement extends HTMLElementBase {
     return this.#controller?.selectedId ?? null;
   }
 
+  get selectedIds() {
+    return this.#controller?.selectedIds ?? (
+      this.selectedId ? [this.selectedId] : []
+    );
+  }
+
+  get canUndo() {
+    return this.#controller?.canUndo ?? false;
+  }
+
+  get canRedo() {
+    return this.#controller?.canRedo ?? false;
+  }
+
   select(id) {
     this.#controller?.select(id);
   }
 
   clearSelection() {
     this.#controller?.clearSelection();
+  }
+
+  undo() {
+    return this.#controller?.undo?.() ?? false;
+  }
+
+  redo() {
+    return this.#controller?.redo?.() ?? false;
+  }
+
+  replaceSource(source) {
+    if (this.mode === "edit" && this.#controller?.replaceSource) {
+      return this.#controller.replaceSource(String(source ?? ""));
+    }
+    this.source = source;
+    return true;
   }
 
   #syncThemeListener() {
@@ -115,11 +157,34 @@ export class LinesAndArrowsElement extends HTMLElementBase {
     }
 
     try {
-      this.#controller = renderDiagram(this.shadowRoot, this.#source, {
+      this.#controller?.destroy?.();
+      const renderOptions = {
         theme: this.theme,
         label: this.getAttribute("label") || "Sequence diagram",
         iconResolver: this.#iconResolver,
-      });
+      };
+
+      if (this.mode === "edit") {
+        this.#editor ||= new DiagramEditor(this.#source);
+        this.#controller = renderEditor(
+          this.shadowRoot,
+          this.#editor.document,
+          {
+            ...renderOptions,
+            editor: this.#editor,
+            onChange: (detail) => {
+              this.#source = detail.source;
+            },
+          },
+        );
+      } else {
+        const input = this.#editor?.document ?? this.#source;
+        this.#controller = renderDiagram(
+          this.shadowRoot,
+          input,
+          renderOptions,
+        );
+      }
     } catch (error) {
       const style = document.createElement("style");
       style.textContent = `

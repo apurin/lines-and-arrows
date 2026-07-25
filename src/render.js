@@ -1,8 +1,10 @@
 import { layoutDiagram } from "./layout.js";
+import { metadataMetrics } from "./metadata.js";
 import { parse } from "./parser.js";
 import { resolveTheme } from "./theme.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+let tooltipSequence = 0;
 
 const VIEW_STYLES = `
   :host {
@@ -88,6 +90,34 @@ const VIEW_STYLES = `
     opacity: 0.24;
   }
 
+  .la-tooltip-trigger {
+    cursor: help;
+    outline: none;
+  }
+
+  .la-tooltip-trigger-shape {
+    transition:
+      fill 100ms ease,
+      stroke 100ms ease;
+  }
+
+  .la-tooltip-trigger:hover .la-tooltip-trigger-shape,
+  .la-tooltip-trigger:focus-visible .la-tooltip-trigger-shape {
+    fill: var(--la-accent-soft);
+    stroke: var(--la-selection);
+  }
+
+  .la-tooltip-popover {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .la-tooltip-popover[data-visible="true"] {
+    opacity: 1;
+    visibility: visible;
+  }
+
   .la-group-hit:hover + .la-group-shape,
   .la-group-hit:focus-visible + .la-group-shape,
   .la-group-hit[data-selected="true"] + .la-group-shape {
@@ -108,7 +138,8 @@ const VIEW_STYLES = `
     .la-actor-shape,
     .la-group-shape,
     .la-message-line,
-    .la-gap-rule {
+    .la-gap-rule,
+    .la-tooltip-trigger-shape {
       transition: none;
     }
   }
@@ -272,43 +303,290 @@ function makeSelectable(group, item, selection, label) {
   });
 }
 
-function renderTag(parent, tag, tooltip, x, y, tokens, anchor = "middle") {
-  if (!tag) {
-    return;
-  }
+function wrapTooltip(text, maxWidth, fontSize = 10) {
+  const maxCharacters = Math.max(
+    8,
+    Math.floor(maxWidth / (fontSize * 0.56)),
+  );
+  const words = String(text).trim().split(/\s+/);
+  const pieces = words.flatMap((word) => {
+    if (word.length <= maxCharacters) {
+      return [word];
+    }
+    const chunks = [];
+    for (let index = 0; index < word.length; index += maxCharacters) {
+      chunks.push(word.slice(index, index + maxCharacters));
+    }
+    return chunks;
+  });
+  const lines = [];
+  let current = "";
 
-  const visible = truncate(tag, 16);
-  const width = textWidth(visible, 10, 30) + 20;
-  const left =
-    anchor === "start" ? x : anchor === "end" ? x - width : x - width / 2;
-  const group = svgElement("g", {
-    transform: `translate(${left} ${y})`,
+  for (const piece of pieces) {
+    const candidate = current ? `${current} ${piece}` : piece;
+    if (current && textWidth(candidate, fontSize) > maxWidth) {
+      lines.push(current);
+      current = piece;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) {
+    lines.push(current);
+  }
+  return lines.length > 0 ? lines : [""];
+}
+
+function renderTooltipPopover(
+  layer,
+  tooltip,
+  triggerX,
+  triggerY,
+  triggerSize,
+  tokens,
+  side,
+  bounds,
+) {
+  tooltipSequence += 1;
+  const id = `la-tooltip-${tooltipSequence}`;
+  const availableWidth = Math.max(80, bounds.right - bounds.left);
+  const textMaxWidth = Math.min(188, availableWidth - 20);
+  const lines = wrapTooltip(tooltip, textMaxWidth);
+  const width = Math.min(
+    availableWidth,
+    Math.max(
+      80,
+      Math.max(...lines.map((line) => textWidth(line, 10))) + 20,
+    ),
+  );
+  const height = lines.length * 14 + 16;
+  const triggerCenter = triggerX + triggerSize / 2;
+  const left = Math.max(
+    bounds.left,
+    Math.min(triggerCenter - width / 2, bounds.right - width),
+  );
+  const top =
+    side === "below"
+      ? triggerY + triggerSize + 7
+      : triggerY - height - 7;
+  const arrowX = Math.max(
+    left + 10,
+    Math.min(triggerCenter, left + width - 10),
+  );
+  const popover = svgElement("g", {
+    id,
+    class: "la-tooltip-popover",
+    "data-visible": "false",
+    role: "tooltip",
+    "aria-label": tooltip,
   });
 
-  group.append(
+  popover.append(
     svgElement("rect", {
+      x: left,
+      y: top,
       width,
-      height: 20,
-      rx: 10,
-      fill: tokens.tagFill,
+      height,
+      rx: 7,
+      fill: tokens.tooltip,
+    }),
+    svgElement("path", {
+      d:
+        side === "below"
+          ? `M ${arrowX - 4} ${top} L ${arrowX} ${top - 4} L ${arrowX + 4} ${top} Z`
+          : `M ${arrowX - 4} ${top + height} L ${arrowX} ${
+              top + height + 4
+            } L ${arrowX + 4} ${top + height} Z`,
+      fill: tokens.tooltip,
     }),
   );
 
   const text = svgElement("text", {
-    x: width / 2,
-    y: 13.5,
-    "text-anchor": "middle",
+    x: left + 10,
+    y: top + 13,
     "font-size": 10,
-    "font-weight": 650,
-    fill: tokens.tagText,
+    "font-weight": 560,
+    fill: tokens.canvas,
   });
-  text.textContent = visible;
-  group.append(text);
-  addTitle(group, tooltip || tag);
-  parent.append(group);
+  for (const [index, line] of lines.entries()) {
+    const segment = svgElement("tspan", {
+      x: left + 10,
+      dy: index === 0 ? 0 : 14,
+    });
+    segment.textContent = line;
+    text.append(segment);
+  }
+  popover.append(text);
+  layer.append(popover);
+  return { id, popover };
 }
 
-function renderActor(parent, actor, tokens, options, selection) {
+function renderMetadata(
+  parent,
+  tag,
+  tooltip,
+  x,
+  y,
+  tokens,
+  options,
+) {
+  if (!tag && !tooltip) {
+    return;
+  }
+
+  const {
+    visibleTag,
+    tagWidth,
+    triggerSize,
+    gap,
+    width,
+  } = metadataMetrics(tag, tooltip);
+  const left =
+    options.anchor === "start"
+      ? x
+      : options.anchor === "end"
+        ? x - width
+        : x - width / 2;
+
+  if (tag) {
+    const tagGroup = svgElement("g", {
+      class: "la-tag",
+      transform: `translate(${left} ${y})`,
+    });
+    tagGroup.append(
+      svgElement("rect", {
+        width: tagWidth,
+        height: 20,
+        rx: 10,
+        fill: tokens.tagFill,
+      }),
+    );
+
+    const text = svgElement("text", {
+      x: tagWidth / 2,
+      y: 13.5,
+      "text-anchor": "middle",
+      "font-size": 10,
+      "font-weight": 650,
+      fill: tokens.tagText,
+    });
+    text.textContent = visibleTag;
+    tagGroup.append(text);
+    addTitle(tagGroup, tag);
+    parent.append(tagGroup);
+  }
+
+  if (!tooltip) {
+    return;
+  }
+
+  const triggerX = left + tagWidth + gap;
+  const globalTriggerX = triggerX + options.offsetX;
+  const globalTriggerY = y + options.offsetY;
+  const { id, popover } = renderTooltipPopover(
+    options.tooltipLayer,
+    tooltip,
+    globalTriggerX,
+    globalTriggerY,
+    triggerSize,
+    tokens,
+    options.tooltipSide,
+    options.bounds,
+  );
+  const trigger = svgElement("g", {
+    class: "la-tooltip-trigger",
+    transform: `translate(${triggerX} ${y})`,
+    tabindex: 0,
+    role: "button",
+    "aria-label": "Show tooltip",
+    "aria-describedby": id,
+    "aria-expanded": "false",
+  });
+  trigger.append(
+    svgElement("rect", {
+      class: "la-tooltip-trigger-shape",
+      width: triggerSize,
+      height: triggerSize,
+      rx: triggerSize / 2,
+      fill: tokens.tagFill,
+      stroke: "transparent",
+      "stroke-width": 1,
+    }),
+    svgElement("ellipse", {
+      cx: triggerSize / 2,
+      cy: triggerSize / 2,
+      rx: 4.4,
+      ry: 3,
+      fill: "none",
+      stroke: tokens.tagText,
+      "stroke-width": 1.2,
+    }),
+    svgElement("circle", {
+      cx: triggerSize / 2,
+      cy: triggerSize / 2,
+      r: 1.35,
+      fill: tokens.tagText,
+    }),
+  );
+
+  let hovered = false;
+  let focused = false;
+  let pinned = false;
+  const sync = () => {
+    const visible = hovered || focused || pinned;
+    popover.dataset.visible = String(visible);
+    trigger.setAttribute("aria-expanded", String(visible));
+  };
+  trigger.addEventListener("pointerenter", () => {
+    hovered = true;
+    sync();
+  });
+  trigger.addEventListener("pointerleave", () => {
+    hovered = false;
+    sync();
+  });
+  trigger.addEventListener("focus", () => {
+    focused = true;
+    sync();
+  });
+  trigger.addEventListener("blur", () => {
+    focused = false;
+    pinned = false;
+    sync();
+  });
+  trigger.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+  });
+  trigger.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    pinned = !pinned;
+    sync();
+  });
+  trigger.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      event.stopPropagation();
+      pinned = !pinned;
+      sync();
+    } else if (event.key === "Escape") {
+      pinned = false;
+      sync();
+      trigger.blur();
+    }
+  });
+  parent.append(trigger);
+}
+
+function renderActor(
+  parent,
+  actor,
+  layout,
+  tokens,
+  options,
+  selection,
+  tooltipLayer,
+) {
   const group = svgElement("g", {
     class: "la-actor",
     transform: `translate(${actor.x} ${actor.y})`,
@@ -319,7 +597,7 @@ function renderActor(parent, actor, tokens, options, selection) {
     selection,
     `Actor ${actor.name}${actor.tooltip ? `. ${actor.tooltip}` : ""}`,
   );
-  addTitle(group, actor.tooltip || actor.name);
+  addTitle(group, actor.name);
 
   group.append(
     svgElement("rect", {
@@ -351,7 +629,7 @@ function renderActor(parent, actor, tokens, options, selection) {
   if (hasIcon) {
     const fallback = svgElement("text", {
       x: actor.width / 2,
-      y: 27,
+      y: 24,
       "text-anchor": "middle",
       "font-size": 17,
       "font-weight": 700,
@@ -367,7 +645,7 @@ function renderActor(parent, actor, tokens, options, selection) {
       const image = svgElement("image", {
         href: iconUrl,
         x: actor.width / 2 - 11,
-        y: 10,
+        y: 7,
         width: 22,
         height: 22,
         "pointer-events": "none",
@@ -384,7 +662,7 @@ function renderActor(parent, actor, tokens, options, selection) {
 
   const label = svgElement("text", {
     x: actor.width / 2,
-    y: hasIcon ? 54 : 40,
+    y: hasIcon ? 49 : 40,
     "text-anchor": "middle",
     "font-size": 13,
     "font-weight": 700,
@@ -395,17 +673,25 @@ function renderActor(parent, actor, tokens, options, selection) {
   label.textContent = truncate(actor.name, 15);
   group.append(label);
 
-  if (actor.tag) {
-    renderTag(
-      group,
-      actor.tag,
-      actor.tooltip,
-      actor.width - 1,
-      -8,
-      tokens,
-      "end",
-    );
-  }
+  renderMetadata(
+    group,
+    actor.tag,
+    actor.tooltip,
+    actor.width / 2,
+    actor.height - 12,
+    tokens,
+    {
+      anchor: "middle",
+      offsetX: actor.x,
+      offsetY: actor.y,
+      tooltipLayer,
+      tooltipSide: "above",
+      bounds: {
+        left: 8,
+        right: layout.width - 8,
+      },
+    },
+  );
 
   parent.append(group);
 }
@@ -596,7 +882,15 @@ function renderLostCross(group, x, y, tokens) {
   }
 }
 
-function renderMessage(parent, row, layout, tokens, prefix, selection) {
+function renderMessage(
+  parent,
+  row,
+  layout,
+  tokens,
+  prefix,
+  selection,
+  tooltipLayer,
+) {
   const source = layout.actorByName.get(row.source);
   const target = layout.actorByName.get(row.target);
   if (!source || !target) {
@@ -610,11 +904,13 @@ function renderMessage(parent, row, layout, tokens, prefix, selection) {
     group,
     row,
     selection,
-    `${row.source} to ${row.target}: ${row.label}${
+    `${row.source} to ${row.target}${
+      row.label ? `: ${row.label}` : ""
+    }${
       row.tooltip ? `. ${row.tooltip}` : ""
     }`,
   );
-  addTitle(group, row.tooltip || row.label);
+  addTitle(group, row.label || `${row.source} to ${row.target}`);
 
   const geometry = messagePath(row, source.centerX, target.centerX);
   let pathData = geometry.d;
@@ -687,6 +983,20 @@ function renderMessage(parent, row, layout, tokens, prefix, selection) {
     visiblePath.setAttribute("marker-end", normalMarker);
     visiblePath.dataset.markerNormal = normalMarker;
     visiblePath.dataset.markerSelected = selectedMarker;
+
+    const highlightMarker = () =>
+      visiblePath.setAttribute("marker-end", selectedMarker);
+    const restoreMarker = () =>
+      visiblePath.setAttribute(
+        "marker-end",
+        group.dataset.selected === "true"
+          ? selectedMarker
+          : normalMarker,
+      );
+    group.addEventListener("pointerenter", highlightMarker);
+    group.addEventListener("pointerleave", restoreMarker);
+    group.addEventListener("focus", highlightMarker);
+    group.addEventListener("blur", restoreMarker);
   }
   group.append(visiblePath);
 
@@ -694,45 +1004,55 @@ function renderMessage(parent, row, layout, tokens, prefix, selection) {
     renderLostCross(group, geometry.endX, geometry.endY, tokens);
   }
 
-  const visibleLabel = truncate(row.label, 46);
-  const labelWidth = textWidth(visibleLabel, 11, 40) + 16;
-  group.append(
-    svgElement("rect", {
-      x: geometry.labelX - labelWidth / 2,
-      y: geometry.labelY - 12,
-      width: labelWidth,
-      height: 18,
-      rx: 4,
-      fill: surfaceForDepth(row.depth, tokens),
-      "pointer-events": "none",
-    }),
-  );
-
-  const label = svgElement("text", {
-    class: "la-message-label",
-    x: geometry.labelX,
-    y: geometry.labelY + 1,
-    "text-anchor": "middle",
-    "font-size": 11,
-    "font-weight": 560,
-    fill: tokens.text,
-    "pointer-events": "none",
-  });
-  label.textContent = visibleLabel;
-  group.append(label);
-
-  if (row.tag) {
-    const isSelfMessage = source.centerX === target.centerX;
-    renderTag(
-      group,
-      row.tag,
-      row.tooltip,
-      geometry.labelX,
-      row.y + (isSelfMessage ? 17 : 7),
-      tokens,
-      "middle",
+  if (row.label) {
+    const visibleLabel = truncate(row.label, 46);
+    const labelWidth = textWidth(visibleLabel, 11, 40) + 16;
+    group.append(
+      svgElement("rect", {
+        x: geometry.labelX - labelWidth / 2,
+        y: geometry.labelY - 12,
+        width: labelWidth,
+        height: 18,
+        rx: 4,
+        fill: surfaceForDepth(row.depth, tokens),
+        "pointer-events": "none",
+      }),
     );
+
+    const label = svgElement("text", {
+      class: "la-message-label",
+      x: geometry.labelX,
+      y: geometry.labelY + 1,
+      "text-anchor": "middle",
+      "font-size": 11,
+      "font-weight": 560,
+      fill: tokens.text,
+      "pointer-events": "none",
+    });
+    label.textContent = visibleLabel;
+    group.append(label);
   }
+
+  const isSelfMessage = source.centerX === target.centerX;
+  renderMetadata(
+    group,
+    row.tag,
+    row.tooltip,
+    geometry.labelX,
+    row.y + (isSelfMessage ? 17 : 7),
+    tokens,
+    {
+      anchor: "middle",
+      offsetX: 0,
+      offsetY: 0,
+      tooltipLayer,
+      tooltipSide: "above",
+      bounds: {
+        left: 8,
+        right: layout.width - 8,
+      },
+    },
+  );
 
   parent.append(group);
 }
@@ -831,6 +1151,9 @@ function createSelectionController(root, options) {
   function apply() {
     root.querySelectorAll("[data-la-id]").forEach((element) => {
       const selected = element.dataset.laId === selectedId;
+      const highlighted =
+        selected ||
+        element.matches(":hover, :focus, :focus-visible");
       element.dataset.selected = String(selected);
       element.setAttribute("aria-pressed", String(selected));
       element
@@ -838,7 +1161,7 @@ function createSelectionController(root, options) {
         .forEach((messageLine) => {
           messageLine.setAttribute(
             "marker-end",
-            selected
+            highlighted
               ? messageLine.dataset.markerSelected
               : messageLine.dataset.markerNormal,
           );
@@ -846,7 +1169,7 @@ function createSelectionController(root, options) {
     });
   }
 
-  return {
+  const controller = {
     select(id, item = null, emit = true) {
       selectedId = id ?? null;
       selectedItem = item;
@@ -884,6 +1207,8 @@ function createSelectionController(root, options) {
       return selectedItem;
     },
   };
+
+  return controller;
 }
 
 let rendererSequence = 0;
@@ -918,6 +1243,10 @@ export function renderDiagram(target, input, options = {}) {
   });
   svg.style.aspectRatio = `${layout.width} / ${layout.height}`;
   appendDefinitions(svg, tokens, prefix);
+  const tooltipLayer = svgElement("g", {
+    class: "la-tooltip-layer",
+    "pointer-events": "none",
+  });
 
   const eventTarget = target.host ?? target;
   const selection = createSelectionController(svg, {
@@ -939,13 +1268,33 @@ export function renderDiagram(target, input, options = {}) {
   }
   for (const row of layout.rows) {
     if (row.type === "message") {
-      renderMessage(svg, row, layout, tokens, prefix, selection);
+      renderMessage(
+        svg,
+        row,
+        layout,
+        tokens,
+        prefix,
+        selection,
+        tooltipLayer,
+      );
     } else {
       renderGap(svg, row, layout, tokens, selection);
     }
   }
   for (const actor of layout.actors) {
-    renderActor(svg, actor, tokens, options, selection);
+    renderActor(
+      svg,
+      actor,
+      layout,
+      tokens,
+      options,
+      selection,
+      tooltipLayer,
+    );
+  }
+  svg.append(tooltipLayer);
+  if (options.initialSelectedId) {
+    selection.select(options.initialSelectedId, null, false);
   }
 
   svg.addEventListener("click", (event) => {

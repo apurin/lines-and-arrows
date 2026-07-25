@@ -6,6 +6,10 @@ import {
   parse,
 } from "../src/parser.js";
 import { layoutDiagram } from "../src/layout.js";
+import {
+  ACTOR_METADATA_MARGIN_X,
+  metadataMetrics,
+} from "../src/metadata.js";
 
 const COMPLETE_SOURCE = `@Customer
   icon user
@@ -74,6 +78,26 @@ Worker --> Client: Complete`);
   );
 });
 
+test("parses messages without labels", () => {
+  const document = parse(`Client -> API
+API --> Worker: Accepted
+Worker ->x Queue`);
+
+  assert.deepEqual(
+    document.items.map((item) => item.label),
+    [null, "Accepted", null],
+  );
+  assert.equal(document.items[0].source, "Client");
+  assert.equal(document.items[0].target, "API");
+});
+
+test("rejects an explicitly empty message label", () => {
+  assert.throws(
+    () => parse("Client -> API:"),
+    /Message label cannot be empty/,
+  );
+});
+
 test("rejects undeclared actors in an explicit document", () => {
   assert.throws(
     () =>
@@ -127,4 +151,44 @@ test("lays out timeline rows in increasing vertical order", () => {
     assert.ok(group.bottom > group.top);
     assert.ok(group.height > 0);
   }
+});
+
+test("reserves a metadata row for a tooltip without a tag", () => {
+  const layout = layoutDiagram(
+    parse(`Client -> API: Start
+  tooltip Visible through the eye control
+API --> Client: Complete`),
+  );
+
+  assert.ok(layout.rows[0].height > layout.rows[1].height);
+  assert.equal(
+    layout.rows[1].y - layout.rows[0].y,
+    layout.rows[0].height,
+  );
+});
+
+test("expands actor panels to contain long metadata", () => {
+  const layout = layoutDiagram(
+    parse(`@Customer
+  tag needs careful review
+  tooltip Review this before accepting
+
+@API
+
+Customer -> API: Submit`),
+  );
+  const [customer, api] = layout.actors;
+  const metadataWidth = metadataMetrics(
+    customer.tag,
+    customer.tooltip,
+  ).width;
+
+  assert.ok(customer.width > layout.options.actorWidth);
+  assert.ok(
+    customer.width >= metadataWidth + ACTOR_METADATA_MARGIN_X * 2,
+  );
+  assert.equal(
+    api.x - (customer.x + customer.width),
+    layout.options.actorGap,
+  );
 });

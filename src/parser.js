@@ -1,4 +1,5 @@
-const ARROW_PATTERN = /^(.*?)\s+(-->|->x|->)\s+([^:]+):\s*(.+)$/;
+const ARROW_PATTERN =
+  /^(.*?)\s+(-->|->x|->)\s+([^:]+?)(?::\s*(.*))?$/;
 const GROUP_PATTERN = /^([a-z][a-z0-9-]*)\s+(.+)$/;
 const ACTOR_FORBIDDEN_PATTERN = /:|-->|->x|->/;
 
@@ -148,7 +149,10 @@ function parseMessage(cursor, line, match, path) {
   const source = assertActorName(match[1], line.number);
   const arrow = match[2];
   const target = assertActorName(match[3], line.number);
-  const label = assertText(match[4], "Message label", line.number);
+  const label =
+    match[4] === undefined
+      ? null
+      : assertText(match[4], "Message label", line.number);
   cursor.index += 1;
 
   const properties = parseProperties(

@@ -109,7 +109,8 @@ Actor properties are optional:
 
 An actor may have at most one `icon`, one `tag`, and one `tooltip`. Property
 order does not change meaning. Canonical output uses `icon`, `tag`, then
-`tooltip`.
+`tooltip`. When a tooltip is present, renderers expose a compact eye control
+beside the tag, or by itself when there is no tag.
 
 The text following `@` is both the actor's visible name and its identity in the
 source. Renaming an actor in the visual editor must update every reference to it
@@ -129,16 +130,18 @@ written again.
 
 ## Messages
 
-A message has a source, an arrow, a target, and a label:
+A message has a source, an arrow, a target, and an optional label:
 
 ```lines-and-arrows
+Client -> API
 API -> Worker: Start job
 Worker --> API: Accepted
 Worker ->x Queue: Enqueue job
 ```
 
-The first `:` after the target separates the target from the label. The label
-must not be empty.
+Omit the `:` when the message has no label. When it is present, the first `:`
+after the target separates the target from the label, and the label must not be
+empty.
 
 A message may have one `tag` and one `tooltip`:
 
@@ -150,7 +153,7 @@ API -> Worker: Start job
 
 The properties have the same meaning as actor tags and tooltips. A tag remains
 short and visible; a tooltip carries the detail. A tooltip may exist without a
-tag, in which case the renderer exposes it through the message itself.
+tag. Renderers show its eye control in the message metadata row.
 
 ### Arrow forms
 
@@ -264,7 +267,7 @@ In this draft:
   `//`;
 - group labels, section labels, message labels, tags, and tooltips may contain
   punctuation, including additional colons;
-- empty names and empty text values are invalid;
+- empty names and explicitly empty text values are invalid;
 - there is no quoting or escape syntax.
 
 These restrictions keep the first parser small and deterministic. Quoting can
@@ -290,7 +293,7 @@ timeline         = { timeline-item | comment | blank } ;
 timeline-item    = message | group | gap ;
 
 message          = actor-name, space, arrow, space, actor-name,
-                   ":", space, text, newline,
+                   [ ":", [ space ], text ], newline,
                    { message-property | comment } ;
 message-property = indent, ( tag | tooltip ), newline ;
 arrow            = "->" | "-->" | "->x" ;
@@ -319,7 +322,7 @@ A parser must report, at minimum:
 - duplicate actor properties;
 - duplicate message tags or tooltips;
 - unknown actor references in a document with explicit declarations;
-- empty names, labels, groups, sections, or gaps;
+- empty names, explicit labels, groups, sections, or gaps;
 - mixed direct items and sections in one group;
 - unsupported arrow forms;
 - actor declarations after the timeline begins.
