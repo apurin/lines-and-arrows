@@ -980,7 +980,12 @@ function renderLifelines(parent, layout, tokens) {
   }
 }
 
-function messagePath(row, sourceX, targetX) {
+function messagePath(
+  row,
+  sourceX,
+  targetX,
+  messageLabelMaxWidth,
+) {
   if (sourceX !== targetX) {
     return {
       d: `M ${sourceX} ${row.y} L ${targetX} ${row.y}`,
@@ -992,7 +997,10 @@ function messagePath(row, sourceX, targetX) {
     };
   }
 
-  const loopWidth = selfMessageWidth(row);
+  const loopWidth = selfMessageWidth(
+    row,
+    messageLabelMaxWidth,
+  );
   const top = row.y - 13;
   const bottom = row.y + 13;
   return {
@@ -1064,7 +1072,12 @@ function renderMessage(
   );
   addTitle(group, row.label || `${row.source} to ${row.target}`);
 
-  const geometry = messagePath(row, source.centerX, target.centerX);
+  const geometry = messagePath(
+    row,
+    source.centerX,
+    target.centerX,
+    layout.options.messageLabelMaxWidth,
+  );
   let pathData = geometry.d;
   const hitLeft =
     source.centerX === target.centerX
@@ -1159,15 +1172,22 @@ function renderMessage(
   }
 
   if (row.label) {
-    const {
-      visibleLabel,
-      width: labelWidth,
-    } = messageLabelMetrics(row.label);
+    const { visibleLabel, textWidth: labelTextWidth } =
+      messageLabelMetrics(
+        row.label,
+        layout.options.messageLabelMaxWidth,
+      );
+    const labelPaddingX = 5;
+
     group.append(
       svgElement("rect", {
-        x: geometry.labelX - labelWidth / 2,
+        class: "la-message-label-shape",
+        x:
+          geometry.labelX -
+          labelTextWidth / 2 -
+          labelPaddingX,
         y: geometry.labelY - 12,
-        width: labelWidth,
+        width: labelTextWidth + labelPaddingX * 2,
         height: 18,
         rx: 4,
         fill: surfaceForDepth(row.depth, tokens),

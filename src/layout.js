@@ -1,7 +1,9 @@
 import {
   ACTOR_LABEL_MARGIN_X,
   ACTOR_METADATA_MARGIN_X,
+  MESSAGE_LABEL_MAX_WIDTH,
   actorLabelWidth,
+  messageLabelMetrics,
   metadataMetrics,
   selfMessageWidth,
 } from "./metadata.js";
@@ -17,6 +19,7 @@ const DEFAULTS = {
   timelineTopGap: 36,
   messageHeight: 54,
   messageMetadataHeight: 16,
+  messageLabelMaxWidth: MESSAGE_LABEL_MAX_WIDTH,
   gapHeight: 60,
   groupHeaderHeight: 30,
   sectionHeaderHeight: 27,
@@ -30,17 +33,50 @@ const GROUP_DEPTH_INSET = 9;
 const GROUP_CONTENT_INSET = 14;
 const GROUP_SELF_MESSAGE_RIGHT_PADDING = 20;
 
-function collectSelfMessageWidths(items, widths) {
+function collectMessageWidths(
+  items,
+  selfWidths,
+  labelWidths,
+  actorIndexes,
+  messageLabelMaxWidth,
+) {
   for (const item of items) {
     if (item.type === "message") {
       if (item.source === item.target) {
-        widths.set(
+        selfWidths.set(
           item.source,
           Math.max(
-            widths.get(item.source) ?? 0,
-            selfMessageWidth(item),
+            selfWidths.get(item.source) ?? 0,
+            selfMessageWidth(item, messageLabelMaxWidth),
           ),
         );
+      } else if (item.label) {
+        const sourceIndex = actorIndexes.get(item.source);
+        const targetIndex = actorIndexes.get(item.target);
+        if (
+          sourceIndex !== undefined &&
+          targetIndex !== undefined
+        ) {
+          const leftIndex = Math.min(
+            sourceIndex,
+            targetIndex,
+          );
+          const rightIndex = Math.max(
+            sourceIndex,
+            targetIndex,
+          );
+          const key = `${leftIndex}:${rightIndex}`;
+          labelWidths.set(
+            key,
+            Math.max(
+              labelWidths.get(key) ?? 0,
+              messageLabelMetrics(
+                item.label,
+                messageLabelMaxWidth,
+              ).width,
+            ),
+          );
+        }
       }
       continue;
     }
@@ -51,10 +87,22 @@ function collectSelfMessageWidths(items, widths) {
 
     if (item.sections.length > 0) {
       for (const section of item.sections) {
-        collectSelfMessageWidths(section.items, widths);
+        collectMessageWidths(
+          section.items,
+          selfWidths,
+          labelWidths,
+          actorIndexes,
+          messageLabelMaxWidth,
+        );
       }
     } else {
-      collectSelfMessageWidths(item.items, widths);
+      collectMessageWidths(
+        item.items,
+        selfWidths,
+        labelWidths,
+        actorIndexes,
+        messageLabelMaxWidth,
+      );
     }
   }
 }
@@ -93,7 +141,11 @@ function layoutItems(
         const actor = state.actorByName.get(item.source);
         if (actor) {
           const messageRight =
-            actor.centerX + selfMessageWidth(item);
+            actor.centerX +
+            selfMessageWidth(
+              item,
+              state.options.messageLabelMaxWidth,
+            );
           for (
             let groupIndex = 0;
             groupIndex < ancestorGroups.length;
@@ -199,7 +251,20 @@ function layoutItems(
 export function layoutDiagram(document, overrides = {}) {
   const options = { ...DEFAULTS, ...overrides };
   const selfMessageWidths = new Map();
-  collectSelfMessageWidths(document.items, selfMessageWidths);
+  const messageLabelWidths = new Map();
+  const actorIndexes = new Map(
+    document.actors.map((actor, index) => [
+      actor.name,
+      index,
+    ]),
+  );
+  collectMessageWidths(
+    document.items,
+    selfMessageWidths,
+    messageLabelWidths,
+    actorIndexes,
+    options.messageLabelMaxWidth,
+  );
   const actorWidths = document.actors.map((actor) =>
     Math.max(
       options.actorWidth,
@@ -208,9 +273,50 @@ export function layoutDiagram(document, overrides = {}) {
         ACTOR_METADATA_MARGIN_X * 2,
     ),
   );
-  let actorX = options.marginX;
-  const actors = document.actors.map((actor, index) => {
+  const actors = [];
+  for (
+    let index = 0;
+    index < document.actors.length;
+    index += 1
+  ) {
+    const actor = document.actors[index];
     const actorWidth = actorWidths[index];
+    let actorX;
+    if (index === 0) {
+      actorX = options.marginX;
+    } else {
+      const previousActor = document.actors[index - 1];
+      const previousLayoutActor = actors[index - 1];
+      actorX =
+        previousLayoutActor.x +
+        previousLayoutActor.width +
+        options.actorGap;
+      actorX = Math.max(
+        actorX,
+        previousLayoutActor.centerX +
+          (selfMessageWidths.get(previousActor.name) ?? 0) +
+          SELF_MESSAGE_LIFELINE_GAP -
+          actorWidth / 2,
+      );
+      for (
+        let previousIndex = 0;
+        previousIndex < index;
+        previousIndex += 1
+      ) {
+        const requiredLabelWidth =
+          messageLabelWidths.get(
+            `${previousIndex}:${index}`,
+          ) ?? 0;
+        if (requiredLabelWidth > 0) {
+          actorX = Math.max(
+            actorX,
+            actors[previousIndex].centerX +
+              requiredLabelWidth -
+              actorWidth / 2,
+          );
+        }
+      }
+    }
     const centerX = actorX + actorWidth / 2;
     const layoutActor = {
       ...actor,
@@ -221,22 +327,8 @@ export function layoutDiagram(document, overrides = {}) {
       width: actorWidth,
       height: options.actorHeight,
     };
-    const nextActorWidth = actorWidths[index + 1];
-    const defaultNextX =
-      actorX + actorWidth + options.actorGap;
-    if (nextActorWidth === undefined) {
-      actorX = defaultNextX;
-    } else {
-      const loopWidth = selfMessageWidths.get(actor.name) ?? 0;
-      const nextXAfterLoop =
-        centerX +
-        loopWidth +
-        SELF_MESSAGE_LIFELINE_GAP -
-        nextActorWidth / 2;
-      actorX = Math.max(defaultNextX, nextXAfterLoop);
-    }
-    return layoutActor;
-  });
+    actors.push(layoutActor);
+  }
   const rightmostActor = actors.at(-1);
   const actorRight = rightmostActor
     ? rightmostActor.x + rightmostActor.width

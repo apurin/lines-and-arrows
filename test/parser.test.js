@@ -9,6 +9,7 @@ import { layoutDiagram } from "../src/layout.js";
 import {
   ACTOR_LABEL_MARGIN_X,
   ACTOR_METADATA_MARGIN_X,
+  MESSAGE_LABEL_MAX_WIDTH,
   actorLabelWidth,
   messageLabelMetrics,
   metadataMetrics,
@@ -235,6 +236,47 @@ ${longName} -> API: Submit`),
       service.width +
       api.width +
       layout.options.actorGap,
+  );
+});
+
+test("widens actor spacing for labels up to an ellipsis cap", () => {
+  const mediumLabel = "Matching antigen appears again";
+  const mediumLayout = layoutDiagram(
+    parse(`@Pathogen
+@B Cell
+
+critical Recall
+  Pathogen -> B Cell: ${mediumLabel}`),
+  );
+  const [pathogen, bCell] = mediumLayout.actors;
+  const defaultCenterDistance =
+    mediumLayout.options.actorWidth +
+    mediumLayout.options.actorGap;
+
+  assert.ok(
+    bCell.centerX - pathogen.centerX >
+      defaultCenterDistance,
+  );
+  assert.ok(
+    bCell.centerX - pathogen.centerX >=
+      messageLabelMetrics(mediumLabel).width,
+  );
+
+  const longLabel = "Evidence ".repeat(40).trim();
+  const longMetrics = messageLabelMetrics(longLabel);
+  const longLayout = layoutDiagram(
+    parse(`@Client
+@API
+
+Client -> API: ${longLabel}`),
+  );
+
+  assert.ok(longMetrics.visibleLabel.endsWith("…"));
+  assert.ok(longMetrics.width <= MESSAGE_LABEL_MAX_WIDTH);
+  assert.ok(
+    longLayout.actors[1].centerX -
+      longLayout.actors[0].centerX <=
+      MESSAGE_LABEL_MAX_WIDTH,
   );
 });
 
