@@ -27,6 +27,19 @@ const compactDiagramLayout = {
   groupGap: 8,
   bottomPadding: 20,
 };
+const heroDiagramLayout = {
+  ...compactDiagramLayout,
+  actorHeight: 42,
+  marginTop: 18,
+  timelineTopGap: 20,
+  messageHeight: 36,
+  gapHeight: 40,
+  groupHeaderHeight: 24,
+  sectionHeaderHeight: 20,
+  groupPaddingBottom: 6,
+  groupGap: 6,
+  bottomPadding: 18,
+};
 const themeButtons = [...document.querySelectorAll("[data-site-theme]")];
 
 const readSavedTheme = () => {
@@ -79,18 +92,39 @@ for (const button of themeButtons) {
 
 applyTheme(activeTheme);
 
-const heroSource = `@Agent
+const heroSource = `@Human
+  icon user
+  tag tiny request
+  tooltip A request whose size has not yet been independently verified
+  tooltip-icon magnifying-glass
+
+@Agent
   icon robot
+  tag on it
+
+@Workspace
+  icon code
+  tag repo and tests
 
 @Lines & Arrows
   icon arrow-right
+  tag narrator
 
-@Human
-  icon user
-
-Agent -> Lines & Arrows: Make the handoff clear
-Lines & Arrows --> Human: Point taken
-Human --> Agent: We are on the same page`;
+Human -> Agent: Make one tiny change
+parallel First pass
+  | code
+    Agent -> Workspace: Update the obvious file
+  | verification
+    Agent -> Workspace: Run everything
+    Workspace --> Agent: One unrelated failure
+choice The "unrelated" failure
+  | genuinely unrelated
+    Agent -> Lines & Arrows: Draw the evidence trail
+  | related after all
+    Agent -> Workspace: Fix the surprise dependency
+gap One green build later
+Agent -> Lines & Arrows: Explain the handoff
+Lines & Arrows --> Human: Tiny change, full documentary`;
 
 const heroDiagram = document.querySelector("#hero-diagram");
 const heroStage = heroDiagram.closest(".diagram-stage");
@@ -105,7 +139,7 @@ const modeStatus = document.querySelector("#hero-mode-status");
 
 heroDiagram.iconResolver = iconResolver;
 heroDiagram.iconCatalog = phosphorIconCatalog;
-heroDiagram.layout = compactDiagramLayout;
+heroDiagram.layout = heroDiagramLayout;
 heroDiagram.theme = activeTheme;
 heroDiagram.source = heroSource;
 sourceInput.value = heroSource;
@@ -358,25 +392,27 @@ for (const button of tabButtons) {
   });
 }
 
-selectCodePanel(tabButtons[0]);
+if (tabButtons.length > 0 && copyButton) {
+  selectCodePanel(tabButtons[0]);
 
-copyButton.addEventListener("click", async () => {
-  const activeTab = tabButtons.find(
-    (button) => button.getAttribute("aria-selected") === "true",
-  );
-  const code = document.querySelector(
-    `#${activeTab.dataset.codeTab} code`,
-  ).textContent;
-  const originalLabel = copyButton.textContent;
+  copyButton.addEventListener("click", async () => {
+    const activeTab = tabButtons.find(
+      (button) => button.getAttribute("aria-selected") === "true",
+    );
+    const code = document.querySelector(
+      `#${activeTab.dataset.codeTab} code`,
+    ).textContent;
+    const originalLabel = copyButton.textContent;
 
-  try {
-    await navigator.clipboard.writeText(code);
-    copyButton.textContent = "Copied";
-  } catch {
-    copyButton.textContent = "Copy failed";
-  }
+    try {
+      await navigator.clipboard.writeText(code);
+      copyButton.textContent = "Copied";
+    } catch {
+      copyButton.textContent = "Copy failed";
+    }
 
-  window.setTimeout(() => {
-    copyButton.textContent = originalLabel;
-  }, 1400);
-});
+    window.setTimeout(() => {
+      copyButton.textContent = originalLabel;
+    }, 1400);
+  });
+}

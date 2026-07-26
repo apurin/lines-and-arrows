@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Explore eleven editable Lines & Arrows sequence diagrams from software engineering, AI, markets, science, and civic systems."
+    />
+    <title>Showcase - Lines &amp; Arrows</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css?v=20260726-11" />
+  </head>
+  <body class="showcase-page is-loading">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav-shell" aria-label="Primary navigation">
+        <a
+          class="wordmark"
+          href="./index.html"
+          aria-label="L↗A, Lines and Arrows home"
+        >
+          <span class="wordmark-mark" aria-hidden="true">L↗A</span>
+          <span>Lines &amp; Arrows</span>
+        </a>
+
+        <div class="nav-links">
+          <a href="./showcase.html" aria-current="page">Showcase</a>
+          <a href="./features.html">Features</a>
+          <a href="./index.html#embed">Embed</a>
+          <a href="./agents.md">agents.md</a>
+          <a
+            class="icon-link"
+            href="https://github.com/apurin/lines-and-arrows"
+            target="_blank"
+            rel="noreferrer"
+            title="GitHub repository (not public yet)"
+            aria-label="Lines and Arrows on GitHub"
+          >
+            <img
+              src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/github-logo-bold.svg"
+              alt=""
+              width="20"
+              height="20"
+            />
+          </a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="showcase-intro section-shell" id="top">
+        <div>
+          <h1>Sequences happen everywhere.</h1>
+          <p>
+            Eleven editable stories from code, agents, markets, cells, cities,
+            oceans, and the systems between them.
+          </p>
+        </div>
+
+        <div
+          class="hero-segmented hero-theme-switcher features-theme-switcher"
+          role="group"
+          aria-label="Color theme"
+        >
+          <button type="button" data-site-theme="light" aria-pressed="true">
+            <span class="control-icon icon-sun" aria-hidden="true"></span>
+            Light
+          </button>
+          <button type="button" data-site-theme="dark" aria-pressed="false">
+            <span class="control-icon icon-moon" aria-hidden="true"></span>
+            Dark
+          </button>
+        </div>
+      </section>
+
+      <nav
+        class="showcase-contents section-shell"
+        aria-labelledby="showcase-contents-title"
+      >
+        <div class="showcase-contents-heading">
+          <h2 id="showcase-contents-title">Choose a sequence.</h2>
+          <p>Jump to a story, then switch between its diagram and source.</p>
+        </div>
+
+        <ul class="showcase-contents-list">
+          <li>
+            <a href="#compatible-migration">
+              <span class="showcase-contents-name">Software engineering</span>
+              <span class="showcase-contents-hook">
+                Ship schema changes without breaking mixed versions.
+              </span>
+            </a>
+          </li>
+          <li>
+            <a href="#checkout-saga">
+              <span class="showcase-contents-name">
+                Service-oriented architecture
+              </span>
+              <span class="showcase-contents-hook">
+                See a saga compensate work it cannot finish.
+              </span>
+            </a>
+          </li>
+          <li>
+            <a href="#streaming-watermarks">
+              <span class="showcase-contents-name">Data flow and streaming</span>
+              <span class="showcase-contents-hook">
+                Follow late events through an event-time window.
+              </span>
+            </a>
+          </li>
+          <li>
+            <a href="#grounded-diagnosis">
+              <span class="showcase-contents-name">LLM agents</span>
+              <span class="showcase-contents-hook">
+                Trace claims back to evidence and approval.
+              </span>
+            </a>
+          </li>
+          <li>
+            <a href="#opening-auction">
+              <span class="showcase-contents-name">Stock trading</span>
+              <span class="showcase-contents-hook">
+                Watch queued orders discover the opening price.
+              </span>
+            </a>
+          </li>
+          <li>
+            <a href="#molecular-address">
+              <span class="showcase-contents-name">Molecular biology</span>
+              <span class="showcase-contents-hook">
+                Search DNA before making the cut.
+              </span>
+            </a>
+          </li>
+          <li>
+            <a href="#immune-rehearsal">
+              <span class="showcase-contents-name">Immunology</span>
+              <span class="showcase-contents-hook">
+                Build memory before the pathogen returns.
+              </span>
+            </a>
+          </li>
+          <li>
+            <a href="#coral-recovery">
+              <span class="showcase-contents-name">Marine ecology</span>
+              <span class="showcase-contents-hook">
+                Follow coral through heat stress and recovery.
+              </span>
+            </a>
+          </li>
+          <li>
+            <a href="#rover-relay">
+              <span class="showcase-contents-name">
+                Planetary exploration
+              </span>
+              <span class="showcase-contents-hook">
+                Drive on Mars between relay windows.
+              </span>
+            </a>
+          </li>
+          <li>
+            <a href="#campaign-budget">
+              <span class="showcase-contents-name">Marketing</span>
+              <span class="showcase-contents-hook">
+                Scale creative only after the signal clears.
+              </span>
+            </a>
+          </li>
+          <li>
+            <a href="#ballot-review">
+              <span class="showcase-contents-name">Civic operations</span>
+              <span class="showcase-contents-hook">
+                Resolve ambiguity without exposing the voter.
+              </span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      <section
+        class="showcase-case section-shell"
+        id="molecular-address"
+        data-showcase
+      >
+        <header class="showcase-case-header">
+          <p class="showcase-area">Molecular biology</p>
+          <h2>A molecular address check</h2>
+          <p>
+            A guide RNA points Cas9 toward a candidate site, where the editor
+            checks the molecular address before making a cut.
+          </p>
+        </header>
+        <figure class="showcase-figure">
+          <div class="showcase-toolbar">
+            <div
+              class="hero-segmented showcase-mode-switcher"
+              role="group"
+              aria-label="A molecular address check diagram mode"
+            >
+              <button
+                type="button"
+                data-showcase-surface="view"
+                aria-pressed="true"
+              >
+                View
+              </button>
+              <button
+                type="button"
+                data-showcase-surface="edit"
+                aria-pressed="false"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                data-showcase-surface="source"
+                aria-pressed="false"
+              >
+                Source
+              </button>
+            </div>
+          </div>
+          <div class="showcase-stage" data-showcase-diagram-pane>
+            <div class="diagram-loading">Rendering molecular search</div>
+            <lines-and-arrows
+              data-showcase-diagram
+              theme="light"
+              mode="view"
+              selectable="false"
+              label="Cas9 checks a DNA site before cutting"
+            ></lines-and-arrows>
+          </div>
+          <div
+            class="showcase-source-editor"
+            data-showcase-source-pane
+            hidden
+          >
+            <label for="molecular-address-source">Diagram source</label>
+            <textarea
+              id="molecular-address-source"
+              data-showcase-source
+              spellcheck="false"
+              wrap="off"
+              aria-describedby="molecular-address-error"
+            >@Guide RNA
+  icon crosshair
+  tag locator
+  tooltip RNA sequence that steers Cas9 toward a matching DNA site
+  tooltip-icon target
+@Cas9
+  icon scissors
+  tag editor
+@Target DNA
+  icon dna
+@Cell Repair
+  icon gear
+
+Guide RNA -> Cas9: Load the target pattern
+repeat Search the genome
+  Cas9 -> Target DNA: Test PAM and sequence
+  choice Binding result
+    | PAM and close match
+      Cas9 -> Target DNA: Cut both strands
+      Target DNA -> Cell Repair: Signal a break
+      Cell Repair --> Target DNA: Patch or rewrite
+    | weak match
+      Cas9 --> Guide RNA: Release site and keep searching</textarea>
+            <div class="showcase-source-actions">
+              <button type="button" data-apply-showcase-source>
+                Apply source
+              </button>
+            </div>
+          </div>
+          <p
+            class="showcase-error"
+            id="molecular-address-error"
+            data-showcase-error
+            role="alert"
+            aria-live="polite"
+          ></p>
+          <p
+            class="visually-hidden"
+            data-showcase-status
+            aria-live="polite"
+          >
+            View mode. Read-only diagram.
+          </p>
+        </figure>
+      </section>
+
+      <section
+        class="showcase-case section-shell"
+        id="immune-rehearsal"
+        data-showcase
+      >
+        <header class="showcase-case-header">
+          <p class="showcase-area">Immunology</p>
+          <h2>The immune system's dress rehearsal</h2>
+          <p>
+            Vaccination builds antibodies and memory in parallel, preparing a
+            faster response when the matching antigen returns.
+          </p>
+        </header>
+        <figure class="showcase-figure">
+          <div class="showcase-toolbar">
+            <div
+              class="hero-segmented showcase-mode-switcher"
+              role="group"
+              aria-label="The immune system's dress rehearsal diagram mode"
+            >
+              <button
+                type="button"
+                data-showcase-surface="view"
+                aria-pressed="true"
+              >
+                View
+              </button>
+              <button
+                type="button"
+                data-showcase-surface="edit"
+                aria-pressed="false"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                data-showcase-surface="source"
+                aria-pressed="false"
+              >
+                Source
+              </button>
+            </div>
+          </div>
+          <div class="showcase-stage" data-showcase-diagram-pane>
+            <div class="diagram-loading">Rendering immune memory</div>
+            <lines-and-arrows
+              data-showcase-diagram
+              theme="light"
+              mode="view"
+              selectable="false"
+              label="Vaccination prepares a faster immune response"
+            ></lines-and-arrows>
+          </div>
+          <div
+            class="showcase-source-editor"
+            data-showcase-source-pane
+            hidden
+          >
+            <label for="immune-rehearsal-source">Diagram source</label>
+            <textarea
+              id="immune-rehearsal-source"
+              data-showcase-source
+              spellcheck="false"
+              wrap="off"
+              aria-describedby="immune-rehearsal-error"
+            >@Vaccine
+  icon syringe
+  tag rehearsal
+  tooltip A simplified model of training immunity without reproducing the full disease
+  tooltip-icon shield-check
+@Antigen-Presenting Cell
+  icon microscope
+@Helper T Cell
+  icon person
+@B Cell
+  icon shield-check
+@Pathogen
+  icon virus
+
+Vaccine -> Antigen-Presenting Cell: Deliver an antigen cue
+Antigen-Presenting Cell -> Helper T Cell: Present the cue
+parallel Build adaptive protection
+  | antibodies
+    Helper T Cell -> B Cell: Activate a matching clone
+    B Cell --> Pathogen: Produce antibodies that fit
+  | memory
+    Helper T Cell -> B Cell: Preserve memory cells
+gap Months or years later
+Pathogen -> B Cell: Matching antigen appears again
+B Cell --> Pathogen: Mount a faster response</textarea>
+            <div class="showcase-source-actions">
+              <button type="button" data-apply-showcase-source>
+                Apply source
+              </button>
+            </div>
+          </div>
+          <p
+            class="showcase-error"
+            id="immune-rehearsal-error"
+            data-showcase-error
+            role="alert"
+            aria-live="polite"
+          ></p>
+          <p
+            class="visually-hidden"
+            data-showcase-status
+            aria-live="polite"
+          >
+            View mode. Read-only diagram.
+          </p>
+        </figure>
+      </section>
+
+      <section
+        class="showcase-case section-shell"
+        id="coral-recovery"
+        data-showcase
+      >
+        <header class="showcase-case-header">
+          <p class="showcase-area">Marine ecology</p>
+          <h2>When a reef loses its solar partners</h2>
+          <p>
+            Heat-stressed coral expels its energy-producing algae, then either
+            declines or begins recovering as ocean temperatures change.
+          </p>
+        </header>
+        <figure class="showcase-figure">
+          <div class="showcase-toolbar">
+            <div
+              class="hero-segmented showcase-mode-switcher"
+              role="group"
+              aria-label="When a reef loses its solar partners diagram mode"
+            >
+              <button
+                type="button"
+                data-showcase-surface="view"
+                aria-pressed="true"
+              >
+                View
+              </button>
+              <button
+                type="button"
+                data-showcase-surface="edit"
+                aria-pressed="false"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                data-showcase-surface="source"
+                aria-pressed="false"
+              >
+                Source
+              </button>
+            </div>
+          </div>
+          <div class="showcase-stage" data-showcase-diagram-pane>
+            <div class="diagram-loading">Rendering reef response</div>
+            <lines-and-arrows
+              data-showcase-diagram
+              theme="light"
+              mode="view"
+              selectable="false"
+              label="A coral reef responds to sustained heat stress"
+            ></lines-and-arrows>
+          </div>
+          <div
+            class="showcase-source-editor"
+            data-showcase-source-pane
+            hidden
+          >
+            <label for="coral-recovery-source">Diagram source</label>
+            <textarea
+              id="coral-recovery-source"
+              data-showcase-source
+              spellcheck="false"
+              wrap="off"
+              aria-describedby="coral-recovery-error"
+            >@Warm Ocean
+  icon thermometer-hot
+  tag stressor
+@Coral
+  icon waves
+  tooltip Bleached coral is stressed and can still recover if conditions improve
+  tooltip-icon first-aid
+@Symbiotic Algae
+  icon leaf
+@Reef Community
+  icon fish
+
+Warm Ocean -> Coral: Sustain heat stress
+Coral -> Symbiotic Algae: Expel stressed partners
+Symbiotic Algae --> Coral: Supply less photosynthetic energy
+gap If the heat lasts for weeks
+choice Temperature trend
+  | stays high
+    Coral -> Reef Community: Habitat begins to erode
+  | cools in time
+    Symbiotic Algae -> Coral: Recolonize tissue
+    Coral --> Reef Community: Recovery becomes possible</textarea>
+            <div class="showcase-source-actions">
+              <button type="button" data-apply-showcase-source>
+                Apply source
+              </button>
+            </div>
+          </div>
+          <p
+            class="showcase-error"
+            id="coral-recovery-error"
+            data-showcase-error
+            role="alert"
+            aria-live="polite"
+          ></p>
+          <p
+            class="visually-hidden"
+            data-showcase-status
+            aria-live="polite"
+          >
+            View mode. Read-only diagram.
+          </p>
+        </figure>
+      </section>
+
+      <section
+        class="showcase-case section-shell"
+        id="rover-relay"
+        data-showcase
+      >
+        <header class="showcase-case-header">
+          <p class="showcase-area">Planetary exploration</p>
+          <h2>A rover drives between phone calls</h2>
+          <p>
+            A Mars rover receives a plan, navigates locally while the orbiter
+            is out of sight, then returns its science.
+          </p>
+        </header>
+        <figure class="showcase-figure">
+          <div class="showcase-toolbar">
+            <div
+              class="hero-segmented showcase-mode-switcher"
+              role="group"
+              aria-label="A rover drives between phone calls diagram mode"
+            >
+              <button
+                type="button"
+                data-showcase-surface="view"
+                aria-pressed="true"
+              >
+                View
+              </button>
+              <button
+                type="button"
+                data-showcase-surface="edit"
+                aria-pressed="false"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                data-showcase-surface="source"
+                aria-pressed="false"
+              >
+                Source
+              </button>
+            </div>
+          </div>
+          <div class="showcase-stage" data-showcase-diagram-pane>
+            <div class="diagram-loading">Rendering the rover's sol</div>
+            <lines-and-arrows
+              data-showcase-diagram
+              theme="light"
+              mode="view"
+              selectable="false"
+              label="A Mars rover navigates between relay windows"
+            ></lines-and-arrows>
+          </div>
+          <div
+            class="showcase-source-editor"
+            data-showcase-source-pane
+            hidden
+          >
+            <label for="rover-relay-source">Diagram source</label>
+            <textarea
+              id="rover-relay-source"
+              data-showcase-source
+              spellcheck="false"
+              wrap="off"
+              aria-describedby="rover-relay-error"
+            >@Mission Control
+  icon globe
+@Relay Orbiter
+  icon radio
+  tag window
+  tooltip Communicates with the rover only during a relay pass
+  tooltip-icon broadcast
+@Rover
+  icon robot
+  tag local pilot
+@Navigation Camera
+  icon camera
+@Rock Outcrop
+  icon mountains
+
+Mission Control -> Relay Orbiter: Upload the sol plan
+Relay Orbiter -> Rover: Forward commands
+gap The orbiter drops below the horizon
+Rover ->x Relay Orbiter: Send a late status packet
+repeat Autonomous drive segment
+  Rover -> Navigation Camera: Scan the next few metres
+  choice Route assessment
+    | clear
+      Navigation Camera --> Rover: Safe path
+      Rover -> Rock Outcrop: Drive and sample
+    | blocked
+      Navigation Camera --> Rover: Hazard ahead
+      Rover -> Rover: Plan a detour
+gap Next relay pass
+Rover -> Relay Orbiter: Send images and telemetry
+Relay Orbiter --> Mission Control: Downlink the science</textarea>
+            <div class="showcase-source-actions">
+              <button type="button" data-apply-showcase-source>
+                Apply source
+              </button>
+            </div>
+          </div>
+          <p
+            class="showcase-error"
+            id="rover-relay-error"
+            data-showcase-error
+            role="alert"
+            aria-live="polite"
+          ></p>
+          <p
+            class="visually-hidden"
+            data-showcase-status
+            aria-live="polite"
+          >
+            View mode. Read-only diagram.
+          </p>
+        </figure>
+      </section>
+
+      <section
+        class="showcase-case section-shell"
+        id="campaign-budget"
+        data-showcase
+      >
+        <header class="showcase-case-header">
+          <p class="showcase-area">Marketing</p>
+          <h2>The campaign earns its budget</h2>
+          <p>
+            A small creative test follows two promises through qualified
+            conversions, waits for evidence, then scales the stronger idea.
+          </p>
+        </header>
+        <figure class="showcase-figure">
+          <div class="showcase-toolbar">
+            <div
+              class="hero-segmented showcase-mode-switcher"
+              role="group"
+              aria-label="The campaign earns its budget diagram mode"
+            >
+              <button
+                type="button"
+                data-showcase-surface="view"
+                aria-pressed="true"
+              >
+                View
+              </button>
+              <button
+                type="button"
+                data-showcase-surface="edit"
+                aria-pressed="false"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                data-showcase-surface="source"
+                aria-pressed="false"
+              >
+                Source
+              </button>
+            </div>
+          </div>
+          <div class="showcase-stage" data-showcase-diagram-pane>
+            <div class="diagram-loading">Rendering the creative test</div>
+            <lines-and-arrows
+              data-showcase-diagram
+              theme="light"
+              mode="view"
+              selectable="false"
+              label="A campaign test connects creative choices to qualified leads"
+            ></lines-and-arrows>
+          </div>
+          <div
+            class="showcase-source-editor"
+            data-showcase-source-pane
+            hidden
+          >
+            <label for="campaign-budget-source">Diagram source</label>
+            <textarea
+              id="campaign-budget-source"
+              data-showcase-source
+              spellcheck="false"
+              wrap="off"
+              aria-describedby="campaign-budget-error"
+            >@Strategist
+  icon target
+  tag experiment
+  tooltip Starts small enough to learn before spending at scale
+  tooltip-icon chart-line-up
+@Ad Platform
+  icon megaphone
+@Visitor
+  icon user
+@Landing Page
+  icon browser
+@CRM
+  icon users
+
+Strategist -> Ad Platform: Launch a small test
+experiment Creative split
+  | promise
+    Ad Platform -> Visitor: Show the benefit-led ad
+  | curiosity
+    Ad Platform -> Visitor: Show the question-led ad
+Visitor -> Landing Page: Follow the ad
+choice Visit outcome
+  | interested
+    Landing Page -> CRM: Record qualified lead
+      tag signal
+      tooltip Conversion wins on fit, not clicks
+      tooltip-icon chart-line-up
+    CRM --> Strategist: Report conversion
+  | unconvinced
+    Landing Page --> Ad Platform: Record bounce
+gap After the confidence interval closes
+Ad Platform --> Strategist: Compare cost per lead
+Strategist -> Ad Platform: Scale the winner</textarea>
+            <div class="showcase-source-actions">
+              <button type="button" data-apply-showcase-source>
+                Apply source
+              </button>
+            </div>
+          </div>
+          <p
+            class="showcase-error"
+            id="campaign-budget-error"
+            data-showcase-error
+            role="alert"
+            aria-live="polite"
+          ></p>
+          <p
+            class="visually-hidden"
+            data-showcase-status
+            aria-live="polite"
+          >
+            View mode. Read-only diagram.
+          </p>
+        </figure>
+      </section>
+
+      <section
+        class="showcase-case section-shell"
+        id="ballot-review"
+        data-showcase
+      >
+        <header class="showcase-case-header">
+          <p class="showcase-area">Civic operations</p>
+          <h2>When a ballot needs a second look</h2>
+          <p>
+            An ambiguous mark moves from machine reading to rule-bound human
+            review while the ballot remains anonymous.
+          </p>
+        </header>
+        <figure class="showcase-figure">
+          <div class="showcase-toolbar">
+            <div
+              class="hero-segmented showcase-mode-switcher"
+              role="group"
+              aria-label="When a ballot needs a second look diagram mode"
+            >
+              <button
+                type="button"
+                data-showcase-surface="view"
+                aria-pressed="true"
+              >
+                View
+              </button>
+              <button
+                type="button"
+                data-showcase-surface="edit"
+                aria-pressed="false"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                data-showcase-surface="source"
+                aria-pressed="false"
+              >
+                Source
+              </button>
+            </div>
+          </div>
+          <div class="showcase-stage" data-showcase-diagram-pane>
+            <div class="diagram-loading">Rendering ballot review</div>
+            <lines-and-arrows
+              data-showcase-diagram
+              theme="light"
+              mode="view"
+              selectable="false"
+              label="An ambiguous ballot moves through anonymous review"
+            ></lines-and-arrows>
+          </div>
+          <div
+            class="showcase-source-editor"
+            data-showcase-source-pane
+            hidden
+          >
+            <label for="ballot-review-source">Diagram source</label>
+            <textarea
+              id="ballot-review-source"
+              data-showcase-source
+              spellcheck="false"
+              wrap="off"
+              aria-describedby="ballot-review-error"
+            >@Voter
+  icon person
+@Poll Worker
+  icon identification-badge
+@Ballot Scanner
+  icon scan
+@Review Panel
+  icon scales
+@Public Count
+  icon chart-bar
+
+Voter -> Poll Worker: Submit paper ballot
+Poll Worker -> Ballot Scanner: Feed sealed ballot
+choice Machine reading
+  | mark is clear
+    Ballot Scanner --> Poll Worker: Accepted
+    Ballot Scanner -> Public Count: Add anonymous vote
+  | mark is ambiguous
+    Ballot Scanner --> Poll Worker: Flag for review
+      tag needs eyes
+      tooltip The ballot stays anonymous while intent is reviewed
+      tooltip-icon eye
+    gap After polls close
+    Poll Worker -> Review Panel: Deliver sealed ballot
+    Review Panel -> Review Panel: Apply published intent rules
+    Review Panel -> Public Count: Add adjudicated vote
+Poll Worker --> Voter: Ballot deposited</textarea>
+            <div class="showcase-source-actions">
+              <button type="button" data-apply-showcase-source>
+                Apply source
+              </button>
+            </div>
+          </div>
+          <p
+            class="showcase-error"
+            id="ballot-review-error"
+            data-showcase-error
+            role="alert"
+            aria-live="polite"
+          ></p>
+          <p
+            class="visually-hidden"
+            data-showcase-status
+            aria-live="polite"
+          >
+            View mode. Read-only diagram.
+          </p>
+        </figure>
+      </section>
+
+      <section class="features-next section-shell">
+        <div>
+          <h2>Now make one of your own.</h2>
+          <p>
+            The feature guide explains each building block. The homepage shows
+            how to embed the result.
+          </p>
+        </div>
+        <div class="features-next-actions">
+          <a class="button button-primary" href="./features.html">
+            Explore features
+          </a>
+          <a class="button button-secondary" href="./index.html#embed">
+            See embedding
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer section-shell">
+      <div>
+        <a class="wordmark footer-wordmark" href="./index.html">
+          <span class="wordmark-mark" aria-hidden="true">L↗A</span>
+          <span>Lines &amp; Arrows</span>
+        </a>
+        <p>Small language. Clear sequences.</p>
+      </div>
+
+      <div class="footer-links">
+        <a
+          href="https://github.com/apurin/lines-and-arrows"
+          target="_blank"
+          rel="noreferrer"
+          title="GitHub repository (not public yet)"
+        >
+          <img
+            src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/github-logo-bold.svg"
+            alt=""
+            width="19"
+            height="19"
+          />
+          GitHub
+        </a>
+        <a
+          href="https://www.linkedin.com/in/apurin"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <img
+            src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/linkedin-logo-bold.svg"
+            alt=""
+            width="19"
+            height="19"
+          />
+          Anton Purin
+        </a>
+      </div>
+    </footer>
+
+    <script type="module" src="./showcase.js?v=20260726-4"></script>
+  </body>
+</html>

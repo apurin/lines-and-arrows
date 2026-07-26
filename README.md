@@ -1,26 +1,71 @@
 # Lines & Arrows
 
-Lines & Arrows is a small text format and SVG editor for sequence diagrams.
-The source format is independent of any particular rendering engine.
+Lines & Arrows is a lightweight, text-first sequence-diagram viewer and visual
+editor. Its small indentation-based language stores the meaning and order of a
+sequence without coupling the document to a particular rendering engine.
 
-The implementation currently provides:
+The project currently provides a dependency-free parser and serializer,
+responsive SVG rendering, a direct-manipulation editor, an opt-in web
+component, TypeScript declarations, light and dark themes, and a configurable
+icon resolver.
 
-- a dependency-free parser;
-- a canonical text serializer;
-- responsive SVG view and edit renderers;
-- light, dark, and system themes;
-- optional selection for actors, messages, groups, sections, and gaps;
-- contextual actor and timeline editing;
-- exact-position insertion, drag reordering, and cross-group movement;
-- contiguous marquee grouping and non-destructive ungrouping;
-- undo, redo, keyboard editing, and source replacement;
-- an opt-in custom element;
-- a ready-to-use Phosphor icon provider with configurable overrides.
+> **Status:** active development. The package manifest is still marked
+> `private`, so `@lines-and-arrows/core` is not ready to install from npm yet.
 
-The interaction model is recorded in [ux.md](./ux.md), and the source language
-is defined in [syntax.md](./syntax.md).
+## Highlights
 
-## Browser usage
+- View and edit modes using the same responsive SVG canvas.
+- Actors, messages, self-messages, open-ended group types, group sections,
+  nested groups, and timeline gaps.
+- Solid, dashed, and lost-message arrows.
+- Optional actor and message tags, tooltips, and icons.
+- Direct actor and message creation, endpoint retargeting, drag reordering,
+  marquee grouping, and non-destructive ungrouping.
+- Undo, redo, keyboard editing, and source replacement.
+- Optional selection in view mode.
+- Light, dark, and system themes.
+- Built-in Phosphor icon catalog with configurable provider overrides.
+
+## Syntax
+
+```lines-and-arrows
+@Customer
+  icon user
+
+@API
+  icon server
+  tag public
+  tooltip Public entry point
+
+@Worker
+  icon gear
+
+Customer -> API: Start job
+API -> Worker: Dispatch
+
+critical Job execution
+  Worker -> Worker: Process
+  Worker --> API: Completed
+
+gap A few moments later
+
+API --> Customer: Job complete
+```
+
+Actor declarations are optional when actors can be inferred from their first
+use. Message labels are optional:
+
+```lines-and-arrows
+Client -> API
+API --> Client: Accepted
+API ->x Queue: Delivery failed
+```
+
+See [syntax.md](./syntax.md) for the complete language definition.
+
+## Web component
+
+During local development, import the component directly from the source tree:
 
 ```html
 <script type="module">
@@ -29,21 +74,33 @@ is defined in [syntax.md](./syntax.md).
   } from "./src/index.js";
 
   defineLinesAndArrows();
+</script>
 
-  const diagram = document.querySelector("lines-and-arrows");
-  diagram.source = `
+<lines-and-arrows
+  mode="view"
+  theme="auto"
+  selectable="false"
+>
 @Client
 @API
 
 Client -> API: Start
 API --> Client: Complete
-  `;
-</script>
-
-<lines-and-arrows mode="edit" theme="auto"></lines-and-arrows>
+</lines-and-arrows>
 ```
 
-## JavaScript usage
+Set `mode="edit"` to enable the visual editor. The element exposes `source`,
+`mode`, `theme`, `selectable`, `layout`, `iconResolver`, `iconCatalog`,
+`selectedIds`, `canUndo`, and `canRedo`, as well as selection, history, and
+source-replacement methods.
+
+It emits:
+
+- `la-select` when the selection changes;
+- `la-change` after an editor command changes the source;
+- `la-error` when parsing or editing fails.
+
+## JavaScript API
 
 ```js
 import {
@@ -51,20 +108,23 @@ import {
   parse,
   renderDiagram,
   renderEditor,
+  serialize,
 } from "./src/index.js";
 
 const document = parse(source);
+const canonicalSource = serialize(document);
+
 const viewer = renderDiagram(container, document, {
-  theme: "light",
+  theme: "auto",
   selectable: false,
 });
 
 viewer.destroy();
 
-const editor = new DiagramEditor(source);
+const editor = new DiagramEditor(canonicalSource);
 const editable = renderEditor(container, editor.document, {
   editor,
-  theme: "light",
+  theme: "auto",
   onChange({ source: nextSource }) {
     console.log(nextSource);
   },
@@ -74,52 +134,55 @@ editable.undo();
 editable.redo();
 ```
 
-`renderDiagram` accepts either source text or a parsed document. Element
-selection is enabled by default and can be disabled with `selectable: false`.
-Actor and configured tooltip icons work without setup. By default, Lines &
-Arrows resolves the bold SVG assets from the version-pinned Phosphor Icons
-2.1.1 package on jsDelivr. Its picker shows 48 recommended actor icons and
-searches the complete local index of Phosphor icon names.
+`renderDiagram` and `renderEditor` accept source text or a parsed document and
+return controllers that can be destroyed when the host view is removed.
 
-Set `iconResolver(name, theme)` and `iconCatalog` to use another provider. The
-catalog is also the provider's availability index: default recommendations
-missing from a custom catalog are skipped. Supplying a custom resolver without
-a catalog leaves the picker empty rather than assuming that provider supports
-Phosphor names. Catalog entries may be icon-name strings or objects with
-`name`, `label`, and `keywords`. Set the resolver to `null` and the catalog to
-`[]` to disable external icons. Tooltips use a built-in lowercase `i` when
-`tooltip-icon` is omitted or cannot be resolved. `renderEditor` uses the same
-inputs and options plus an optional persistent `DiagramEditor` instance.
+## npm and CDN distribution
+
+The intended package name is `@lines-and-arrows/core`. Publishing is currently
+disabled with `"private": true`; after the first public release, consumers will
+be able to install it with:
+
+```sh
+npm install @lines-and-arrows/core
+```
+
+and import it from a CDN that exposes npm ES modules:
+
+```js
+import {
+  defineLinesAndArrows,
+} from "https://cdn.jsdelivr.net/npm/@lines-and-arrows/core@VERSION/+esm";
+```
+
+Pin an explicit version in production rather than using an unversioned CDN URL.
+
+The published package is configured to contain the runtime source, type
+declarations, README, syntax reference, MIT license, and third-party notices.
+
+## Themes and icons
+
+Use `theme: "light"`, `"dark"`, or `"auto"`. Selection is enabled by default
+for `renderDiagram` and can be disabled with `selectable: false`.
+
+Actor and tooltip icons work without configuration. By default, Lines & Arrows
+resolves bold SVG assets from the version-pinned Phosphor Icons 2.1.1 package
+on jsDelivr. The editor offers 48 recommended actor icons and searches the
+complete local icon-name catalog.
+
+Set `iconResolver(name, theme)` and `iconCatalog` to provide another icon set.
+Set the resolver to `null` and the catalog to `[]` to disable external icons.
+Tooltips fall back to a built-in lowercase `i`.
 
 Phosphor Icons is MIT licensed. See
 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
 
-The custom element emits `la-select`, `la-change`, and `la-error` events. Its
-`source`, `mode`, `theme`, `selectable`, `iconResolver`, `iconCatalog`,
-`selectedIds`, `canUndo`, and `canRedo` properties make it usable without
-coupling an application to its shadow DOM. Edit mode always enables selection;
-view mode respects the `selectable` property or `selectable="false"` attribute.
+## Repository layout
 
-## Edit controls
-
-- Select an actor, message, gap, group, or section to open its compact editor.
-- Use the icon button beside an actor name or tooltip to open the searchable
-  icon palette. Its first two rows prioritize common sequence-diagram actors;
-  search covers the full provider catalog.
-- Drag a selected actor horizontally to reorder it.
-- Hover a lifeline between timeline items, then drag its arrow circle to an
-  actor to create an unnamed connection, including back to the same actor.
-- Drag either endpoint of a selected connection to another actor to retarget it.
-- Drag the four-dot handle on a selected timeline item or section to reposition
-  it.
-- Hover or focus the information control beside a tag to reveal its tooltip
-  immediately.
-- Hover between actors or timeline items to reveal structural insertion
-  controls.
-- Drag across contiguous sibling timeline items, then choose **Group**.
-- Use `Delete` to remove the selection, `Escape` to cancel, and
-  `Command/Ctrl+Z` or `Command/Ctrl+Shift+Z` for history.
-- Use `Alt` with arrow keys to reorder the selected actor or timeline item.
+- `src/` — parser, serializer, layout, SVG renderer, editor, and web component.
+- `test/` — parser, model, layout, theme, and editor regression tests.
+- `demo/` — local interactive development demo.
+- `website/` — public product website and showcases.
 
 ## Development
 
@@ -129,3 +192,7 @@ python3 -m http.server 4173
 ```
 
 Then open `http://localhost:4173/demo/`.
+
+## License
+
+Lines & Arrows is available under the [MIT License](./LICENSE).

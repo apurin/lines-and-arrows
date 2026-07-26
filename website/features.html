@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Explore Lines & Arrows features through concise syntax examples and their rendered sequence diagrams."
+    />
+    <title>Features - Lines &amp; Arrows</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css?v=20260726-11" />
+  </head>
+  <body class="features-page">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav-shell" aria-label="Primary navigation">
+        <a
+          class="wordmark"
+          href="./index.html"
+          aria-label="L↗A, Lines and Arrows home"
+        >
+          <span class="wordmark-mark" aria-hidden="true">L↗A</span>
+          <span>Lines &amp; Arrows</span>
+        </a>
+
+        <div class="nav-links">
+          <a href="./showcase.html">Showcase</a>
+          <a href="./features.html" aria-current="page">Features</a>
+          <a href="./index.html#embed">Embed</a>
+          <a href="./agents.md">agents.md</a>
+          <a
+            class="icon-link"
+            href="https://github.com/apurin/lines-and-arrows"
+            target="_blank"
+            rel="noreferrer"
+            title="GitHub repository (not public yet)"
+            aria-label="Lines and Arrows on GitHub"
+          >
+            <img
+              src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/github-logo-bold.svg"
+              alt=""
+              width="20"
+              height="20"
+            />
+          </a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="features-intro section-shell" id="top">
+        <div>
+          <h1>A small language with useful depth.</h1>
+          <p>
+            Read the source on the left. See the same sequence rendered on the
+            right.
+          </p>
+        </div>
+
+        <div
+          class="hero-segmented hero-theme-switcher features-theme-switcher"
+          role="group"
+          aria-label="Color theme"
+        >
+          <button
+            type="button"
+            data-site-theme="light"
+            aria-pressed="true"
+          >
+            <span class="control-icon icon-sun" aria-hidden="true"></span>
+            Light
+          </button>
+          <button
+            type="button"
+            data-site-theme="dark"
+            aria-pressed="false"
+          >
+            <span class="control-icon icon-moon" aria-hidden="true"></span>
+            Dark
+          </button>
+        </div>
+      </section>
+
+      <section class="feature-row section-shell" id="actors" data-feature>
+        <div class="feature-copy">
+          <h2>Actors stay recognizable.</h2>
+          <p>
+            Declare each participant once, then give services, people, and
+            tools icons that remain consistent through the sequence.
+          </p>
+          <pre class="feature-source"><code>@Agent
+  icon robot
+@API
+  icon cloud
+@Worker
+  icon gear-six
+
+Agent -> API: Submit request
+API -> Worker: Dispatch work</code></pre>
+        </div>
+        <figure class="feature-figure">
+          <div class="feature-diagram">
+            <div class="diagram-loading">Rendering actors</div>
+            <lines-and-arrows
+              data-feature-diagram
+              theme="light"
+              mode="view"
+              selectable="false"
+              label="Actors with recognizable icons"
+            ></lines-and-arrows>
+          </div>
+          <p class="feature-error" role="alert" aria-live="polite"></p>
+        </figure>
+      </section>
+
+      <section class="feature-row section-shell" id="metadata" data-feature>
+        <div class="feature-copy">
+          <h2>Context stays available.</h2>
+          <p>
+            Tags keep status visible. Tooltips hold supporting detail without
+            turning the main sequence into a wall of text.
+          </p>
+          <pre class="feature-source"><code>@Agent
+  icon robot
+  tag assistant
+@Reviewer
+  icon user
+  tag human
+  tooltip Checks the result
+
+Agent -> Reviewer: Present result
+  tag review
+  tooltip Include the evidence
+  tooltip-icon warning</code></pre>
+        </div>
+        <figure class="feature-figure">
+          <div class="feature-diagram">
+            <div class="diagram-loading">Rendering context</div>
+            <lines-and-arrows
+              data-feature-diagram
+              theme="light"
+              mode="view"
+              selectable="false"
+              label="Tags and tooltips attached to actors and a message"
+            ></lines-and-arrows>
+          </div>
+          <p class="feature-error" role="alert" aria-live="polite"></p>
+        </figure>
+      </section>
+
+      <section class="feature-row section-shell" id="groups" data-feature>
+        <div class="feature-copy">
+          <h2>Groups show the shape of work.</h2>
+          <p>
+            Wrap repeated, critical, or parallel steps. Groups can stand alone
+            or nest when one concern belongs inside another.
+          </p>
+          <pre class="feature-source"><code>@Agent
+@Worker
+
+repeat Process each task
+  Agent -> Worker: Start task
+  critical Keep the audit trail
+    Worker -> Worker: Save evidence
+  Worker --> Agent: Task complete
+
+parallel Continue working
+  Agent -> Worker: Queue next task</code></pre>
+        </div>
+        <figure class="feature-figure">
+          <div class="feature-diagram">
+            <div class="diagram-loading">Rendering groups</div>
+            <lines-and-arrows
+              data-feature-diagram
+              theme="light"
+              mode="view"
+              selectable="false"
+              label="Standalone and nested sequence groups"
+            ></lines-and-arrows>
+          </div>
+          <p class="feature-error" role="alert" aria-live="polite"></p>
+        </figure>
+      </section>
+
+      <section class="feature-row section-shell" id="sections" data-feature>
+        <div class="feature-copy">
+          <h2>Sections name the alternatives.</h2>
+          <p>
+            Split a group into labeled outcomes while keeping the same actors
+            and shared sequence in view.
+          </p>
+          <pre class="feature-source"><code>@Agent
+  icon robot
+@Tool
+  icon wrench
+
+Agent -> Tool: Run
+choice Tool response
+  | complete
+    Tool --> Agent: Result
+  | needs input
+    Tool --> Agent: Ask for context</code></pre>
+        </div>
+        <figure class="feature-figure">
+          <div class="feature-diagram">
+            <div class="diagram-loading">Rendering alternatives</div>
+            <lines-and-arrows
+              data-feature-diagram
+              theme="light"
+              mode="view"
+              selectable="false"
+              label="Alternative outcomes in named group sections"
+            ></lines-and-arrows>
+          </div>
+          <p class="feature-error" role="alert" aria-live="polite"></p>
+        </figure>
+      </section>
+
+      <section class="feature-row section-shell" id="gaps" data-feature>
+        <div class="feature-copy">
+          <h2>Missing time remains visible.</h2>
+          <p>
+            Comments explain the source. Gaps reserve visible time in both the
+            document and the rendered sequence.
+          </p>
+          <pre class="feature-source"><code>@Agent
+@Worker
+
+Agent -> Worker: Start
+// Repeated work is summarized.
+repeat Until complete
+  Worker -> Worker: Process step
+  gap Next event loop
+  Worker --> Agent: Progress</code></pre>
+        </div>
+        <figure class="feature-figure">
+          <div class="feature-diagram">
+            <div class="diagram-loading">Rendering the gap</div>
+            <lines-and-arrows
+              data-feature-diagram
+              theme="light"
+              mode="view"
+              selectable="false"
+              label="A visible gap inside repeated work"
+            ></lines-and-arrows>
+          </div>
+          <p class="feature-error" role="alert" aria-live="polite"></p>
+        </figure>
+      </section>
+
+      <section class="feature-row section-shell" id="icons" data-feature>
+        <div class="feature-copy">
+          <h2>The icon library covers real systems.</h2>
+          <p>
+            Use the built-in Phosphor catalog for browsers, infrastructure,
+            queues, storage, people, and the tools between them.
+          </p>
+          <pre class="feature-source"><code>@Browser
+  icon browser
+@Cloud
+  icon cloud
+@Queue
+  icon queue
+@Database
+  icon database
+
+Browser -> Cloud: Upload
+Cloud -> Queue: Schedule
+Queue -> Database: Store result</code></pre>
+        </div>
+        <figure class="feature-figure">
+          <div class="feature-diagram">
+            <div class="diagram-loading">Rendering icon choices</div>
+            <lines-and-arrows
+              data-feature-diagram
+              theme="light"
+              mode="view"
+              selectable="false"
+              label="System actors using icons from the built-in catalog"
+            ></lines-and-arrows>
+          </div>
+          <p class="feature-error" role="alert" aria-live="polite"></p>
+        </figure>
+      </section>
+
+      <section class="feature-row section-shell" id="source" data-feature>
+        <div class="feature-copy">
+          <h2>Text remains the source of truth.</h2>
+          <p>
+            Names, arrows, and indentation carry a complete workflow without
+            storing layout instructions in the document.
+          </p>
+          <pre class="feature-source"><code>@Agent
+  icon robot
+@Planner
+  icon tree-structure
+@Worker
+  icon gear-six
+
+Agent -> Planner: Plan the task
+repeat Each step
+  Planner -> Worker: Run step
+  choice Worker response
+    | complete
+      Worker --> Planner: Evidence
+    | needs input
+      Worker --> Agent: Ask for context
+  gap Next step
+Planner --> Agent: Final result</code></pre>
+        </div>
+        <figure class="feature-figure">
+          <div class="feature-diagram">
+            <div class="diagram-loading">Rendering the workflow</div>
+            <lines-and-arrows
+              data-feature-diagram
+              theme="light"
+              mode="view"
+              selectable="false"
+              label="A complete workflow rendered from concise source"
+            ></lines-and-arrows>
+          </div>
+          <p class="feature-error" role="alert" aria-live="polite"></p>
+        </figure>
+      </section>
+
+      <section class="features-next section-shell">
+        <div>
+          <h2>Ready to put it on a page?</h2>
+          <p>
+            The homepage shows both embedding paths. Agents can use the shorter
+            Markdown reference.
+          </p>
+        </div>
+        <div class="features-next-actions">
+          <a class="button button-primary" href="./index.html#embed">
+            See embedding
+          </a>
+          <a class="button button-secondary" href="./agents.md">
+            Read agents.md
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer section-shell">
+      <div>
+        <a class="wordmark footer-wordmark" href="./index.html">
+          <span class="wordmark-mark" aria-hidden="true">L↗A</span>
+          <span>Lines &amp; Arrows</span>
+        </a>
+        <p>Small language. Clear sequences.</p>
+      </div>
+
+      <div class="footer-links">
+        <a
+          href="https://github.com/apurin/lines-and-arrows"
+          target="_blank"
+          rel="noreferrer"
+          title="GitHub repository (not public yet)"
+        >
+          <img
+            src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/github-logo-bold.svg"
+            alt=""
+            width="19"
+            height="19"
+          />
+          GitHub
+        </a>
+        <a
+          href="https://www.linkedin.com/in/apurin"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <img
+            src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/linkedin-logo-bold.svg"
+            alt=""
+            width="19"
+            height="19"
+          />
+          Anton Purin
+        </a>
+      </div>
+    </footer>
+
+    <script type="module" src="./features.js?v=20260726-3"></script>
+  </body>
+</html>
