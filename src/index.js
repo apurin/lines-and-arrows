@@ -15,6 +15,13 @@ export {
 } from "./editor.js";
 export { serialize } from "./serialize.js";
 export {
+  PHOSPHOR_ICON_VERSION,
+  PHOSPHOR_ICON_WEIGHT,
+  phosphorIconCatalog,
+  phosphorIconResolver,
+  recommendedActorIconNames,
+} from "./icons.js";
+export {
   LinesAndArrowsElement,
   defineLinesAndArrows,
 } from "./element.js";

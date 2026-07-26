@@ -1,0 +1,780 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Lines & Arrows is a small text language and SVG editor for sequence diagrams that agents can write and humans can edit."
+    />
+    <title>Lines &amp; Arrows - Sequence diagrams for agents and humans</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css?v=20260725-10" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav-shell" aria-label="Primary navigation">
+        <a
+          class="wordmark"
+          href="#top"
+          aria-label="L↗A, Lines and Arrows home"
+        >
+          <span class="wordmark-mark" aria-hidden="true">L↗A</span>
+          <span>Lines &amp; Arrows</span>
+        </a>
+
+        <div class="nav-links">
+          <a href="#syntax">Features</a>
+          <a href="#embed">Embed</a>
+          <a href="./agents.md">agents.md</a>
+          <a
+            class="icon-link"
+            href="https://github.com/apurin/lines-and-arrows"
+            target="_blank"
+            rel="noreferrer"
+            title="GitHub repository (not public yet)"
+            aria-label="Lines and Arrows on GitHub"
+          >
+            <img
+              src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/github-logo-bold.svg"
+              alt=""
+              width="20"
+              height="20"
+            />
+          </a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero section-shell" id="top">
+        <div class="hero-copy">
+          <h1>Sequence diagrams that keep their point.</h1>
+          <p>
+            A tiny text language and SVG editor that agents can write and
+            humans can reshape.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#syntax">
+              Explore features
+            </a>
+            <a class="button button-secondary" href="./agents.md">
+              Read agents.md
+            </a>
+          </div>
+        </div>
+
+        <figure class="hero-visual">
+          <div class="hero-toolbar">
+            <div
+              class="hero-segmented"
+              role="group"
+              aria-label="Diagram mode"
+            >
+              <button
+                type="button"
+                data-hero-surface="view"
+                aria-pressed="true"
+              >
+                View
+              </button>
+              <button
+                type="button"
+                data-hero-surface="edit"
+                aria-pressed="false"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                data-hero-surface="source"
+                aria-pressed="false"
+              >
+                Source
+              </button>
+            </div>
+
+            <div
+              class="hero-segmented hero-theme-switcher"
+              role="group"
+              aria-label="Color theme"
+            >
+              <button
+                type="button"
+                data-site-theme="light"
+                aria-pressed="true"
+              >
+                <span
+                  class="control-icon icon-sun"
+                  aria-hidden="true"
+                ></span>
+                Light
+              </button>
+              <button
+                type="button"
+                data-site-theme="dark"
+                aria-pressed="false"
+              >
+                <span
+                  class="control-icon icon-moon"
+                  aria-hidden="true"
+                ></span>
+                Dark
+              </button>
+            </div>
+          </div>
+
+          <div class="diagram-stage diagram-stage-hero">
+            <div class="diagram-loading">Rendering the handoff</div>
+            <lines-and-arrows
+              id="hero-diagram"
+              theme="light"
+              mode="view"
+              selectable="false"
+              label="An agent asks Lines and Arrows to explain a handoff"
+            ></lines-and-arrows>
+
+            <div
+              class="hero-source-editor"
+              id="hero-source-editor"
+              hidden
+            >
+              <label for="hero-source">Diagram source</label>
+              <textarea
+                id="hero-source"
+                spellcheck="false"
+                wrap="off"
+                aria-describedby="hero-source-error"
+              ></textarea>
+              <div class="hero-source-actions">
+                <button type="button" id="apply-hero-source">
+                  Apply source
+                </button>
+                <p
+                  id="hero-source-error"
+                  class="hero-source-error"
+                  role="alert"
+                  aria-live="polite"
+                ></p>
+              </div>
+            </div>
+          </div>
+          <p class="visually-hidden" id="hero-mode-status" aria-live="polite">
+            View mode. Read-only diagram without selection controls.
+          </p>
+          <figcaption>
+            Plain text in. A responsive, editable sequence out.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="syntax-section section-shell" id="syntax">
+        <div class="section-heading">
+          <h2>See what the editor can do.</h2>
+          <p>
+            Every example is live. Start in View, shape it directly in Edit,
+            or open Source when you want the underlying text.
+          </p>
+        </div>
+
+        <div class="syntax-grid">
+          <div class="syntax-column">
+          <article class="playground" data-playground>
+            <header class="playground-header">
+              <div>
+                <h3>Actors get recognizable icons</h3>
+                <p>
+                  Give services, people, and tools a visual identity without
+                  changing the diagram structure.
+                </p>
+              </div>
+              <div
+                class="hero-segmented playground-segmented"
+                role="group"
+                aria-label="Actor icon diagram mode"
+              >
+                <button type="button" data-playground-surface="view" aria-pressed="true">View</button>
+                <button type="button" data-playground-surface="edit" aria-pressed="false">Edit</button>
+                <button type="button" data-playground-surface="source" aria-pressed="false">Source</button>
+              </div>
+            </header>
+            <div class="playground-layout">
+              <div class="source-pane" hidden>
+                <label for="source-actors">Source</label>
+                <textarea
+                  id="source-actors"
+                  spellcheck="false"
+                  wrap="off"
+                  aria-describedby="error-actors"
+                >@Agent
+  icon robot
+
+@API
+  icon cloud
+
+@Worker
+  icon gear-six
+
+Agent -> API: Submit request
+API -> Worker: Dispatch work</textarea>
+                <div class="source-actions">
+                  <button type="button" data-apply-playground-source>
+                    Apply source
+                  </button>
+                  <p
+                    class="source-error"
+                    id="error-actors"
+                    role="alert"
+                    aria-live="polite"
+                  ></p>
+                </div>
+              </div>
+              <div class="diagram-pane">
+                <div class="diagram-loading">Rendering actors</div>
+                <lines-and-arrows
+                  theme="auto"
+                  mode="view"
+                  selectable="false"
+                  label="Actor icon example"
+                ></lines-and-arrows>
+              </div>
+            </div>
+            <p class="visually-hidden" data-playground-status aria-live="polite">
+              View mode. Read-only diagram without selection controls.
+            </p>
+          </article>
+
+          <article class="playground" data-playground>
+            <header class="playground-header">
+              <div>
+                <h3>Tags and tooltips add context</h3>
+                <p>
+                  Keep the sequence clean, then reveal status and detail only
+                  where they help.
+                </p>
+              </div>
+              <div
+                class="hero-segmented playground-segmented"
+                role="group"
+                aria-label="Metadata diagram mode"
+              >
+                <button
+                  type="button"
+                  data-playground-surface="view"
+                  aria-pressed="true"
+                >
+                  View
+                </button>
+                <button
+                  type="button"
+                  data-playground-surface="edit"
+                  aria-pressed="false"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  data-playground-surface="source"
+                  aria-pressed="false"
+                >
+                  Source
+                </button>
+              </div>
+            </header>
+            <div class="playground-layout">
+              <div class="source-pane" hidden>
+                <label for="source-metadata">Source</label>
+                <textarea
+                  id="source-metadata"
+                  spellcheck="false"
+                  wrap="off"
+                  aria-describedby="error-metadata"
+                >@Agent
+  icon robot
+  tag assistant
+
+@Reviewer
+  icon user
+  tag human
+  tooltip Checks the result before approval
+
+Agent -> Reviewer: Present result
+  tag review
+  tooltip Include the evidence behind each claim
+  tooltip-icon warning</textarea>
+                <div class="source-actions">
+                  <button type="button" data-apply-playground-source>
+                    Apply source
+                  </button>
+                  <p
+                    class="source-error"
+                    id="error-metadata"
+                    role="alert"
+                    aria-live="polite"
+                  ></p>
+                </div>
+              </div>
+              <div class="diagram-pane">
+                <div class="diagram-loading">Rendering metadata</div>
+                <lines-and-arrows
+                  theme="auto"
+                  mode="view"
+                  selectable="false"
+                  label="Tags and tooltips example"
+                ></lines-and-arrows>
+              </div>
+            </div>
+            <p class="visually-hidden" data-playground-status aria-live="polite">
+              View mode. Read-only diagram without selection controls.
+            </p>
+          </article>
+
+          <article class="playground" data-playground>
+            <header class="playground-header">
+              <div>
+                <h3>Sections name the alternatives</h3>
+                <p>
+                  Split one group into labeled paths while keeping the actors
+                  and sequence shared.
+                </p>
+              </div>
+              <div
+                class="hero-segmented playground-segmented"
+                role="group"
+                aria-label="Group section diagram mode"
+              >
+                <button
+                  type="button"
+                  data-playground-surface="view"
+                  aria-pressed="true"
+                >
+                  View
+                </button>
+                <button
+                  type="button"
+                  data-playground-surface="edit"
+                  aria-pressed="false"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  data-playground-surface="source"
+                  aria-pressed="false"
+                >
+                  Source
+                </button>
+              </div>
+            </header>
+            <div class="playground-layout">
+              <div class="source-pane" hidden>
+                <label for="source-sections">Source</label>
+                <textarea
+                  id="source-sections"
+                  spellcheck="false"
+                  wrap="off"
+                  aria-describedby="error-sections"
+                >@Agent
+  icon robot
+
+@Tool
+  icon wrench
+
+Agent -> Tool: Run
+choice Tool response
+  | complete
+    Tool --> Agent: Result
+  | needs input
+    Tool --> Agent: Ask for context</textarea>
+                <div class="source-actions">
+                  <button type="button" data-apply-playground-source>
+                    Apply source
+                  </button>
+                  <p
+                    class="source-error"
+                    id="error-sections"
+                    role="alert"
+                    aria-live="polite"
+                  ></p>
+                </div>
+              </div>
+              <div class="diagram-pane">
+                <div class="diagram-loading">Rendering sections</div>
+                <lines-and-arrows
+                  theme="auto"
+                  mode="view"
+                  selectable="false"
+                  label="Alternative tool responses"
+                ></lines-and-arrows>
+              </div>
+            </div>
+            <p class="visually-hidden" data-playground-status aria-live="polite">
+              View mode. Read-only diagram without selection controls.
+            </p>
+          </article>
+
+          <article class="playground playground-source-only">
+            <header class="playground-header">
+              <div>
+                <h3>Minimal text, complete intent</h3>
+                <p>
+                  A complete workflow still reads like a compact outline.
+                </p>
+              </div>
+            </header>
+            <pre class="minimal-source"><code>@Agent
+  icon robot
+@Planner
+  icon tree-structure
+@Worker
+  icon gear-six
+
+Agent -> Planner: Plan the task
+repeat Each step
+  Planner -> Worker: Run step
+  choice Worker response
+    | complete
+      Worker --> Planner: Evidence
+    | needs input
+      Worker --> Agent: Ask for context
+  gap Next step
+Planner --> Agent: Final result</code></pre>
+          </article>
+          </div>
+
+          <div class="syntax-column">
+          <article class="playground playground-groups" data-playground>
+            <header class="playground-header">
+              <div>
+                <h3>Groups can stand alone or nest</h3>
+                <p>
+                  Wrap a sequence once, or place one group inside another to
+                  show work at different levels.
+                </p>
+              </div>
+              <div
+                class="hero-segmented playground-segmented"
+                role="group"
+                aria-label="Nested group diagram mode"
+              >
+                <button type="button" data-playground-surface="view" aria-pressed="true">View</button>
+                <button type="button" data-playground-surface="edit" aria-pressed="false">Edit</button>
+                <button type="button" data-playground-surface="source" aria-pressed="false">Source</button>
+              </div>
+            </header>
+            <div class="playground-layout">
+              <div class="source-pane" hidden>
+                <label for="source-groups">Source</label>
+                <textarea
+                  id="source-groups"
+                  spellcheck="false"
+                  wrap="off"
+                  aria-describedby="error-groups"
+                >@Agent
+@Worker
+
+repeat Process each task
+  Agent -> Worker: Start task
+  critical Keep the audit trail
+    Worker -> Worker: Save evidence
+  Worker --> Agent: Task complete
+
+parallel Continue working
+  Agent -> Worker: Queue the next task</textarea>
+                <div class="source-actions">
+                  <button type="button" data-apply-playground-source>
+                    Apply source
+                  </button>
+                  <p
+                    class="source-error"
+                    id="error-groups"
+                    role="alert"
+                    aria-live="polite"
+                  ></p>
+                </div>
+              </div>
+              <div class="diagram-pane">
+                <div class="diagram-loading">Rendering groups</div>
+                <lines-and-arrows
+                  theme="auto"
+                  mode="view"
+                  selectable="false"
+                  label="Standalone and nested group example"
+                ></lines-and-arrows>
+              </div>
+            </div>
+            <p class="visually-hidden" data-playground-status aria-live="polite">
+              View mode. Read-only diagram without selection controls.
+            </p>
+          </article>
+
+          <article class="playground playground-gaps" data-playground>
+            <header class="playground-header">
+              <div>
+                <h3>Gaps keep the missing time visible</h3>
+                <p>
+                  Comments stay in the source. Gaps stay in both the source and
+                  the diagram.
+                </p>
+              </div>
+              <div
+                class="hero-segmented playground-segmented"
+                role="group"
+                aria-label="Gap and comment diagram mode"
+              >
+                <button type="button" data-playground-surface="view" aria-pressed="true">View</button>
+                <button type="button" data-playground-surface="edit" aria-pressed="false">Edit</button>
+                <button type="button" data-playground-surface="source" aria-pressed="false">Source</button>
+              </div>
+            </header>
+            <div class="playground-layout">
+              <div class="source-pane" hidden>
+                <label for="source-gaps">Source</label>
+                <textarea
+                  id="source-gaps"
+                  spellcheck="false"
+                  wrap="off"
+                  aria-describedby="error-gaps"
+                >@Agent
+@Worker
+
+Agent -> Worker: Start
+// Repeated work is intentionally summarized.
+repeat Until complete
+  Worker -> Worker: Process step
+  gap The next event loop
+  Worker --> Agent: Progress</textarea>
+                <div class="source-actions">
+                  <button type="button" data-apply-playground-source>
+                    Apply source
+                  </button>
+                  <p
+                    class="source-error"
+                    id="error-gaps"
+                    role="alert"
+                    aria-live="polite"
+                  ></p>
+                </div>
+              </div>
+              <div class="diagram-pane">
+                <div class="diagram-loading">Rendering the gap</div>
+                <lines-and-arrows
+                  theme="auto"
+                  mode="view"
+                  selectable="false"
+                  label="Gap and comment example"
+                ></lines-and-arrows>
+              </div>
+            </div>
+            <p class="visually-hidden" data-playground-status aria-live="polite">
+              View mode. Read-only diagram without selection controls.
+            </p>
+          </article>
+
+          <article class="playground playground-icon-picker">
+            <header class="playground-header">
+              <div>
+                <h3>Search the icon library</h3>
+                <p>
+                  Use the editor's real picker to search the built-in Phosphor
+                  catalog.
+                </p>
+              </div>
+            </header>
+            <div
+              class="icon-picker-component"
+              data-icon-picker-host
+              aria-label="Actor icon picker"
+            ></div>
+          </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="embed-section section-shell" id="embed">
+        <div class="section-heading">
+          <h2>Embed the same source two ways.</h2>
+          <p>
+            Use the custom element for a page, or call the renderer directly
+            when your application owns the container.
+          </p>
+        </div>
+
+        <div class="embed-layout">
+          <div class="code-workbench">
+            <div class="code-tabs">
+              <div
+                class="code-tablist"
+                role="tablist"
+                aria-label="Embedding method"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected="true"
+                  aria-controls="custom-element-panel"
+                  id="custom-element-tab"
+                  data-code-tab="custom-element-panel"
+                >
+                  Custom element
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="javascript-panel"
+                  id="javascript-tab"
+                  data-code-tab="javascript-panel"
+                >
+                  JavaScript
+                </button>
+              </div>
+              <button
+                class="copy-button"
+                type="button"
+                data-copy-active
+                aria-label="Copy active code example"
+              >
+                Copy
+              </button>
+            </div>
+
+            <div
+              class="code-panel"
+              id="custom-element-panel"
+              role="tabpanel"
+              aria-labelledby="custom-element-tab"
+            >
+              <pre><code>import { defineLinesAndArrows } from "@lines-and-arrows/core";
+
+defineLinesAndArrows();
+
+const diagram = document.querySelector("lines-and-arrows");
+diagram.source = `
+@Agent
+@Tool
+
+Agent -> Tool: Run
+Tool --> Agent: Done
+`;
+
+&lt;lines-and-arrows
+  mode="view"
+  theme="auto"
+&gt;&lt;/lines-and-arrows&gt;</code></pre>
+            </div>
+
+            <div
+              class="code-panel"
+              id="javascript-panel"
+              role="tabpanel"
+              aria-labelledby="javascript-tab"
+              hidden
+            >
+              <pre><code>import {
+  parse,
+  renderDiagram,
+} from "@lines-and-arrows/core";
+
+const diagramDocument = parse(source);
+const view = renderDiagram(container, diagramDocument, {
+  theme: "auto",
+});
+
+view.select("actor:Tool");
+view.destroy();</code></pre>
+            </div>
+          </div>
+
+          <div class="embed-notes">
+            <div>
+              <h3>Import</h3>
+              <p>
+                Point the module import at the local source today. The package
+                and CDN paths can replace it without changing the document.
+              </p>
+            </div>
+            <div>
+              <h3>Set the source</h3>
+              <p>
+                Assign a string to the element, or parse it before rendering in
+                application code.
+              </p>
+            </div>
+            <div>
+              <h3>Choose a surface</h3>
+              <p>
+                Use <code>mode="view"</code> for display and
+                <code>mode="edit"</code> for direct manipulation.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="agent-section section-shell" aria-labelledby="agent-title">
+        <div class="agent-copy">
+          <h2 id="agent-title">Agents get the shorter version.</h2>
+          <p>
+            The Markdown page contains the grammar, authoring rules, one
+            complete example, and the renderer call. Nothing else.
+          </p>
+          <a class="text-link" href="./agents.md">
+            Open agents.md
+            <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+        <pre class="agent-preview" aria-label="Excerpt from agents.md"><code># Lines &amp; Arrows for agents
+
+- Use two spaces per indentation level.
+- Keep layout and theme out of the source.
+- Use -&gt;, --&gt;, and -&gt;x deliberately.
+- Parse before handing the document back.</code></pre>
+      </section>
+    </main>
+
+    <footer class="site-footer section-shell">
+      <div>
+        <a class="wordmark footer-wordmark" href="#top">
+          <span class="wordmark-mark" aria-hidden="true">L↗A</span>
+          <span>Lines &amp; Arrows</span>
+        </a>
+        <p>Small language. Clear sequences.</p>
+      </div>
+
+      <div class="footer-links">
+        <a
+          href="https://github.com/apurin/lines-and-arrows"
+          target="_blank"
+          rel="noreferrer"
+          title="GitHub repository (not public yet)"
+        >
+          <img
+            src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/github-logo-bold.svg"
+            alt=""
+            width="19"
+            height="19"
+          />
+          GitHub
+        </a>
+        <a
+          href="https://www.linkedin.com/in/apurin"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <img
+            src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/linkedin-logo-bold.svg"
+            alt=""
+            width="19"
+            height="19"
+          />
+          Anton Purin
+        </a>
+      </div>
+    </footer>
+
+    <script type="module" src="./app.js?v=20260725-10"></script>
+  </body>
+</html>

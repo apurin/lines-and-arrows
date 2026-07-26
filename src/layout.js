@@ -8,11 +8,13 @@ import {
 
 const DEFAULTS = {
   actorWidth: 96,
-  actorHeight: 72,
+  actorHeight: 48,
+  actorMetadataGap: 6,
+  actorMetadataHeight: 20,
   actorGap: 70,
   marginX: 58,
   marginTop: 34,
-  timelineTopGap: 34,
+  timelineTopGap: 36,
   messageHeight: 54,
   messageMetadataHeight: 16,
   gapHeight: 60,
@@ -24,6 +26,9 @@ const DEFAULTS = {
 };
 
 const SELF_MESSAGE_LIFELINE_GAP = 18;
+const GROUP_DEPTH_INSET = 9;
+const GROUP_CONTENT_INSET = 14;
+const GROUP_SELF_MESSAGE_RIGHT_PADDING = 20;
 
 function collectSelfMessageWidths(items, widths) {
   for (const item of items) {
@@ -59,6 +64,7 @@ function layoutItems(
   state,
   depth = 0,
   parentId = "root",
+  ancestorGroups = [],
 ) {
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index];
@@ -80,6 +86,32 @@ function layoutItems(
         parentId,
         index,
       });
+      if (
+        item.source === item.target &&
+        ancestorGroups.length > 0
+      ) {
+        const actor = state.actorByName.get(item.source);
+        if (actor) {
+          const messageRight =
+            actor.centerX + selfMessageWidth(item);
+          for (
+            let groupIndex = 0;
+            groupIndex < ancestorGroups.length;
+            groupIndex += 1
+          ) {
+            const nestedLevels =
+              ancestorGroups.length - groupIndex - 1;
+            const requiredRight =
+              messageRight +
+              GROUP_SELF_MESSAGE_RIGHT_PADDING +
+              nestedLevels * GROUP_DEPTH_INSET;
+            ancestorGroups[groupIndex].right = Math.max(
+              ancestorGroups[groupIndex].right,
+              requiredRight,
+            );
+          }
+        }
+      }
       state.y += height;
       continue;
     }
@@ -106,8 +138,12 @@ function layoutItems(
       ...item,
       top,
       depth,
-      left: state.options.marginX + depth * 9,
-      right: state.width - state.options.marginX - depth * 9,
+      left:
+        state.options.marginX + depth * GROUP_DEPTH_INSET,
+      right:
+        state.width -
+        state.options.marginX -
+        depth * GROUP_DEPTH_INSET,
       bottom: top,
       height: 0,
       parentId,
@@ -124,8 +160,8 @@ function layoutItems(
           top: sectionTop,
           y: sectionTop + state.options.sectionHeaderHeight / 2,
           depth: depth + 1,
-          left: group.left + 14,
-          right: group.right - 14,
+          left: group.left + GROUP_CONTENT_INSET,
+          right: group.right - GROUP_CONTENT_INSET,
           parentId: group.id,
           index: item.sections.indexOf(section),
         });
@@ -135,12 +171,24 @@ function layoutItems(
           state,
           depth + 1,
           section.id,
+          [...ancestorGroups, group],
         );
       }
     } else {
-      layoutItems(item.items, state, depth + 1, item.id);
+      layoutItems(
+        item.items,
+        state,
+        depth + 1,
+        item.id,
+        [...ancestorGroups, group],
+      );
     }
 
+    for (const section of state.sections) {
+      if (section.parentId === group.id) {
+        section.right = group.right - GROUP_CONTENT_INSET;
+      }
+    }
     state.y += state.options.groupPaddingBottom;
     group.bottom = state.y;
     group.height = group.bottom - group.top;
@@ -202,7 +250,7 @@ export function layoutDiagram(document, overrides = {}) {
       ),
     actorRight,
   );
-  const width = Math.max(
+  const baseWidth = Math.max(
     420,
     actorRight + options.marginX,
     selfMessageRight + options.marginX,
@@ -210,7 +258,10 @@ export function layoutDiagram(document, overrides = {}) {
 
   const state = {
     options,
-    width,
+    width: baseWidth,
+    actorByName: new Map(
+      actors.map((actor) => [actor.name, actor]),
+    ),
     y:
       options.marginTop +
       options.actorHeight +
@@ -222,8 +273,16 @@ export function layoutDiagram(document, overrides = {}) {
 
   layoutItems(document.items, state);
 
+  const expandedGroupRight = state.groups.reduce(
+    (right, group) => Math.max(right, group.right),
+    0,
+  );
+  const width = Math.max(
+    baseWidth,
+    expandedGroupRight + options.marginX,
+  );
   const height = state.y + options.bottomPadding;
-  const actorByName = new Map(actors.map((actor) => [actor.name, actor]));
+  const actorByName = state.actorByName;
 
   return {
     width,

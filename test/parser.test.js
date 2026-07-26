@@ -173,6 +173,7 @@ API --> Client: Complete`),
     layout.rows[1].y - layout.rows[0].y,
     layout.rows[0].height,
   );
+  assert.equal(metadataMetrics("review", "Details").triggerSize, 20);
 });
 
 test("expands actor panels to contain long metadata", () => {
@@ -198,6 +199,14 @@ Customer -> API: Submit`),
   assert.equal(
     api.x - (customer.x + customer.width),
     layout.options.actorGap,
+  );
+  assert.equal(customer.height, 48);
+  assert.ok(
+    customer.y +
+      customer.height +
+      layout.options.actorMetadataGap +
+      layout.options.actorMetadataHeight <
+      layout.rows[0].top,
   );
 });
 
@@ -274,5 +283,29 @@ Worker -> Worker: Check evidence
       worker.centerX +
         selfMessageWidth(selfMessage) +
         layout.options.marginX,
+  );
+});
+
+test("expands nested groups around a rightmost self-message", () => {
+  const layout = layoutDiagram(
+    parse(`@API
+@Worker
+
+critical Review
+  parallel Local work
+    Worker -> Worker: Check all outstanding evidence
+      tag local review
+      tooltip This stays on the worker`),
+  );
+  const worker = layout.actors[1];
+  const selfMessage = layout.rows[0];
+  const [outerGroup, innerGroup] = layout.groups;
+  const messageRight =
+    worker.centerX + selfMessageWidth(selfMessage);
+
+  assert.ok(innerGroup.right >= messageRight + 20);
+  assert.ok(outerGroup.right >= innerGroup.right + 9);
+  assert.ok(
+    layout.width >= outerGroup.right + layout.options.marginX,
   );
 });

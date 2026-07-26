@@ -9,13 +9,13 @@ The implementation currently provides:
 - a canonical text serializer;
 - responsive SVG view and edit renderers;
 - light, dark, and system themes;
-- selectable actors, messages, groups, sections, and gaps;
+- optional selection for actors, messages, groups, sections, and gaps;
 - contextual actor and timeline editing;
 - exact-position insertion, drag reordering, and cross-group movement;
 - contiguous marquee grouping and non-destructive ungrouping;
 - undo, redo, keyboard editing, and source replacement;
 - an opt-in custom element;
-- an optional icon resolver.
+- a ready-to-use Phosphor icon provider with configurable overrides.
 
 The interaction model is recorded in [ux.md](./ux.md), and the source language
 is defined in [syntax.md](./syntax.md).
@@ -56,28 +56,15 @@ import {
 const document = parse(source);
 const viewer = renderDiagram(container, document, {
   theme: "light",
+  selectable: false,
 });
 
-viewer.select("actor:API");
 viewer.destroy();
 
 const editor = new DiagramEditor(source);
 const editable = renderEditor(container, editor.document, {
   editor,
   theme: "light",
-  iconResolver(name) {
-    return `/icons/${name}.svg`;
-  },
-  iconCatalog: [
-    "user",
-    "cloud",
-    "database",
-    {
-      name: "warning",
-      label: "Warning",
-      keywords: ["alert", "risk"],
-    },
-  ],
   onChange({ source: nextSource }) {
     console.log(nextSource);
   },
@@ -87,24 +74,38 @@ editable.undo();
 editable.redo();
 ```
 
-`renderDiagram` accepts either source text or a parsed document. The optional
-`iconResolver(name, theme)` callback returns an image URL for actor and
-configured tooltip icons. Tooltips use a built-in lowercase `i` when
-`tooltip-icon` is omitted or cannot be resolved. `iconCatalog` provides the
-searchable choices shown by the visual editor. Entries may be icon-name strings
-or objects with `name`, `label`, and `keywords`. `renderEditor` uses the same
+`renderDiagram` accepts either source text or a parsed document. Element
+selection is enabled by default and can be disabled with `selectable: false`.
+Actor and configured tooltip icons work without setup. By default, Lines &
+Arrows resolves the bold SVG assets from the version-pinned Phosphor Icons
+2.1.1 package on jsDelivr. Its picker shows 48 recommended actor icons and
+searches the complete local index of Phosphor icon names.
+
+Set `iconResolver(name, theme)` and `iconCatalog` to use another provider. The
+catalog is also the provider's availability index: default recommendations
+missing from a custom catalog are skipped. Supplying a custom resolver without
+a catalog leaves the picker empty rather than assuming that provider supports
+Phosphor names. Catalog entries may be icon-name strings or objects with
+`name`, `label`, and `keywords`. Set the resolver to `null` and the catalog to
+`[]` to disable external icons. Tooltips use a built-in lowercase `i` when
+`tooltip-icon` is omitted or cannot be resolved. `renderEditor` uses the same
 inputs and options plus an optional persistent `DiagramEditor` instance.
 
+Phosphor Icons is MIT licensed. See
+[THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
+
 The custom element emits `la-select`, `la-change`, and `la-error` events. Its
-`source`, `mode`, `theme`, `iconResolver`, `iconCatalog`, `selectedIds`,
-`canUndo`, and `canRedo` properties make it usable without coupling an
-application to its shadow DOM.
+`source`, `mode`, `theme`, `selectable`, `iconResolver`, `iconCatalog`,
+`selectedIds`, `canUndo`, and `canRedo` properties make it usable without
+coupling an application to its shadow DOM. Edit mode always enables selection;
+view mode respects the `selectable` property or `selectable="false"` attribute.
 
 ## Edit controls
 
 - Select an actor, message, gap, group, or section to open its compact editor.
 - Use the icon button beside an actor name or tooltip to open the searchable
-  icon palette.
+  icon palette. Its first two rows prioritize common sequence-diagram actors;
+  search covers the full provider catalog.
 - Drag a selected actor horizontally to reorder it.
 - Hover a lifeline between timeline items, then drag its arrow circle to an
   actor to create an unnamed connection, including back to the same actor.

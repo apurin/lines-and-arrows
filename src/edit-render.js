@@ -5,13 +5,19 @@ import {
   findSectionLocation,
   getContainer,
 } from "./editor.js";
+import {
+  phosphorIconResolver,
+  recommendedActorIconNames,
+  withDefaultIconOptions,
+} from "./icons.js";
 import { SELF_MESSAGE_MIN_WIDTH } from "./metadata.js";
 import { renderDiagram } from "./render.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const TIMELINE_INSERTION_CONTROL_OFFSET = 12;
+const TIMELINE_INSERTION_CONTROL_RADIUS = 8;
 
-const EDIT_STYLES = `
+export const EDIT_STYLES = `
   .la-frame[data-mode="edit"] {
     position: relative;
   }
@@ -31,6 +37,16 @@ const EDIT_STYLES = `
     outline: none;
   }
 
+  .la-insertion[data-control-only="true"] {
+    cursor: default;
+  }
+
+  .la-insertion[data-control-only="true"]
+    .la-insertion-circle {
+    cursor: pointer;
+    outline: none;
+  }
+
   .la-insertion-line,
   .la-insertion-circle,
   .la-insertion-plus {
@@ -41,6 +57,12 @@ const EDIT_STYLES = `
   .la-insertion:hover .la-insertion-line,
   .la-insertion:hover .la-insertion-circle,
   .la-insertion:hover .la-insertion-plus,
+  .la-insertion[data-menu-open="true"] .la-insertion-line,
+  .la-insertion[data-menu-open="true"] .la-insertion-circle,
+  .la-insertion[data-menu-open="true"] .la-insertion-plus,
+  .la-insertion:focus-within .la-insertion-line,
+  .la-insertion:focus-within .la-insertion-circle,
+  .la-insertion:focus-within .la-insertion-plus,
   .la-insertion:focus-visible .la-insertion-line,
   .la-insertion:focus-visible .la-insertion-circle,
   .la-insertion:focus-visible .la-insertion-plus {
@@ -120,16 +142,20 @@ const EDIT_STYLES = `
   }
 
   .la-edit-popover {
-    position: absolute;
+    position: fixed;
     z-index: 3;
+    inset: auto;
     box-sizing: border-box;
-    width: min(292px, calc(100% - 16px));
+    overflow: visible;
+    width: min(292px, calc(100vw - 16px));
+    margin: 0;
     padding: 12px;
     border: 1px solid var(--la-section-line);
     border-radius: 14px;
     background: var(--la-canvas);
     color: var(--la-text);
-    box-shadow: 0 14px 36px color-mix(in srgb, var(--la-text) 16%, transparent);
+    box-shadow: 0 3px 12px
+      color-mix(in srgb, var(--la-text) 8%, transparent);
     font: 500 12px/1.35 var(
       --la-font-family,
       ui-sans-serif,
@@ -138,19 +164,54 @@ const EDIT_STYLES = `
     );
   }
 
-  .la-edit-popover[data-side="below"] {
-    transform: translate(-50%, 10px);
+  .la-edit-popover[data-variant="insert"] {
+    width: max-content;
+    padding: 5px;
+    border: 1.5px dashed var(--la-selection);
+    border-radius: 10px;
   }
 
-  .la-edit-popover[data-side="above"] {
-    transform: translate(-50%, calc(-100% - 10px));
+  .la-edit-header {
+    display: flex;
+    min-height: 22px;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 10px;
   }
 
   .la-edit-title {
     display: block;
-    margin: 0 0 10px;
+    flex: 1;
+    margin: 0;
     font-size: 12px;
     font-weight: 700;
+  }
+
+  .la-edit-close {
+    display: grid;
+    flex: none;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    place-items: center;
+    border: 0;
+    border-radius: 6px;
+    outline: none;
+    background: transparent;
+    color: var(--la-muted-text);
+    font: 600 18px/1 var(
+      --la-font-family,
+      ui-sans-serif,
+      system-ui,
+      sans-serif
+    );
+    cursor: pointer;
+  }
+
+  .la-edit-close:hover,
+  .la-edit-close:focus-visible {
+    background: var(--la-accent-soft);
+    color: var(--la-text);
   }
 
   .la-edit-field {
@@ -213,7 +274,9 @@ const EDIT_STYLES = `
   }
 
   .la-icon-picker-trigger,
-  .la-icon-option {
+  .la-icon-picker-clear,
+  .la-icon-option,
+  .la-insert-option {
     display: grid;
     box-sizing: border-box;
     padding: 0;
@@ -237,8 +300,12 @@ const EDIT_STYLES = `
 
   .la-icon-picker-trigger:hover,
   .la-icon-picker-trigger:focus-visible,
+  .la-icon-picker-clear:hover,
+  .la-icon-picker-clear:focus-visible,
   .la-icon-option:hover,
-  .la-icon-option:focus-visible {
+  .la-icon-option:focus-visible,
+  .la-insert-option:hover,
+  .la-insert-option:focus-visible {
     border-color: var(--la-selection);
   }
 
@@ -256,13 +323,13 @@ const EDIT_STYLES = `
     top: calc(100% + 6px);
     right: 0;
     box-sizing: border-box;
-    width: 232px;
+    width: 304px;
     padding: 8px;
     border: 1px solid var(--la-section-line);
     border-radius: 11px;
     background: var(--la-canvas);
-    box-shadow: 0 12px 30px
-      color-mix(in srgb, var(--la-text) 18%, transparent);
+    box-shadow: 0 3px 10px
+      color-mix(in srgb, var(--la-text) 10%, transparent);
   }
 
   .la-icon-picker-popover[hidden],
@@ -272,22 +339,62 @@ const EDIT_STYLES = `
   }
 
   .la-icon-search {
+    min-width: 0;
     font-weight: 520;
+  }
+
+  .la-icon-picker-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 32px;
+    gap: 6px;
+  }
+
+  .la-icon-picker-clear {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
   }
 
   .la-icon-grid {
     display: grid;
-    grid-template-columns: repeat(6, 32px);
+    grid-template-columns: repeat(8, 32px);
     gap: 4px;
-    max-height: 176px;
     margin-top: 7px;
-    overflow: auto;
+  }
+
+  .la-icon-grid-divider {
+    grid-column: 1 / -1;
+    height: 6px;
   }
 
   .la-icon-option {
     width: 32px;
     height: 32px;
     border-radius: 7px;
+  }
+
+  .la-insert-picker {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .la-insert-option {
+    display: flex;
+    width: auto;
+    min-width: 76px;
+    height: 32px;
+    gap: 6px;
+    padding: 0 9px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+  }
+
+  .la-insert-option-label {
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1;
   }
 
   .la-icon-visual {
@@ -383,6 +490,10 @@ const EDIT_STYLES = `
     margin-top: 10px;
   }
 
+  .la-edit-actions[data-nowrap="true"] {
+    flex-wrap: nowrap;
+  }
+
   .la-edit-button {
     min-height: 30px;
     padding: 0 9px;
@@ -456,15 +567,14 @@ function timelineEntries(layout) {
 }
 
 function containerBounds(layout, parentId) {
+  const controlX =
+    layout.contentLeft - TIMELINE_INSERTION_CONTROL_OFFSET;
   if (parentId === ROOT_CONTAINER_ID) {
     return {
       left: layout.contentLeft,
       right: layout.contentRight,
       depth: 0,
-      controlX:
-        layout.groups.length > 0
-          ? layout.contentLeft - TIMELINE_INSERTION_CONTROL_OFFSET
-          : layout.contentLeft + TIMELINE_INSERTION_CONTROL_OFFSET,
+      controlX,
     };
   }
 
@@ -472,16 +582,11 @@ function containerBounds(layout, parentId) {
     (candidate) => candidate.id === parentId,
   );
   if (section) {
-    const group = layout.groups.find(
-      (candidate) => candidate.id === section.parentId,
-    );
     return {
       left: section.left,
       right: section.right,
       depth: section.depth,
-      controlX:
-        (group?.left ?? section.left) -
-        TIMELINE_INSERTION_CONTROL_OFFSET,
+      controlX,
     };
   }
 
@@ -493,8 +598,7 @@ function containerBounds(layout, parentId) {
       left: group.left + 14,
       right: group.right - 14,
       depth: group.depth + 1,
-      controlX:
-        group.left - TIMELINE_INSERTION_CONTROL_OFFSET,
+      controlX,
     };
   }
   return null;
@@ -632,9 +736,14 @@ function selectedModel(document, id) {
 function anchorFor(layout, id) {
   const actor = layout.actors.find((candidate) => candidate.id === id);
   if (actor) {
+    const metadataOffset =
+      actor.tag || actor.tooltip
+        ? layout.options.actorMetadataGap +
+          layout.options.actorMetadataHeight
+        : 0;
     return {
       x: actor.centerX,
-      y: actor.y + actor.height,
+      y: actor.y + actor.height + metadataOffset,
     };
   }
 
@@ -683,28 +792,280 @@ function anchorFor(layout, id) {
   };
 }
 
-function addPopover(frame, layout, anchor, title) {
-  frame.querySelector(".la-edit-popover")?.remove();
+function removePopover(frame) {
+  const popover = frame?.querySelector(".la-edit-popover");
+  if (!popover) {
+    return;
+  }
+  if (popover.insertionTrigger) {
+    delete popover.insertionTrigger.dataset.menuOpen;
+  }
+  popover.cleanupPositioning?.();
+  try {
+    popover.hidePopover?.();
+  } catch {
+    // Removing the element below also closes unsupported or inactive popovers.
+  }
+  popover.remove();
+}
+
+function positionPopover(popover, frame, layout, anchor) {
+  if (!popover.isConnected) {
+    return;
+  }
+  const svg = frame.querySelector(".la-canvas");
+  if (!svg) {
+    return;
+  }
+
+  const svgRect = svg.getBoundingClientRect();
+  const popoverRect = popover.getBoundingClientRect();
+  const viewportWidth =
+    globalThis.innerWidth ?? document.documentElement.clientWidth;
+  const viewportHeight =
+    globalThis.innerHeight ?? document.documentElement.clientHeight;
+  const padding = 8;
+  const placement = popover.dataset.placement ?? "vertical";
+  const gap =
+    placement === "right"
+      ? 16
+      : placement === "above" &&
+          popover.dataset.variant === "insert"
+        ? 7
+        : 10;
+  const anchorX =
+    svgRect.left + (anchor.x / layout.width) * svgRect.width;
+  const anchorY =
+    svgRect.top + (anchor.y / layout.height) * svgRect.height;
+  let side;
+  let preferredLeft;
+  let preferredTop;
+
+  if (placement === "right") {
+    const spaceRight = viewportWidth - padding - anchorX - gap;
+    const spaceLeft = anchorX - gap - padding;
+    side =
+      spaceRight >= popoverRect.width || spaceRight >= spaceLeft
+        ? "right"
+        : "left";
+    preferredLeft =
+      side === "right"
+        ? anchorX + gap
+        : anchorX - gap - popoverRect.width;
+    preferredTop = anchorY - popoverRect.height / 2;
+  } else if (placement === "over-left") {
+    side = "over-left";
+    preferredLeft = anchorX;
+    preferredTop = anchorY - popoverRect.height / 2;
+  } else {
+    const spaceBelow = viewportHeight - padding - anchorY - gap;
+    const spaceAbove = anchorY - gap - padding;
+    side =
+      placement === "above"
+        ? "above"
+        : spaceBelow >= popoverRect.height ||
+            spaceBelow >= spaceAbove
+          ? "below"
+          : "above";
+    preferredLeft = anchorX - popoverRect.width / 2;
+    preferredTop =
+      side === "below"
+        ? anchorY + gap
+        : anchorY - gap - popoverRect.height;
+  }
+  const maxLeft = Math.max(
+    padding,
+    viewportWidth - padding - popoverRect.width,
+  );
+  const maxTop = Math.max(
+    padding,
+    viewportHeight - padding - popoverRect.height,
+  );
+  const left = Math.max(
+    padding,
+    Math.min(preferredLeft, maxLeft),
+  );
+  const top = Math.max(padding, Math.min(preferredTop, maxTop));
+
+  popover.style.left = `${left}px`;
+  popover.style.top = `${top}px`;
+  popover.dataset.side = side;
+
+  const visibleNestedOverlays = [
+    ...popover.querySelectorAll(
+      ".la-icon-picker-popover:not([hidden])",
+    ),
+  ];
+  if (!visibleNestedOverlays.length) {
+    return;
+  }
+
+  const overlayRects = [
+    popover.getBoundingClientRect(),
+    ...visibleNestedOverlays.map((overlay) =>
+      overlay.getBoundingClientRect(),
+    ),
+  ];
+  const bounds = {
+    left: Math.min(...overlayRects.map((rect) => rect.left)),
+    right: Math.max(...overlayRects.map((rect) => rect.right)),
+    top: Math.min(...overlayRects.map((rect) => rect.top)),
+    bottom: Math.max(...overlayRects.map((rect) => rect.bottom)),
+  };
+  const availableWidth = viewportWidth - padding * 2;
+  const availableHeight = viewportHeight - padding * 2;
+  const boundsWidth = bounds.right - bounds.left;
+  const boundsHeight = bounds.bottom - bounds.top;
+  let correctionX = 0;
+  let correctionY = 0;
+
+  if (boundsWidth <= availableWidth) {
+    if (bounds.left < padding) {
+      correctionX = padding - bounds.left;
+    } else if (bounds.right > viewportWidth - padding) {
+      correctionX = viewportWidth - padding - bounds.right;
+    }
+  }
+  if (boundsHeight <= availableHeight) {
+    if (bounds.top < padding) {
+      correctionY = padding - bounds.top;
+    } else if (bounds.bottom > viewportHeight - padding) {
+      correctionY = viewportHeight - padding - bounds.bottom;
+    }
+  }
+
+  if (correctionX || correctionY) {
+    popover.style.left = `${left + correctionX}px`;
+    popover.style.top = `${top + correctionY}px`;
+  }
+}
+
+function addPopover(
+  frame,
+  layout,
+  anchor,
+  title,
+  popoverOptions = {},
+) {
+  removePopover(frame);
   const popover = document.createElement("div");
   popover.className = "la-edit-popover";
   popover.part = "editor";
-  popover.style.left = `clamp(154px, ${
-    (anchor.x / layout.width) * 100
-  }%, calc(100% - 154px))`;
-  popover.style.top = `${(anchor.y / layout.height) * 100}%`;
-  popover.dataset.side =
-    anchor.y > layout.height * 0.68 ? "above" : "below";
+  popover.setAttribute("popover", "manual");
+  popover.dataset.placement =
+    popoverOptions.placement ?? "vertical";
+  if (popoverOptions.variant) {
+    popover.dataset.variant = popoverOptions.variant;
+  }
+  if (popoverOptions.label) {
+    popover.setAttribute("role", "dialog");
+    popover.setAttribute("aria-label", popoverOptions.label);
+  }
 
   if (title) {
+    const header = document.createElement("div");
+    header.className = "la-edit-header";
     const heading = document.createElement("strong");
     heading.className = "la-edit-title";
     heading.textContent = title;
-    popover.append(heading);
+    header.append(heading);
+
+    if (popoverOptions.closable) {
+      const close = document.createElement("button");
+      close.type = "button";
+      close.className = "la-edit-close";
+      close.setAttribute("aria-label", "Close dialog");
+      close.title = "Close";
+      close.textContent = "×";
+      close.addEventListener("click", () => removePopover(frame));
+      header.append(close);
+    }
+
+    popover.append(header);
   } else {
     popover.dataset.titleless = "true";
   }
   frame.append(popover);
+
+  if (typeof popover.showPopover === "function") {
+    try {
+      popover.showPopover();
+    } catch {
+      popover.removeAttribute("popover");
+    }
+  } else {
+    popover.removeAttribute("popover");
+  }
+
+  let animationFrame = null;
+  const reposition = () => {
+    if (animationFrame !== null) {
+      return;
+    }
+    if (typeof globalThis.requestAnimationFrame === "function") {
+      animationFrame = globalThis.requestAnimationFrame(() => {
+        animationFrame = null;
+        positionPopover(popover, frame, layout, anchor);
+      });
+    } else {
+      positionPopover(popover, frame, layout, anchor);
+    }
+  };
+  popover.repositionOverlay = reposition;
+  const resizeObserver = globalThis.ResizeObserver
+    ? new ResizeObserver(reposition)
+    : null;
+  resizeObserver?.observe(popover);
+  globalThis.addEventListener?.("scroll", reposition, true);
+  globalThis.addEventListener?.("resize", reposition);
+  popover.cleanupPositioning = () => {
+    resizeObserver?.disconnect();
+    globalThis.removeEventListener?.("scroll", reposition, true);
+    globalThis.removeEventListener?.("resize", reposition);
+    if (
+      animationFrame !== null &&
+      typeof globalThis.cancelAnimationFrame === "function"
+    ) {
+      globalThis.cancelAnimationFrame(animationFrame);
+    }
+    animationFrame = null;
+    delete popover.repositionOverlay;
+  };
+  queueMicrotask(() => positionPopover(popover, frame, layout, anchor));
   return popover;
+}
+
+function addInsertionPicker(popover, actions) {
+  const frame = popover.closest(".la-frame");
+  const theme = frame?.dataset.theme ?? "light";
+  const picker = document.createElement("div");
+  picker.className = "la-insert-picker";
+  picker.setAttribute("role", "group");
+  picker.setAttribute("aria-label", "Timeline item type");
+
+  for (const action of actions) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "la-insert-option";
+    button.setAttribute("aria-label", action.label);
+    button.title = action.label;
+    button.append(
+      iconVisual(
+        action.icon,
+        phosphorIconResolver,
+        theme,
+        action.fallback,
+      ),
+    );
+    const label = document.createElement("span");
+    label.className = "la-insert-option-label";
+    label.textContent = action.visibleLabel ?? action.label;
+    button.append(label);
+    button.addEventListener("click", action.run);
+    picker.append(button);
+  }
+
+  popover.append(picker);
 }
 
 function addField(popover, label, value, onChange, options = {}) {
@@ -882,13 +1243,26 @@ function iconVisual(
   return visual;
 }
 
-function createIconPicker(
+export function createIconPicker(
   popover,
   currentName,
   onSelect,
   options,
 ) {
   const catalog = normalizeIconCatalog(options.catalog);
+  const catalogByName = new Map(
+    catalog.map((icon) => [icon.name, icon]),
+  );
+  const recommendationNames =
+    options.recommendations ?? recommendedActorIconNames;
+  const primaryRecommendations = recommendationNames
+    .slice(0, 16)
+    .map((name) => catalogByName.get(name))
+    .filter(Boolean);
+  const secondaryRecommendations = recommendationNames
+    .slice(16, 48)
+    .map((name) => catalogByName.get(name))
+    .filter(Boolean);
   const frame = popover.closest(".la-frame");
   const theme = frame?.dataset.theme ?? "light";
   const picker = document.createElement("div");
@@ -926,83 +1300,106 @@ function createIconPicker(
   search.placeholder = "Search icons";
   search.setAttribute("aria-label", "Search icons");
 
+  const clear = document.createElement("button");
+  clear.type = "button";
+  clear.className = "la-icon-picker-clear";
+  clear.setAttribute("aria-label", options.clearLabel);
+  clear.title = options.clearLabel;
+  clear.append(
+    iconVisual(
+      catalogByName.has("x-circle") ? "x-circle" : null,
+      options.resolver,
+      theme,
+      "×",
+    ),
+  );
+  clear.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onSelect(null);
+  });
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "la-icon-picker-toolbar";
+  toolbar.append(search, clear);
+
   const grid = document.createElement("div");
   grid.className = "la-icon-grid";
   grid.setAttribute("role", "listbox");
   grid.setAttribute("aria-label", "Available icons");
 
-  const iconButtons = [];
-  const appendOption = (
-    name,
-    label,
-    searchText,
-    fallbackText,
-  ) => {
+  const appendOption = (icon) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "la-icon-option";
     button.setAttribute("role", "option");
-    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-label", icon.label);
     button.setAttribute(
       "aria-selected",
-      String((currentName ?? null) === name),
+      String(currentName === icon.name),
     );
-    button.title = label;
-    button.dataset.search = searchText;
-    button.dataset.catalogIcon = String(name !== null);
+    button.title = icon.label;
     button.append(
       iconVisual(
-        name,
+        icon.name,
         options.resolver,
         theme,
-        fallbackText,
+        icon.label.slice(0, 1).toUpperCase(),
       ),
     );
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      onSelect(name);
+      onSelect(icon.name);
     });
     grid.append(button);
-    iconButtons.push(button);
   };
-
-  appendOption(
-    null,
-    options.clearLabel,
-    options.clearLabel.toLocaleLowerCase(),
-    options.defaultText,
-  );
-  for (const icon of catalog) {
-    appendOption(
-      icon.name,
-      icon.label,
-      icon.search,
-      icon.label.slice(0, 1).toUpperCase(),
-    );
-  }
 
   const empty = document.createElement("p");
   empty.className = "la-icon-picker-empty";
-  empty.textContent = catalog.length
-    ? "No matching icons"
-    : "No icon catalog configured";
   empty.hidden = true;
 
-  const filter = () => {
+  const renderOptions = () => {
     const query = search.value.trim().toLocaleLowerCase();
-    let visibleCatalogIcons = 0;
-    for (const button of iconButtons) {
-      const matches =
-        !query || button.dataset.search.includes(query);
-      button.hidden = !matches;
-      if (matches && button.dataset.catalogIcon === "true") {
-        visibleCatalogIcons += 1;
+    grid.replaceChildren();
+
+    if (!query) {
+      for (const icon of primaryRecommendations) {
+        appendOption(icon);
       }
+      if (
+        primaryRecommendations.length &&
+        secondaryRecommendations.length
+      ) {
+        const divider = document.createElement("span");
+        divider.className = "la-icon-grid-divider";
+        divider.setAttribute("aria-hidden", "true");
+        grid.append(divider);
+      }
+      for (const icon of secondaryRecommendations) {
+        appendOption(icon);
+      }
+
+      const count =
+        primaryRecommendations.length +
+        secondaryRecommendations.length;
+      empty.textContent = catalog.length
+        ? "No recommended icons available"
+        : "No icon catalog configured";
+      empty.hidden = count > 0;
+      return;
     }
-    empty.hidden = visibleCatalogIcons > 0;
+
+    const matches = catalog
+      .filter((icon) => icon.search.includes(query))
+      .slice(0, 48);
+    for (const icon of matches) {
+      appendOption(icon);
+    }
+    empty.textContent = "No matching icons";
+    empty.hidden = matches.length > 0;
   };
-  search.addEventListener("input", filter);
+  search.addEventListener("input", renderOptions);
 
   const close = (commit = true, restoreFocus = false) => {
     if (panel.hidden) {
@@ -1010,6 +1407,7 @@ function createIconPicker(
     }
     panel.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
+    popover.repositionOverlay?.();
     if (commit) {
       options.onClose?.();
     }
@@ -1028,11 +1426,15 @@ function createIconPicker(
       }
     }
     search.value = "";
-    filter();
+    renderOptions();
     panel.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
-    queueMicrotask(() => search.focus());
+    popover.repositionOverlay?.();
+    if (options.focusOnOpen !== false) {
+      queueMicrotask(() => search.focus());
+    }
   };
+  picker.openPicker = open;
 
   trigger.addEventListener("click", (event) => {
     event.preventDefault();
@@ -1056,7 +1458,7 @@ function createIconPicker(
     }
   });
 
-  panel.append(search, grid, empty);
+  panel.append(toolbar, grid, empty);
   picker.append(trigger, panel);
   return picker;
 }
@@ -1140,9 +1542,12 @@ function addArrowPicker(popover, value, onChange) {
   return picker;
 }
 
-function addActions(popover, actions) {
+function addActions(popover, actions, options = {}) {
   const row = document.createElement("div");
   row.className = "la-edit-actions";
+  if (options.nowrap) {
+    row.dataset.nowrap = "true";
+  }
   for (const action of actions) {
     const button = document.createElement("button");
     button.type = "button";
@@ -1173,19 +1578,43 @@ function showError(popover, error) {
   popover.append(message);
 }
 
-function insertionMark(slot, label, onActivate, direction = "horizontal") {
+function insertionMark(
+  slot,
+  label,
+  onActivate,
+  direction = "horizontal",
+  interactionOptions = {},
+) {
   const group = svgElement("g", {
     class: "la-insertion",
-    tabindex: 0,
-    role: "button",
-    "aria-label": label,
   });
+  if (interactionOptions.controlOnly) {
+    group.dataset.controlOnly = "true";
+  } else {
+    group.setAttribute("tabindex", "0");
+    group.setAttribute("role", "button");
+    group.setAttribute("aria-label", label);
+  }
+  let hoverTarget = group;
 
   if (direction === "horizontal") {
     const controlX =
       slot.controlX ??
       slot.left + TIMELINE_INSERTION_CONTROL_OFFSET;
     const hitLeft = Math.min(slot.left, controlX - 10);
+    const circle = svgElement("circle", {
+      class: "la-insertion-circle",
+      cx: controlX,
+      cy: slot.y,
+      r: TIMELINE_INSERTION_CONTROL_RADIUS,
+      fill: "var(--la-selection)",
+      "pointer-events": "all",
+    });
+    if (interactionOptions.controlOnly) {
+      circle.setAttribute("tabindex", "0");
+      circle.setAttribute("role", "button");
+      circle.setAttribute("aria-label", label);
+    }
     group.append(
       svgElement("rect", {
         x: hitLeft,
@@ -1206,15 +1635,9 @@ function insertionMark(slot, label, onActivate, direction = "horizontal") {
         "stroke-dasharray": "3 4",
         "pointer-events": "none",
       }),
-      svgElement("circle", {
-        class: "la-insertion-circle",
-        cx: controlX,
-        cy: slot.y,
-        r: 8,
-        fill: "var(--la-selection)",
-        "pointer-events": "none",
-      }),
+      circle,
     );
+    hoverTarget = circle;
     const plus = svgElement("text", {
       class: "la-insertion-plus",
       x: controlX,
@@ -1271,17 +1694,29 @@ function insertionMark(slot, label, onActivate, direction = "horizontal") {
     group.append(plus);
   }
 
-  const activate = (event) => {
+  const activate = (event, mode) => {
     event.preventDefault();
     event.stopPropagation();
-    onActivate();
+    onActivate(group, mode, hoverTarget);
   };
-  group.addEventListener("click", activate);
-  group.addEventListener("keydown", (event) => {
+  const activationTarget =
+    interactionOptions.controlOnly ? hoverTarget : group;
+  activationTarget.addEventListener("click", (event) =>
+    activate(event, "pointer"),
+  );
+  activationTarget.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
-      activate(event);
+      activate(event, "keyboard");
     }
   });
+  if (interactionOptions.activateOnHover) {
+    hoverTarget.addEventListener("pointerenter", () =>
+      onActivate(group, "hover", hoverTarget),
+    );
+    hoverTarget.addEventListener("pointerleave", () =>
+      interactionOptions.onPointerLeave?.(group, hoverTarget),
+    );
+  }
   return group;
 }
 
@@ -1475,6 +1910,7 @@ export function renderEditor(target, input, options = {}) {
   if (!target?.replaceChildren) {
     throw new TypeError("renderEditor requires a DOM container.");
   }
+  options = withDefaultIconOptions(options);
 
   const editor =
     options.editor instanceof DiagramEditor
@@ -1551,34 +1987,44 @@ export function renderEditor(target, input, options = {}) {
   }
 
   function contextualEditor(frame, layout) {
-    frame.querySelector(".la-edit-popover")?.remove();
+    removePopover(frame);
 
     if (transient?.type === "insert") {
       const popover = addPopover(
         frame,
         layout,
         transient.anchor,
-        "Add timeline item",
-      );
-      addActions(popover, [
+        null,
         {
-          label: "Gap",
-          primary: true,
-          run: () =>
-            run(
-              () =>
-                editor.addItem(
-                  transient.slot.parentId,
-                  transient.slot.index,
-                  "gap",
-                ),
-              undefined,
-              popover,
-              "Label",
-            ),
+          placement: "over-left",
+          variant: "insert",
+          label: "Add timeline item",
         },
+      );
+      if (transient.trigger) {
+        transient.trigger.dataset.menuOpen = "true";
+        popover.insertionTrigger = transient.trigger;
+      }
+      if (transient.dismissOnPointerLeave) {
+        const hoveredTransient = transient;
+        popover.addEventListener("pointerenter", () => {
+          if (transient === hoveredTransient) {
+            transient.menuHovered = true;
+          }
+        });
+        popover.addEventListener("pointerleave", () => {
+          if (transient === hoveredTransient) {
+            transient.menuHovered = false;
+            transient.close();
+          }
+        });
+      }
+      addInsertionPicker(popover, [
         {
-          label: "Group",
+          label: "Add group",
+          visibleLabel: "Group",
+          icon: "rectangle-dashed",
+          fallback: "□",
           run: () =>
             run(
               () =>
@@ -1586,6 +2032,24 @@ export function renderEditor(target, input, options = {}) {
                   transient.slot.parentId,
                   transient.slot.index,
                   "group",
+                ),
+              undefined,
+              popover,
+              "Label",
+            ),
+        },
+        {
+          label: "Add gap",
+          visibleLabel: "Gap",
+          icon: "wave-sawtooth",
+          fallback: "〰",
+          run: () =>
+            run(
+              () =>
+                editor.addItem(
+                  transient.slot.parentId,
+                  transient.slot.index,
+                  "gap",
                 ),
               undefined,
               popover,
@@ -1616,6 +2080,7 @@ export function renderEditor(target, input, options = {}) {
         layout,
         anchor,
         `${selectedIds.length} items selected`,
+        { closable: true },
       );
       addActions(popover, [
         {
@@ -1664,12 +2129,15 @@ export function renderEditor(target, input, options = {}) {
       model.type === "actor"
         ? "Actor"
         : model.type === "message"
-          ? null
+          ? "Connection"
           : model.type === "gap"
             ? "Gap"
             : model.type === "section"
               ? "Section"
               : "Group",
+      {
+        closable: true,
+      },
     );
 
     if (model.type === "actor") {
@@ -1880,7 +2348,7 @@ export function renderEditor(target, input, options = {}) {
       const actions = [];
       if (model.sections.length === 0) {
         actions.push({
-          label: "Create sections",
+          label: "Add section",
           run: () =>
             run(
               () => editor.convertGroupToSections(id),
@@ -1906,13 +2374,13 @@ export function renderEditor(target, input, options = {}) {
             run(() => editor.ungroup(id), undefined, popover),
         },
         {
-          label: "Delete group",
+          label: "Delete",
           danger: true,
           run: () =>
             run(() => editor.removeItem(id), [], popover),
         },
       );
-      addActions(popover, actions);
+      addActions(popover, actions, { nowrap: true });
       return;
     }
 
@@ -2140,20 +2608,95 @@ export function renderEditor(target, input, options = {}) {
     const connectionLayer = svgElement("g", {
       class: "la-connection-layer",
     });
+
+    const closeInsertionPickerAfterHover = (
+      trigger,
+      hoverTarget,
+    ) => {
+      const close = () => {
+        if (
+          transient?.type !== "insert" ||
+          transient.trigger !== trigger ||
+          transient.hoverTarget !== hoverTarget ||
+          !transient.dismissOnPointerLeave
+        ) {
+          return;
+        }
+        if (
+          transient.triggerHovered ||
+          transient.menuHovered
+        ) {
+          return;
+        }
+        transient = null;
+        contextualEditor(frame, layout);
+      };
+      if (typeof globalThis.setTimeout === "function") {
+        globalThis.setTimeout(close, 0);
+      } else {
+        queueMicrotask(close);
+      }
+    };
+
     for (const slot of timelineInsertionSlots) {
       insertionLayer.append(
         insertionMark(
           slot,
           "Add timeline item here",
-          () => {
+          (trigger, mode, hoverTarget) => {
+            if (
+              mode === "pointer" &&
+              transient?.type === "insert" &&
+              transient.trigger === trigger
+            ) {
+              return;
+            }
+            const controlX =
+              slot.controlX ??
+              slot.left + TIMELINE_INSERTION_CONTROL_OFFSET;
             transient = {
               type: "insert",
               slot,
-              anchor: { x: slot.left + 16, y: slot.y },
+              trigger,
+              hoverTarget,
+              triggerHovered: mode !== "keyboard",
+              menuHovered: false,
+              dismissOnPointerLeave: mode !== "keyboard",
+              close: () =>
+                closeInsertionPickerAfterHover(
+                  trigger,
+                  hoverTarget,
+                ),
+              anchor: {
+                x:
+                  controlX -
+                  TIMELINE_INSERTION_CONTROL_RADIUS,
+                y: slot.y,
+              },
             };
-            selectedIds = [];
-            applySelectedVisuals(svg, selectedIds);
+            if (mode !== "hover") {
+              selectedIds = [];
+              applySelectedVisuals(svg, selectedIds);
+            }
             contextualEditor(frame, layout);
+          },
+          "horizontal",
+          {
+            activateOnHover: true,
+            controlOnly: true,
+            onPointerLeave: (trigger, hoverTarget) => {
+              if (
+                transient?.type === "insert" &&
+                transient.trigger === trigger &&
+                transient.hoverTarget === hoverTarget
+              ) {
+                transient.triggerHovered = false;
+              }
+              closeInsertionPickerAfterHover(
+                trigger,
+                hoverTarget,
+              );
+            },
           },
         ),
       );
@@ -2660,8 +3203,10 @@ export function renderEditor(target, input, options = {}) {
       return;
     }
 
+    removePopover(target.querySelector(".la-frame"));
     baseController = renderDiagram(target, editor.document, {
       ...options,
+      selectable: true,
       initialSelectedId:
         selectedIds.length === 1 ? selectedIds[0] : null,
       onSelect(detail) {
@@ -2739,6 +3284,7 @@ export function renderEditor(target, input, options = {}) {
     destroy() {
       destroyed = true;
       activeCancel?.();
+      removePopover(target.querySelector(".la-frame"));
       baseController?.destroy();
     },
   };

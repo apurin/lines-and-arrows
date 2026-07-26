@@ -1,7 +1,8 @@
 # View and edit interaction model
 
-The SVG canvas has two modes: `view` and `edit`. Both modes allow selection.
-Edit mode adds contextual manipulation without changing the diagram at rest.
+The SVG canvas has two modes: `view` and `edit`. Selection is configurable in
+view mode and required in edit mode. Edit mode adds contextual manipulation
+without changing the diagram at rest.
 
 ## Shared visual states
 

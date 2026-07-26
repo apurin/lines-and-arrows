@@ -18,6 +18,7 @@
   "files": [
     "src",
     "README.md",
+    "THIRD_PARTY_NOTICES.md",
     "syntax.md",
     "ux.md"
   ],

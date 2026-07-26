@@ -120,9 +120,19 @@ export interface IconCatalogItem {
 
 export type IconCatalogEntry = string | IconCatalogItem;
 
+export const PHOSPHOR_ICON_VERSION: "2.1.1";
+export const PHOSPHOR_ICON_WEIGHT: "bold";
+export const phosphorIconCatalog: readonly string[];
+export const recommendedActorIconNames: readonly string[];
+export function phosphorIconResolver(
+  iconName: string,
+  resolvedTheme?: "light" | "dark",
+): string | null;
+
 export interface RenderOptions {
   theme?: ThemeName;
   label?: string;
+  selectable?: boolean;
   initialSelectedId?: string | null;
   iconResolver?: (
     iconName: string,
@@ -355,8 +365,10 @@ export class LinesAndArrowsElement extends HTMLElement {
   source: string;
   theme: ThemeName;
   mode: EditorMode;
+  selectable: boolean;
   iconResolver: RenderOptions["iconResolver"];
   iconCatalog: IconCatalogEntry[];
+  layout: RenderOptions["layout"] | null;
   readonly selectedId: string | null;
   readonly selectedIds: string[];
   readonly canUndo: boolean;

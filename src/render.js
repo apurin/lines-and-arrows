@@ -1,4 +1,5 @@
 import { layoutDiagram } from "./layout.js";
+import { withDefaultIconOptions } from "./icons.js";
 import {
   messageLabelMetrics,
   metadataMetrics,
@@ -61,36 +62,66 @@ const VIEW_STYLES = `
       opacity 120ms ease;
   }
 
-  .la-actor:hover .la-actor-shape {
+  .la-frame[data-selectable="true"]
+    .la-actor:hover
+    .la-actor-shape {
     fill: var(--la-actor-hover);
   }
 
-  .la-actor[data-selected="true"] .la-actor-shape {
+  .la-frame[data-selectable="true"]
+    .la-actor[data-selected="true"]
+    .la-actor-shape {
     fill: var(--la-actor-selected);
   }
 
-  .la-actor:focus-visible .la-focus-ring,
-  .la-actor[data-selected="true"] .la-focus-ring {
+  .la-frame[data-selectable="true"]
+    .la-actor:focus-visible
+    .la-focus-ring,
+  .la-frame[data-selectable="true"]
+    .la-actor[data-selected="true"]
+    .la-focus-ring {
     opacity: 1;
   }
 
-  .la-message:hover .la-message-line,
-  .la-message:focus-visible .la-message-line,
-  .la-message[data-selected="true"] .la-message-line,
-  .la-message:hover .la-lost-cross,
-  .la-message:focus-visible .la-lost-cross,
-  .la-message[data-selected="true"] .la-lost-cross {
+  .la-frame[data-selectable="true"]
+    .la-message:hover
+    .la-message-line,
+  .la-frame[data-selectable="true"]
+    .la-message:focus-visible
+    .la-message-line,
+  .la-frame[data-selectable="true"]
+    .la-message[data-selected="true"]
+    .la-message-line,
+  .la-frame[data-selectable="true"]
+    .la-message:hover
+    .la-lost-cross,
+  .la-frame[data-selectable="true"]
+    .la-message:focus-visible
+    .la-lost-cross,
+  .la-frame[data-selectable="true"]
+    .la-message[data-selected="true"]
+    .la-lost-cross {
     stroke: var(--la-selection);
   }
 
-  .la-message:hover .la-message-label,
-  .la-message:focus-visible .la-message-label,
-  .la-message[data-selected="true"] .la-message-label {
+  .la-frame[data-selectable="true"]
+    .la-message:hover
+    .la-message-label,
+  .la-frame[data-selectable="true"]
+    .la-message:focus-visible
+    .la-message-label,
+  .la-frame[data-selectable="true"]
+    .la-message[data-selected="true"]
+    .la-message-label {
     fill: var(--la-selection);
   }
 
-  .la-message:focus-visible .la-message-focus,
-  .la-message[data-selected="true"] .la-message-focus {
+  .la-frame[data-selectable="true"]
+    .la-message:focus-visible
+    .la-message-focus,
+  .la-frame[data-selectable="true"]
+    .la-message[data-selected="true"]
+    .la-message-focus {
     opacity: 0.24;
   }
 
@@ -122,19 +153,37 @@ const VIEW_STYLES = `
     visibility: visible;
   }
 
-  .la-group-hit:hover + .la-group-shape,
-  .la-group-hit:focus-visible + .la-group-shape,
-  .la-group-hit[data-selected="true"] + .la-group-shape {
+  .la-frame[data-selectable="true"]
+    .la-group-hit:hover
+    + .la-group-shape,
+  .la-frame[data-selectable="true"]
+    .la-group-hit:focus-visible
+    + .la-group-shape,
+  .la-frame[data-selectable="true"]
+    .la-group-hit[data-selected="true"]
+    + .la-group-shape {
     stroke: var(--la-selection);
     stroke-opacity: 0.72;
   }
 
-  .la-section:hover .la-section-line,
-  .la-section:focus-visible .la-section-line,
-  .la-section[data-selected="true"] .la-section-line,
-  .la-gap:hover .la-gap-rule,
-  .la-gap:focus-visible .la-gap-rule,
-  .la-gap[data-selected="true"] .la-gap-rule {
+  .la-frame[data-selectable="true"]
+    .la-section:hover
+    .la-section-line,
+  .la-frame[data-selectable="true"]
+    .la-section:focus-visible
+    .la-section-line,
+  .la-frame[data-selectable="true"]
+    .la-section[data-selected="true"]
+    .la-section-line,
+  .la-frame[data-selectable="true"]
+    .la-gap:hover
+    .la-gap-rule,
+  .la-frame[data-selectable="true"]
+    .la-gap:focus-visible
+    .la-gap-rule,
+  .la-frame[data-selectable="true"]
+    .la-gap[data-selected="true"]
+    .la-gap-rule {
     stroke: var(--la-selection);
   }
 
@@ -253,6 +302,23 @@ function appendDefinitions(svg, tokens, prefix) {
     defs.append(marker);
   }
 
+  const tooltipIconFilter = svgElement("filter", {
+    id: markerId(prefix, "tooltip-icon-color"),
+    "color-interpolation-filters": "sRGB",
+  });
+  tooltipIconFilter.append(
+    svgElement("feFlood", {
+      "flood-color": tokens.tagText,
+      result: "tooltip-icon-color",
+    }),
+    svgElement("feComposite", {
+      in: "tooltip-icon-color",
+      in2: "SourceAlpha",
+      operator: "in",
+    }),
+  );
+  defs.append(tooltipIconFilter);
+
   svg.append(defs);
 }
 
@@ -284,6 +350,10 @@ function applyTokens(frame, tokens) {
 }
 
 function makeSelectable(group, item, selection, label) {
+  if (!selection.enabled) {
+    return false;
+  }
+
   group.classList.add("la-selectable");
   group.dataset.laId = item.id;
   group.dataset.laKind = item.type;
@@ -305,6 +375,7 @@ function makeSelectable(group, item, selection, label) {
       select(event);
     }
   });
+  return true;
 }
 
 function wrapTooltip(text, maxWidth, fontSize = 10) {
@@ -543,12 +614,9 @@ function renderMetadata(
       y: 3,
       width: triggerSize - 6,
       height: triggerSize - 6,
-      opacity: 0.82,
+      filter: options.tooltipIconFilter,
       "pointer-events": "none",
     });
-    if (tokens.name === "dark") {
-      image.style.filter = "invert(1) brightness(1.18)";
-    }
     image.addEventListener("load", () => {
       fallback.setAttribute("opacity", "0");
     });
@@ -632,7 +700,7 @@ function renderActor(
       y: -4,
       width: actor.width + 8,
       height: actor.height + 8,
-      rx: 19,
+      rx: 17,
       fill: "none",
       stroke: tokens.selection,
       "stroke-width": 2,
@@ -646,7 +714,7 @@ function renderActor(
       class: "la-actor-shape",
       width: actor.width,
       height: actor.height,
-      rx: 16,
+      rx: 14,
       fill: tokens.actor,
     }),
   );
@@ -655,9 +723,9 @@ function renderActor(
   if (hasIcon) {
     const fallback = svgElement("text", {
       x: actor.width / 2,
-      y: 24,
+      y: 19,
       "text-anchor": "middle",
-      "font-size": 17,
+      "font-size": 15,
       "font-weight": 700,
       fill: tokens.actorText,
       opacity: 0.72,
@@ -670,10 +738,10 @@ function renderActor(
     if (iconUrl) {
       const image = svgElement("image", {
         href: iconUrl,
-        x: actor.width / 2 - 11,
-        y: 7,
-        width: 22,
-        height: 22,
+        x: actor.width / 2 - 9,
+        y: 4,
+        width: 18,
+        height: 18,
         "pointer-events": "none",
       });
       if (tokens.name === "light") {
@@ -688,7 +756,7 @@ function renderActor(
 
   const label = svgElement("text", {
     x: actor.width / 2,
-    y: hasIcon ? 49 : 40,
+    y: hasIcon ? 39 : 29.5,
     "text-anchor": "middle",
     "font-size": 13,
     "font-weight": 700,
@@ -705,7 +773,7 @@ function renderActor(
     actor.tooltip,
     actor.tooltipIcon,
     actor.width / 2,
-    actor.height - 12,
+    actor.height + layout.options.actorMetadataGap,
     tokens,
     {
       anchor: "middle",
@@ -713,7 +781,8 @@ function renderActor(
       offsetY: actor.y,
       tooltipLayer,
       iconResolver: options.iconResolver,
-      tooltipSide: "above",
+      tooltipIconFilter: options.tooltipIconFilter,
+      tooltipSide: "below",
       bounds: {
         left: 8,
         right: layout.width - 8,
@@ -728,7 +797,7 @@ function renderGroupBackground(parent, group, tokens, selection) {
   const selectable = svgElement("g", {
     class: "la-group-hit",
   });
-  makeSelectable(
+  const enabled = makeSelectable(
     selectable,
     group,
     selection,
@@ -744,7 +813,7 @@ function renderGroupBackground(parent, group, tokens, selection) {
       height: group.height,
       rx: 16,
       fill: "transparent",
-      "pointer-events": "all",
+      "pointer-events": enabled ? "all" : "none",
     }),
   );
   parent.append(selectable);
@@ -783,9 +852,11 @@ function renderGroupHeader(
   const right = group.right - 16;
   const y = group.top + headerHeight / 2 + 4;
   const typeWidth = textWidth(group.groupType, 11);
+  const headerTextGap = 8;
+  const labelX = left + typeWidth + headerTextGap;
   const availableLabelWidth = Math.max(
     36,
-    right - left - typeWidth - 18,
+    right - labelX,
   );
   const labelCharacters = Math.max(
     6,
@@ -815,7 +886,7 @@ function renderGroupHeader(
     header.append(
       svgElement("rect", {
         class: "la-group-label-shape",
-        x: right - labelWidth - backplatePadding,
+        x: labelX - backplatePadding,
         y: y - 14,
         width: labelWidth + backplatePadding * 2,
         height: 20,
@@ -826,9 +897,8 @@ function renderGroupHeader(
   }
 
   const label = svgElement("text", {
-    x: right,
+    x: labelX,
     y,
-    "text-anchor": "end",
     "font-size": 11,
     "font-weight": 650,
     fill: tokens.text,
@@ -844,7 +914,7 @@ function renderGroupHeader(
   });
   type.textContent = group.groupType;
 
-  header.append(label, type);
+  header.append(type, label);
   parent.append(header);
 }
 
@@ -1075,10 +1145,12 @@ function renderMessage(
           ? selectedMarker
           : normalMarker,
       );
-    group.addEventListener("pointerenter", highlightMarker);
-    group.addEventListener("pointerleave", restoreMarker);
-    group.addEventListener("focus", highlightMarker);
-    group.addEventListener("blur", restoreMarker);
+    if (selection.enabled) {
+      group.addEventListener("pointerenter", highlightMarker);
+      group.addEventListener("pointerleave", restoreMarker);
+      group.addEventListener("focus", highlightMarker);
+      group.addEventListener("blur", restoreMarker);
+    }
   }
   group.append(visiblePath);
 
@@ -1132,7 +1204,8 @@ function renderMessage(
       offsetY: 0,
       tooltipLayer,
       iconResolver: options.iconResolver,
-      tooltipSide: "above",
+      tooltipIconFilter: options.tooltipIconFilter,
+      tooltipSide: "below",
       bounds: {
         left: 8,
         right: layout.width - 8,
@@ -1231,6 +1304,7 @@ function renderGap(parent, row, layout, tokens, selection) {
 }
 
 function createSelectionController(root, options) {
+  const enabled = options.selectable !== false;
   let selectedId = null;
   let selectedItem = null;
 
@@ -1257,6 +1331,9 @@ function createSelectionController(root, options) {
 
   const controller = {
     select(id, item = null, emit = true) {
+      if (!enabled) {
+        return;
+      }
       selectedId = id ?? null;
       selectedItem = item;
       apply();
@@ -1292,6 +1369,9 @@ function createSelectionController(root, options) {
     get item() {
       return selectedItem;
     },
+    get enabled() {
+      return enabled;
+    },
   };
 
   return controller;
@@ -1303,6 +1383,7 @@ export function renderDiagram(target, input, options = {}) {
   if (!target?.replaceChildren) {
     throw new TypeError("renderDiagram requires a DOM container.");
   }
+  options = withDefaultIconOptions(options);
 
   const documentModel = typeof input === "string" ? parse(input) : input;
   const tokens = resolveTheme(options.theme, globalThis);
@@ -1317,6 +1398,7 @@ export function renderDiagram(target, input, options = {}) {
   frame.className = "la-frame";
   frame.part = "frame";
   frame.dataset.theme = tokens.name;
+  frame.dataset.selectable = String(options.selectable !== false);
   applyTokens(frame, tokens);
 
   const svg = svgElement("svg", {
@@ -1329,6 +1411,13 @@ export function renderDiagram(target, input, options = {}) {
   });
   svg.style.aspectRatio = `${layout.width} / ${layout.height}`;
   appendDefinitions(svg, tokens, prefix);
+  const renderOptions = {
+    ...options,
+    tooltipIconFilter: `url(#${markerId(
+      prefix,
+      "tooltip-icon-color",
+    )})`,
+  };
   const tooltipLayer = svgElement("g", {
     class: "la-tooltip-layer",
     "pointer-events": "none",
@@ -1336,7 +1425,7 @@ export function renderDiagram(target, input, options = {}) {
 
   const eventTarget = target.host ?? target;
   const selection = createSelectionController(svg, {
-    ...options,
+    ...renderOptions,
     eventTarget,
   });
 
@@ -1367,7 +1456,7 @@ export function renderDiagram(target, input, options = {}) {
         prefix,
         selection,
         tooltipLayer,
-        options,
+        renderOptions,
       );
     } else {
       renderGap(svg, row, layout, tokens, selection);
@@ -1379,21 +1468,23 @@ export function renderDiagram(target, input, options = {}) {
       actor,
       layout,
       tokens,
-      options,
+      renderOptions,
       selection,
       tooltipLayer,
     );
   }
   svg.append(tooltipLayer);
-  if (options.initialSelectedId) {
+  if (selection.enabled && options.initialSelectedId) {
     selection.select(options.initialSelectedId, null, false);
   }
 
-  svg.addEventListener("click", (event) => {
-    if (event.target === svg) {
-      selection.clear();
-    }
-  });
+  if (selection.enabled) {
+    svg.addEventListener("click", (event) => {
+      if (event.target === svg) {
+        selection.clear();
+      }
+    });
+  }
 
   frame.append(svg);
   target.replaceChildren(style, frame);

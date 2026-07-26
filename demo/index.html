@@ -258,7 +258,6 @@
 
     <script type="module">
       import { defineLinesAndArrows } from "../src/index.js";
-      import { phosphorIconCatalog } from "./phosphor-icon-catalog.js";
 
       defineLinesAndArrows();
 
@@ -310,11 +309,7 @@ API --> Customer: Present result`;
       const sourceError = document.querySelector("#source-error");
       const applySource = document.querySelector("#apply-source");
       const modeHelp = document.querySelector("#mode-help");
-      const iconBase =
-        "https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold";
 
-      diagram.iconResolver = (name) => `${iconBase}/${name}-bold.svg`;
-      diagram.iconCatalog = phosphorIconCatalog;
       diagram.source = source;
       sourceInput.value = source;
 
@@ -358,11 +353,12 @@ API --> Customer: Present result`;
 
         sourceEditor.hidden = true;
         diagram.hidden = false;
+        diagram.selectable = surface !== "view";
         diagram.mode = surface;
         modeHelp.textContent =
           surface === "edit"
             ? "Edit mode. Select an object to change it, then drag to reorder."
-            : "View mode. Select any actor, message, group, section, or gap.";
+            : "View mode. Read-only diagram without selection controls.";
       };
 
       for (const button of surfaceButtons) {

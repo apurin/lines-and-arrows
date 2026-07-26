@@ -1,17 +1,22 @@
 import { DiagramEditor } from "./editor.js";
 import { renderEditor } from "./edit-render.js";
+import {
+  phosphorIconCatalog,
+  phosphorIconResolver,
+} from "./icons.js";
 import { renderDiagram } from "./render.js";
 
 const HTMLElementBase = globalThis.HTMLElement ?? class {};
 
 export class LinesAndArrowsElement extends HTMLElementBase {
   static get observedAttributes() {
-    return ["theme", "label", "mode"];
+    return ["theme", "label", "mode", "selectable"];
   }
 
   #source = "";
-  #iconResolver = null;
-  #iconCatalog = [];
+  #iconResolver = phosphorIconResolver;
+  #iconCatalog = phosphorIconCatalog;
+  #layout = null;
   #controller = null;
   #editor = null;
   #mediaQuery = null;
@@ -74,6 +79,18 @@ export class LinesAndArrowsElement extends HTMLElementBase {
     this.setAttribute("mode", value === "edit" ? "edit" : "view");
   }
 
+  get selectable() {
+    return this.getAttribute("selectable") !== "false";
+  }
+
+  set selectable(value) {
+    if (value === false) {
+      this.setAttribute("selectable", "false");
+    } else {
+      this.removeAttribute("selectable");
+    }
+  }
+
   get iconResolver() {
     return this.#iconResolver;
   }
@@ -82,7 +99,14 @@ export class LinesAndArrowsElement extends HTMLElementBase {
     if (value !== null && typeof value !== "function") {
       throw new TypeError("iconResolver must be a function or null.");
     }
+    const replacesUntouchedDefaults =
+      this.#iconResolver === phosphorIconResolver &&
+      this.#iconCatalog === phosphorIconCatalog &&
+      value !== phosphorIconResolver;
     this.#iconResolver = value;
+    if (replacesUntouchedDefaults) {
+      this.#iconCatalog = [];
+    }
     if (this.isConnected) {
       this.#render();
     }
@@ -97,6 +121,23 @@ export class LinesAndArrowsElement extends HTMLElementBase {
       throw new TypeError("iconCatalog must be an array or null.");
     }
     this.#iconCatalog = value ? [...value] : [];
+    if (this.isConnected) {
+      this.#render();
+    }
+  }
+
+  get layout() {
+    return this.#layout ? { ...this.#layout } : null;
+  }
+
+  set layout(value) {
+    if (
+      value !== null &&
+      (typeof value !== "object" || Array.isArray(value))
+    ) {
+      throw new TypeError("layout must be an object or null.");
+    }
+    this.#layout = value ? { ...value } : null;
     if (this.isConnected) {
       this.#render();
     }
@@ -176,8 +217,10 @@ export class LinesAndArrowsElement extends HTMLElementBase {
       const renderOptions = {
         theme: this.theme,
         label: this.getAttribute("label") || "Sequence diagram",
+        selectable: this.mode === "edit" ? true : this.selectable,
         iconResolver: this.#iconResolver,
         iconCatalog: this.#iconCatalog,
+        layout: this.#layout,
       };
 
       if (this.mode === "edit") {

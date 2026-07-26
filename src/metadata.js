@@ -34,7 +34,7 @@ export function metadataMetrics(tag, tooltip) {
         visibleTag.length * TAG_FONT_SIZE * 0.56,
       ) + TAG_HORIZONTAL_PADDING
     : 0;
-  const triggerSize = tooltip ? 18 : 0;
+  const triggerSize = tooltip ? 20 : 0;
   const gap = tag && tooltip ? 4 : 0;
 
   return {
