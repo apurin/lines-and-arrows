@@ -165,10 +165,27 @@ export const EDIT_STYLES = `
   }
 
   .la-edit-popover[data-variant="insert"] {
+    --la-insertion-control-size: 16px;
     width: max-content;
-    padding: 5px;
-    border: 1.5px dashed var(--la-selection);
+    padding:
+      5px
+      5px
+      5px
+      calc(var(--la-insertion-control-size) / 2 + 3px);
+    border: 1px solid var(--la-selection);
     border-radius: 10px;
+    -webkit-mask-image: radial-gradient(
+      circle at left center,
+      transparent 0
+        calc(var(--la-insertion-control-size) / 2 - 0.5px),
+      black calc(var(--la-insertion-control-size) / 2 + 0.5px)
+    );
+    mask-image: radial-gradient(
+      circle at left center,
+      transparent 0
+        calc(var(--la-insertion-control-size) / 2 - 0.5px),
+      black calc(var(--la-insertion-control-size) / 2 + 0.5px)
+    );
   }
 
   .la-edit-header {
@@ -819,6 +836,13 @@ function positionPopover(popover, frame, layout, anchor) {
   }
 
   const svgRect = svg.getBoundingClientRect();
+  if (popover.dataset.variant === "insert") {
+    const diagramScale = svgRect.width / layout.width;
+    popover.style.setProperty(
+      "--la-insertion-control-size",
+      `${TIMELINE_INSERTION_CONTROL_RADIUS * 2 * diagramScale}px`,
+    );
+  }
   const popoverRect = popover.getBoundingClientRect();
   const viewportWidth =
     globalThis.innerWidth ?? document.documentElement.clientWidth;
@@ -853,8 +877,8 @@ function positionPopover(popover, frame, layout, anchor) {
         ? anchorX + gap
         : anchorX - gap - popoverRect.width;
     preferredTop = anchorY - popoverRect.height / 2;
-  } else if (placement === "over-left") {
-    side = "over-left";
+  } else if (placement === "center-left") {
+    side = "center-left";
     preferredLeft = anchorX;
     preferredTop = anchorY - popoverRect.height / 2;
   } else {
@@ -1996,7 +2020,7 @@ export function renderEditor(target, input, options = {}) {
         transient.anchor,
         null,
         {
-          placement: "over-left",
+          placement: "center-left",
           variant: "insert",
           label: "Add timeline item",
         },
@@ -2668,9 +2692,7 @@ export function renderEditor(target, input, options = {}) {
                   hoverTarget,
                 ),
               anchor: {
-                x:
-                  controlX -
-                  TIMELINE_INSERTION_CONTROL_RADIUS,
+                x: controlX,
                 y: slot.y,
               },
             };
