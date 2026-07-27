@@ -1,22 +1,34 @@
+import { decodeText } from "./text.js";
+
 const ARROW_PATTERN =
   /^(.*?)\s+(-->|->x|->)\s+([^:]+?)(?::\s*(.*))?$/;
 const GROUP_PATTERN = /^([a-z][a-z0-9-]*)\s+(.+)$/;
 const ACTOR_FORBIDDEN_PATTERN = /:|-->|->x|->/;
 
 export class LinesAndArrowsSyntaxError extends SyntaxError {
-  constructor(message, line, column = 1) {
-    super(`Line ${line}, column ${column}: ${message}`);
+  constructor(message, line) {
+    super(`Line ${line}: ${message}`);
     this.name = "LinesAndArrowsSyntaxError";
     this.line = line;
-    this.column = column;
   }
 }
 
-function fail(message, line, column = 1) {
-  throw new LinesAndArrowsSyntaxError(message, line, column);
+function fail(message, line) {
+  throw new LinesAndArrowsSyntaxError(message, line);
 }
 
 function makeLine(raw, index) {
+  if (raw.trim() === "") {
+    return {
+      raw,
+      number: index + 1,
+      indent: 0,
+      content: "",
+      blank: true,
+      comment: false,
+    };
+  }
+
   if (raw.includes("\t")) {
     fail("Tabs are not allowed; use two spaces per indentation level.", index + 1);
   }
@@ -37,16 +49,21 @@ function makeLine(raw, index) {
   };
 }
 
-function assertText(value, label, line) {
-  const text = value.trim();
+function assertText(value, label, line, options = {}) {
+  const text = decodeText(value).trim();
   if (!text) {
     fail(`${label} cannot be empty.`, line);
+  }
+  if (options.multiline === false && text.includes("\n")) {
+    fail(`${label} must stay on one line.`, line);
   }
   return text;
 }
 
 function assertActorName(value, line) {
-  const name = assertText(value, "Actor name", line);
+  const name = assertText(value, "Actor name", line, {
+    multiline: false,
+  });
   if (
     ACTOR_FORBIDDEN_PATTERN.test(name) ||
     name.startsWith("@") ||
@@ -63,18 +80,21 @@ function createCursor(source) {
   return {
     lines: normalized.split("\n").map(makeLine),
     index: 0,
-    comments: [],
   };
 }
 
-function consumeTrivia(cursor) {
+function consumeTrivia(cursor, minimumIndent = 0) {
+  const comments = [];
+
   while (cursor.index < cursor.lines.length) {
     const line = cursor.lines[cursor.index];
     if (line.comment) {
-      cursor.comments.push({
+      if (line.indent < minimumIndent) {
+        break;
+      }
+      comments.push({
         type: "comment",
         text: line.content.slice(2).trim(),
-        line: line.number,
         indent: line.indent,
       });
       cursor.index += 1;
@@ -86,18 +106,37 @@ function consumeTrivia(cursor) {
     }
     break;
   }
+
+  return comments;
+}
+
+function relativeComments(comments, ownerIndent) {
+  return comments.map((comment) => ({
+    type: "comment",
+    text: comment.text,
+    indent: comment.indent - ownerIndent,
+  }));
 }
 
 function parseProperties(cursor, indent, allowed) {
   const properties = {};
+  const propertyComments = [];
+  const ownerIndent = indent - 1;
+  let after = "header";
+
+  function attach(comments) {
+    propertyComments.push(
+      ...relativeComments(comments, ownerIndent).map((comment) => ({
+        ...comment,
+        after,
+      })),
+    );
+  }
+
+  attach(consumeTrivia(cursor, indent));
 
   while (cursor.index < cursor.lines.length) {
     const line = cursor.lines[cursor.index];
-
-    if (line.blank || line.comment) {
-      consumeTrivia(cursor);
-      continue;
-    }
 
     if (line.indent < indent) {
       break;
@@ -117,19 +156,28 @@ function parseProperties(cursor, indent, allowed) {
     }
 
     const value = separator === -1 ? "" : line.content.slice(separator + 1);
-    properties[key] = assertText(value, `${key} value`, line.number);
+    properties[key] = assertText(
+      value,
+      `${key} value`,
+      line.number,
+      {
+        multiline: key === "tooltip",
+      },
+    );
     cursor.index += 1;
+    after = key;
+    attach(consumeTrivia(cursor, indent));
   }
 
-  return properties;
+  return { properties, propertyComments };
 }
 
-function parseActor(cursor) {
+function parseActor(cursor, leadingComments = []) {
   const line = cursor.lines[cursor.index];
   const name = assertActorName(line.content.slice(1), line.number);
   cursor.index += 1;
 
-  const properties = parseProperties(
+  const { properties, propertyComments } = parseProperties(
     cursor,
     1,
     new Set(["icon", "tag", "tooltip", "tooltip-icon"]),
@@ -143,10 +191,12 @@ function parseActor(cursor) {
     tooltip: properties.tooltip ?? null,
     tooltipIcon: properties["tooltip-icon"] ?? null,
     line: line.number,
+    leadingComments: relativeComments(leadingComments, line.indent),
+    propertyComments,
   };
 }
 
-function parseMessage(cursor, line, match, path) {
+function parseMessage(cursor, line, match, path, leadingComments = []) {
   const source = assertActorName(match[1], line.number);
   const arrow = match[2];
   const target = assertActorName(match[3], line.number);
@@ -156,7 +206,7 @@ function parseMessage(cursor, line, match, path) {
       : assertText(match[4], "Message label", line.number);
   cursor.index += 1;
 
-  const properties = parseProperties(
+  const { properties, propertyComments } = parseProperties(
     cursor,
     line.indent + 1,
     new Set(["tag", "tooltip", "tooltip-icon"]),
@@ -173,32 +223,41 @@ function parseMessage(cursor, line, match, path) {
     tooltip: properties.tooltip ?? null,
     tooltipIcon: properties["tooltip-icon"] ?? null,
     line: line.number,
+    leadingComments: relativeComments(leadingComments, line.indent),
+    propertyComments,
   };
 }
 
-function nextSignificantLine(cursor) {
-  let index = cursor.index;
-  while (index < cursor.lines.length) {
-    const line = cursor.lines[index];
-    if (!line.blank && !line.comment) {
-      return line;
-    }
-    index += 1;
-  }
-  return null;
-}
-
-function parseSection(cursor, indent, groupPath, sectionIndex) {
+function parseSection(
+  cursor,
+  indent,
+  groupPath,
+  sectionIndex,
+  leadingComments = [],
+) {
   const line = cursor.lines[cursor.index];
   if (line.indent !== indent || !line.content.startsWith("|")) {
     fail("Expected a group section.", line.number);
   }
+  if (line.content !== "|" && !line.content.startsWith("| ")) {
+    fail(
+      'A section label must be separated from "|" by a space.',
+      line.number,
+    );
+  }
 
   const label = assertText(line.content.slice(1), "Section label", line.number);
   cursor.index += 1;
-  const items = parseItems(cursor, indent + 1, [...groupPath, sectionIndex]);
+  const bodyComments = consumeTrivia(cursor, indent + 1);
+  const parsedBody = parseItems(
+    cursor,
+    indent + 1,
+    [...groupPath, sectionIndex],
+    bodyComments,
+    indent,
+  );
 
-  if (items.length === 0) {
+  if (parsedBody.items.length === 0) {
     fail("A section must contain at least one timeline item.", line.number);
   }
 
@@ -206,55 +265,107 @@ function parseSection(cursor, indent, groupPath, sectionIndex) {
     type: "section",
     id: `section:${[...groupPath, sectionIndex].join(".")}`,
     label,
-    items,
+    items: parsedBody.items,
     line: line.number,
+    leadingComments: relativeComments(leadingComments, line.indent),
+    bodyTrailingComments: parsedBody.trailingComments,
   };
 }
 
-function parseGroup(cursor, line, match, path) {
+function parseSections(
+  cursor,
+  indent,
+  groupPath,
+  initialComments,
+  ownerIndent,
+) {
+  const sections = [];
+  let pendingComments = initialComments;
+
+  while (cursor.index < cursor.lines.length) {
+    const sectionLine = cursor.lines[cursor.index];
+    if (!sectionLine || sectionLine.indent < indent) {
+      break;
+    }
+    if (sectionLine.indent !== indent) {
+      fail("Unexpected indentation in group sections.", sectionLine.number);
+    }
+    if (!sectionLine.content.startsWith("|")) {
+      fail(
+        "A group cannot mix direct timeline items and sections.",
+        sectionLine.number,
+      );
+    }
+    sections.push(
+      parseSection(
+        cursor,
+        indent,
+        groupPath,
+        sections.length,
+        pendingComments,
+      ),
+    );
+    pendingComments = consumeTrivia(cursor, indent);
+  }
+
+  return {
+    sections,
+    trailingComments: relativeComments(pendingComments, ownerIndent),
+  };
+}
+
+function parseGroup(cursor, line, match, path, leadingComments = []) {
   const groupType = match[1];
   const label = assertText(match[2], "Group label", line.number);
   cursor.index += 1;
-  consumeTrivia(cursor);
+  const bodyIndent = line.indent + 1;
+  const bodyComments = consumeTrivia(cursor, bodyIndent);
 
-  const next = nextSignificantLine(cursor);
+  const next = cursor.lines[cursor.index];
   if (!next || next.indent <= line.indent) {
     fail("A group must contain at least one timeline item.", line.number);
   }
-  if (next.indent !== line.indent + 1) {
+  if (next.indent !== bodyIndent) {
     fail("Group contents must be indented by one level.", next.number);
   }
 
   const groupPath = path;
-  const sections = [];
+  let sections = [];
   let items = [];
+  let bodyTrailingComments = [];
 
   if (next.content.startsWith("|")) {
-    let sectionIndex = 0;
-    while (cursor.index < cursor.lines.length) {
-      consumeTrivia(cursor);
-      const sectionLine = cursor.lines[cursor.index];
-      if (!sectionLine || sectionLine.indent < line.indent + 1) {
-        break;
-      }
-      if (sectionLine.indent !== line.indent + 1) {
-        fail("Unexpected indentation in group sections.", sectionLine.number);
-      }
-      if (!sectionLine.content.startsWith("|")) {
-        fail(
-          "A group cannot mix direct timeline items and sections.",
-          sectionLine.number,
-        );
-      }
-      sections.push(
-        parseSection(cursor, line.indent + 1, groupPath, sectionIndex),
-      );
-      sectionIndex += 1;
-    }
+    const parsedSections = parseSections(
+      cursor,
+      bodyIndent,
+      groupPath,
+      bodyComments,
+      line.indent,
+    );
+    sections = parsedSections.sections;
+    bodyTrailingComments = parsedSections.trailingComments;
   } else {
-    items = parseItems(cursor, line.indent + 1, groupPath);
+    const parsedBody = parseItems(
+      cursor,
+      bodyIndent,
+      groupPath,
+      bodyComments,
+      line.indent,
+    );
+    items = parsedBody.items;
+    bodyTrailingComments = parsedBody.trailingComments;
     if (items.length === 0) {
       fail("A group must contain at least one timeline item.", line.number);
+    }
+    const nextLine = cursor.lines[cursor.index];
+    if (
+      nextLine?.indent === bodyIndent &&
+      nextLine.content.startsWith("|")
+    ) {
+      fail(
+        "A group cannot mix direct timeline items and sections.",
+        nextLine.number,
+      );
     }
   }
 
@@ -266,25 +377,50 @@ function parseGroup(cursor, line, match, path) {
     items,
     sections,
     line: line.number,
+    leadingComments: relativeComments(leadingComments, line.indent),
+    bodyTrailingComments,
   };
 }
 
-function parseGap(cursor, line, path) {
+function parseGap(cursor, line, path, leadingComments = []) {
   const label = assertText(line.content.slice(4), "Gap label", line.number);
   cursor.index += 1;
+
+  let nextIndex = cursor.index;
+  while (
+    cursor.lines[nextIndex]?.blank ||
+    cursor.lines[nextIndex]?.comment
+  ) {
+    nextIndex += 1;
+  }
+  if (cursor.lines[nextIndex]?.indent > line.indent) {
+    fail(
+      'The reserved "gap" keyword cannot introduce a group body.',
+      line.number,
+    );
+  }
+
   return {
     type: "gap",
     id: `item:${path.join(".")}`,
     label,
     line: line.number,
+    leadingComments: relativeComments(leadingComments, line.indent),
   };
 }
 
-function parseItems(cursor, indent, parentPath = []) {
+function parseItems(
+  cursor,
+  indent,
+  parentPath = [],
+  initialComments,
+  ownerIndent = Math.max(0, indent - 1),
+) {
   const items = [];
+  let pendingComments =
+    initialComments ?? consumeTrivia(cursor, indent);
 
   while (cursor.index < cursor.lines.length) {
-    consumeTrivia(cursor);
     const line = cursor.lines[cursor.index];
     if (!line) {
       break;
@@ -306,7 +442,8 @@ function parseItems(cursor, indent, parentPath = []) {
     const path = [...parentPath, items.length];
 
     if (line.content.startsWith("gap ")) {
-      items.push(parseGap(cursor, line, path));
+      items.push(parseGap(cursor, line, path, pendingComments));
+      pendingComments = consumeTrivia(cursor, indent);
       continue;
     }
     if (line.content === "gap") {
@@ -315,28 +452,36 @@ function parseItems(cursor, indent, parentPath = []) {
 
     const messageMatch = line.content.match(ARROW_PATTERN);
     if (messageMatch) {
-      items.push(parseMessage(cursor, line, messageMatch, path));
+      items.push(
+        parseMessage(cursor, line, messageMatch, path, pendingComments),
+      );
+      pendingComments = consumeTrivia(cursor, indent);
       continue;
     }
 
-    if (
-      line.content.includes("->") ||
-      line.content.includes("~>") ||
-      line.content.includes("->>")
-    ) {
+    if (line.content.includes("->")) {
       fail("Unsupported or malformed arrow expression.", line.number);
     }
 
     const groupMatch = line.content.match(GROUP_PATTERN);
     if (groupMatch) {
-      items.push(parseGroup(cursor, line, groupMatch, path));
+      items.push(
+        parseGroup(cursor, line, groupMatch, path, pendingComments),
+      );
+      pendingComments = consumeTrivia(cursor, indent);
       continue;
+    }
+    if (/^[a-z][a-z0-9-]*\s*$/.test(line.content)) {
+      fail("Group label cannot be empty.", line.number);
     }
 
     fail("Expected a message, group, or gap.", line.number);
   }
 
-  return items;
+  return {
+    items,
+    trailingComments: relativeComments(pendingComments, ownerIndent),
+  };
 }
 
 function visitMessages(items, visitor) {
@@ -391,6 +536,8 @@ function resolveActors(explicitActors, items) {
           tooltipIcon: null,
           line: message.line,
           inferred: true,
+          leadingComments: [],
+          propertyComments: [],
         };
         byName.set(name, actor);
         inferred.push(actor);
@@ -400,38 +547,72 @@ function resolveActors(explicitActors, items) {
   return inferred;
 }
 
+function publicActor(actor) {
+  const { line: _line, ...result } = actor;
+  return result;
+}
+
+function publicItem(item) {
+  const { line: _line, ...result } = item;
+  if (item.type !== "group") {
+    return result;
+  }
+
+  return {
+    ...result,
+    items: item.items.map(publicItem),
+    sections: item.sections.map((section) => {
+      const { line: _sectionLine, ...publicSection } = section;
+      return {
+        ...publicSection,
+        items: section.items.map(publicItem),
+      };
+    }),
+  };
+}
+
 export function parse(source) {
   const cursor = createCursor(source);
   const explicitActors = [];
+  const leadingComments = relativeComments(
+    consumeTrivia(cursor, 0),
+    0,
+  );
+  let pendingComments = [];
 
-  consumeTrivia(cursor);
   while (cursor.index < cursor.lines.length) {
     const line = cursor.lines[cursor.index];
     if (line.indent === 0 && line.content.startsWith("@")) {
-      explicitActors.push(parseActor(cursor));
-      consumeTrivia(cursor);
+      explicitActors.push(parseActor(cursor, pendingComments));
+      pendingComments = consumeTrivia(cursor, 0);
       continue;
     }
     break;
   }
 
-  const items = parseItems(cursor, 0);
-  consumeTrivia(cursor);
+  const parsedTimeline = parseItems(
+    cursor,
+    0,
+    [],
+    pendingComments,
+    0,
+  );
 
   if (cursor.index < cursor.lines.length) {
     const line = cursor.lines[cursor.index];
     fail("Unexpected content.", line.number);
   }
-  if (items.length === 0) {
+  if (parsedTimeline.items.length === 0) {
     fail("A diagram must contain at least one timeline item.", 1);
   }
 
-  const actors = resolveActors(explicitActors, items);
+  const actors = resolveActors(explicitActors, parsedTimeline.items);
   return {
     type: "diagram",
-    actors,
-    items,
-    comments: cursor.comments,
+    actors: actors.map(publicActor),
+    items: parsedTimeline.items.map(publicItem),
+    leadingComments,
+    trailingComments: parsedTimeline.trailingComments,
     explicitActors: explicitActors.length > 0,
   };
 }

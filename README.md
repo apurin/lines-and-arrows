@@ -1,30 +1,43 @@
 # Lines & Arrows
 
-Lines & Arrows is a lightweight, text-first sequence-diagram viewer and visual
-editor. Its small indentation-based language stores the meaning and order of a
-sequence without coupling the document to a particular rendering engine.
+Lines & Arrows is a lightweight sequence-diagram language, SVG viewer, and
+visual editor. Its indentation-based source keeps actor order, interactions,
+groups, sections, gaps, tags, tooltips, and icons independent of any particular
+renderer.
 
-The project currently provides a dependency-free parser and serializer,
-responsive SVG rendering, a direct-manipulation editor, an opt-in web
-component, TypeScript declarations, light and dark themes, and a configurable
-icon resolver.
+The runtime is dependency-free JavaScript. It works as an npm module, a native
+browser module, or an opt-in web component. Handwritten type declarations are
+included for TypeScript consumers; the project has no TypeScript build step.
 
-> **Status:** active development. The package manifest is still marked
-> `private`, so `@lines-and-arrows/core` is not ready to install from npm yet.
+> **Status:** active development. Publishing is disabled in the package
+> manifest, so the npm and CDN examples describe the intended public surface.
 
-## Highlights
+## Browser module
 
-- View and edit modes using the same responsive SVG canvas.
-- Actors, messages, self-messages, open-ended group types, group sections,
-  nested groups, and timeline gaps.
-- Solid, dashed, and lost-message arrows.
-- Optional actor and message tags, tooltips, and icons.
-- Direct actor and message creation, endpoint retargeting, drag reordering,
-  marquee grouping, and non-destructive ungrouping.
-- Undo, redo, keyboard editing, and source replacement.
-- Optional selection in view mode.
-- Light, dark, and system themes.
-- Built-in Phosphor icon catalog with configurable provider overrides.
+The jsDelivr URL follows the latest published package:
+
+```html
+<script type="module">
+  import {
+    defineLinesAndArrows,
+  } from "https://cdn.jsdelivr.net/npm/@lines-and-arrows/core/+esm";
+
+  defineLinesAndArrows();
+</script>
+
+<lines-and-arrows mode="view" theme="auto">
+  @Client
+  @API
+
+  Client -> API: Start
+  API --> Client: Complete
+</lines-and-arrows>
+```
+
+Set `mode="edit"` to enable the visual editor. Use `selectable="false"` when a
+view should have no selectable diagram elements. Source nested naturally inside
+the element may share the page's indentation; the component removes that
+common indentation while preserving the diagram's relative indentation.
 
 ## Syntax
 
@@ -33,14 +46,14 @@ icon resolver.
   icon user
 
 @API
-  icon server
+  icon cloud
   tag public
   tooltip Public entry point
 
 @Worker
   icon gear
 
-Customer -> API: Start job
+Customer -> API: Start job\nand supporting evidence
 API -> Worker: Dispatch
 
 critical Job execution
@@ -52,53 +65,59 @@ gap A few moments later
 API --> Customer: Job complete
 ```
 
-Actor declarations are optional when actors can be inferred from their first
-use. Message labels are optional:
+Actor declarations and message labels are optional:
 
 ```lines-and-arrows
 Client -> API
 API --> Client: Accepted
-API ->x Queue: Delivery failed
+API ->x Queue: Delivery lost
 ```
 
-See [syntax.md](./syntax.md) for the complete language definition.
+See [syntax.md](./syntax.md) for the complete language definition and
+[agents.md](./agents.md) for a compact authoring reference.
 
-## Web component
+Use `\n` for an intentional line break in labels and tooltips, and `\\` for a
+literal backslash. Actor names, tags, group types, and icon identifiers stay on
+one line.
 
-During local development, import the component directly from the source tree:
+## Validate without a page
 
-```html
-<script type="module">
-  import {
-    defineLinesAndArrows,
-  } from "./src/index.js";
+Agents and build tools can check source without creating a DOM:
 
-  defineLinesAndArrows();
-</script>
+```js
+import {
+  validate,
+} from "@lines-and-arrows/core/syntax";
 
-<lines-and-arrows
-  mode="view"
-  theme="auto"
-  selectable="false"
->
-@Client
-@API
+const result = validate(source);
 
-Client -> API: Start
-API --> Client: Complete
-</lines-and-arrows>
+if (!result.valid) {
+  console.error(
+    `${result.error.line}: ${result.error.message}`,
+  );
+}
 ```
 
-Set `mode="edit"` to enable the visual editor. The element exposes `source`,
-`mode`, `theme`, `selectable`, `layout`, `iconResolver`, `iconCatalog`,
-`selectedIds`, `canUndo`, and `canRedo`, as well as selection, history, and
-source-replacement methods.
+`validate` returns `{ valid: true, document }` on success and
+`{ valid: false, error }` on syntax errors. `parse` remains available when
+throwing behavior is more convenient. Parsed comments stay structurally
+attached to the nearby actor, property, timeline item, group, or section, so
+canonical serialization and editor moves retain their relative indentation
+without tracking source line numbers.
 
-It emits:
+Validate a file or stdin from the command line:
 
-- `la-select` when the selection changes;
-- `la-change` after an editor command changes the source;
-- `la-error` when parsing or editing fails.
+```sh
+lines-and-arrows validate diagram.txt
+lines-and-arrows validate --json diagram.txt
+lines-and-arrows validate - < diagram.txt
+```
+
+Inside this repository:
+
+```sh
+npm run validate -- diagram.txt
+```
 
 ## JavaScript API
 
@@ -109,7 +128,7 @@ import {
   renderDiagram,
   renderEditor,
   serialize,
-} from "./src/index.js";
+} from "@lines-and-arrows/core";
 
 const document = parse(source);
 const canonicalSource = serialize(document);
@@ -118,8 +137,6 @@ const viewer = renderDiagram(container, document, {
   theme: "auto",
   selectable: false,
 });
-
-viewer.destroy();
 
 const editor = new DiagramEditor(canonicalSource);
 const editable = renderEditor(container, editor.document, {
@@ -130,64 +147,76 @@ const editable = renderEditor(container, editor.document, {
   },
 });
 
-editable.undo();
-editable.redo();
+viewer.destroy();
+editable.destroy();
 ```
 
-`renderDiagram` and `renderEditor` accept source text or a parsed document and
-return controllers that can be destroyed when the host view is removed.
+`DiagramEditor` owns an immutable document snapshot. Read
+`editor.document`, a controller's `ast`, or a change event's `ast` to inspect
+the current state; use editor commands or `replaceSource()` to change it.
+Snapshots are replaced atomically for edits, undo, and redo. `serialize()`
+also validates programmatically constructed documents and rejects ambiguous
+structures, such as a group containing both direct items and sections.
 
-## npm and CDN distribution
+The `<lines-and-arrows>` element exposes `source`, `mode`, `theme`,
+`selectable`, `layout`, `iconResolver`, and `iconCatalog`, plus selection,
+history, and source-replacement methods. `select(id)` and user selection both
+emit `la-select` with the selected immutable model item. `la-change` is emitted
+only after a command commits a different source; its detail contains the new
+source, immutable AST snapshot, command name, and history state.
+In edit mode, `replaceSource()` returns `true` only when it commits a different
+valid source. Invalid source returns `false` and emits `la-error`, whose detail
+contains the original error.
 
-The intended package name is `@lines-and-arrows/core`. Publishing is currently
-disabled with `"private": true`; after the first public release, consumers will
-be able to install it with:
+Layout overrides are compacting preferences, not permission to overlap
+content. The renderer clamps unsafe spacing values and reserves room for actor
+metadata, message labels, group headers, and section dividers.
+
+Selectable actors and messages expose accessible names, enter the keyboard tab
+order, and respond to Enter or Space. Screen readers use the rendered SVG's
+standard roles and ARIA labels, so hosts do not need a separate accessibility
+helper API.
+
+## Install
+
+The intended package name is `@lines-and-arrows/core`:
 
 ```sh
 npm install @lines-and-arrows/core
 ```
 
-and import it from a CDN that exposes npm ES modules:
-
-```js
-import {
-  defineLinesAndArrows,
-} from "https://cdn.jsdelivr.net/npm/@lines-and-arrows/core@VERSION/+esm";
-```
-
-Pin an explicit version in production rather than using an unversioned CDN URL.
-
-The published package is configured to contain the runtime source, type
-declarations, README, syntax reference, MIT license, and third-party notices.
+The published package contains the JavaScript runtime, optional type
+declarations, validation CLI, agent guidance, syntax reference, licenses, and
+notices.
 
 ## Themes and icons
 
-Use `theme: "light"`, `"dark"`, or `"auto"`. Selection is enabled by default
-for `renderDiagram` and can be disabled with `selectable: false`.
-
-Actor and tooltip icons work without configuration. By default, Lines & Arrows
-resolves bold SVG assets from the version-pinned Phosphor Icons 2.1.1 package
-on jsDelivr. The editor offers 48 recommended actor icons and searches the
-complete local icon-name catalog.
-
-Set `iconResolver(name, theme)` and `iconCatalog` to provide another icon set.
-Set the resolver to `null` and the catalog to `[]` to disable external icons.
-Tooltips fall back to a built-in lowercase `i`.
+Use `theme: "light"`, `"dark"`, or `"auto"`. Actor and tooltip icons work
+without configuration through the default Phosphor resolver. Set
+`iconResolver(name, theme)` and `iconCatalog` to provide another icon set. On
+the custom element, set either property to `null` to disable the resolver or
+clear the catalog.
 
 Phosphor Icons is MIT licensed. See
 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
 
-## Repository layout
+## Repository
 
-- `src/` — parser, serializer, layout, SVG renderer, editor, and web component.
-- `test/` — parser, model, layout, theme, and editor regression tests.
+- `src/` — parser, serializer, editor model, SVG renderer, and web component.
+- `bin/` — DOM-free syntax validation command.
+- `test/` — syntax, serialization, editor-model, and icon-provider checks.
 - `demo/` — local interactive development demo.
 - `website/` — public product website and showcases.
 
-## Development
+Run the programmatic checks:
 
 ```sh
 npm test
+```
+
+Run the local demo:
+
+```sh
 python3 -m http.server 4173
 ```
 

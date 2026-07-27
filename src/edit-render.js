@@ -817,6 +817,7 @@ function removePopover(frame) {
   if (popover.insertionTrigger) {
     delete popover.insertionTrigger.dataset.menuOpen;
   }
+  popover.cleanupContents?.();
   popover.cleanupPositioning?.();
   try {
     popover.hidePopover?.();
@@ -976,6 +977,19 @@ function addPopover(
   popover.className = "la-edit-popover";
   popover.part = "editor";
   popover.setAttribute("popover", "manual");
+  const contentCleanups = new Set();
+  popover.addContentCleanup = (cleanup) => {
+    contentCleanups.add(cleanup);
+    return () => contentCleanups.delete(cleanup);
+  };
+  popover.cleanupContents = () => {
+    for (const cleanup of contentCleanups) {
+      cleanup();
+    }
+    contentCleanups.clear();
+    delete popover.addContentCleanup;
+    delete popover.cleanupContents;
+  };
   popover.dataset.placement =
     popoverOptions.placement ?? "vertical";
   if (popoverOptions.variant) {
@@ -1429,6 +1443,10 @@ export function createIconPicker(
     if (panel.hidden) {
       return;
     }
+    frame?.removeEventListener(
+      "pointerdown",
+      onOutsidePointerDown,
+    );
     panel.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
     popover.repositionOverlay?.();
@@ -1440,6 +1458,12 @@ export function createIconPicker(
     }
   };
   picker.closePicker = close;
+
+  const onOutsidePointerDown = (event) => {
+    if (!picker.contains(event.target)) {
+      close();
+    }
+  };
 
   const open = () => {
     for (const other of popover.querySelectorAll(
@@ -1453,6 +1477,10 @@ export function createIconPicker(
     renderOptions();
     panel.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
+    frame?.addEventListener(
+      "pointerdown",
+      onOutsidePointerDown,
+    );
     popover.repositionOverlay?.();
     if (options.focusOnOpen !== false) {
       queueMicrotask(() => search.focus());
@@ -1476,11 +1504,23 @@ export function createIconPicker(
       close(true, true);
     }
   });
-  frame?.addEventListener("pointerdown", (event) => {
-    if (!picker.contains(event.target)) {
-      close();
-    }
-  });
+  let removeContentCleanup = null;
+  const dispose = () => {
+    removeContentCleanup?.();
+    removeContentCleanup = null;
+    frame?.removeEventListener(
+      "pointerdown",
+      onOutsidePointerDown,
+    );
+    panel.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+    delete picker.closePicker;
+    delete picker.openPicker;
+    delete picker.disposePicker;
+  };
+  removeContentCleanup =
+    popover.addContentCleanup?.(dispose) ?? null;
+  picker.disposePicker = dispose;
 
   panel.append(toolbar, grid, empty);
   picker.append(trigger, panel);
@@ -1950,13 +1990,13 @@ export function renderEditor(target, input, options = {}) {
   const eventTarget = target.host ?? target;
 
   function notifyChange() {
-    const detail = {
+    const detail = Object.freeze({
       source: editor.source,
       ast: editor.document,
       command: editor.lastCommand,
       canUndo: editor.canUndo,
       canRedo: editor.canRedo,
-    };
+    });
     options.onChange?.(detail);
     if (eventTarget?.dispatchEvent && globalThis.CustomEvent) {
       eventTarget.dispatchEvent(
@@ -1990,9 +2030,14 @@ export function renderEditor(target, input, options = {}) {
     selection = undefined,
     popover = null,
     focusField = null,
+    errorResult = null,
   ) {
+    const previousDocument = editor.document;
     try {
       const result = command();
+      if (editor.document === previousDocument) {
+        return result;
+      }
       selectedIds =
         selection === undefined
           ? result
@@ -2006,7 +2051,7 @@ export function renderEditor(target, input, options = {}) {
       return result;
     } catch (error) {
       notifyError(error, popover);
-      return null;
+      return errorResult;
     }
   }
 
@@ -2219,6 +2264,7 @@ export function renderEditor(target, input, options = {}) {
             popover,
           ),
         {
+          multiline: true,
           trailing: ({ control, commit }) =>
             createIconPicker(
               popover,
@@ -2266,12 +2312,17 @@ export function renderEditor(target, input, options = {}) {
             popover,
           ),
       );
-      addField(popover, "Label", model.label, (value) =>
-        run(
-          () => editor.updateItem(id, { label: value }),
-          undefined,
-          popover,
-        ),
+      addField(
+        popover,
+        "Label",
+        model.label,
+        (value) =>
+          run(
+            () => editor.updateItem(id, { label: value }),
+            undefined,
+            popover,
+          ),
+        { multiline: true },
       );
       addField(popover, "Tag", model.tag, (value) =>
         run(
@@ -2291,6 +2342,7 @@ export function renderEditor(target, input, options = {}) {
             popover,
           ),
         {
+          multiline: true,
           trailing: ({ control, commit }) =>
             createIconPicker(
               popover,
@@ -2328,12 +2380,17 @@ export function renderEditor(target, input, options = {}) {
     }
 
     if (model.type === "gap") {
-      addField(popover, "Label", model.label, (value) =>
-        run(
-          () => editor.updateItem(id, { label: value }),
-          undefined,
-          popover,
-        ),
+      addField(
+        popover,
+        "Label",
+        model.label,
+        (value) =>
+          run(
+            () => editor.updateItem(id, { label: value }),
+            undefined,
+            popover,
+          ),
+        { multiline: true },
       );
       addActions(popover, [
         {
@@ -2362,12 +2419,17 @@ export function renderEditor(target, input, options = {}) {
           inputTransform: normalizeGroupTypeInput,
         },
       );
-      addField(popover, "Label", model.label, (value) =>
-        run(
-          () => editor.updateItem(id, { label: value }),
-          undefined,
-          popover,
-        ),
+      addField(
+        popover,
+        "Label",
+        model.label,
+        (value) =>
+          run(
+            () => editor.updateItem(id, { label: value }),
+            undefined,
+            popover,
+          ),
+        { multiline: true },
       );
       const actions = [];
       if (model.sections.length === 0) {
@@ -2408,12 +2470,17 @@ export function renderEditor(target, input, options = {}) {
       return;
     }
 
-    addField(popover, "Label", model.label, (value) =>
-      run(
-        () => editor.updateSection(id, { label: value }),
-        undefined,
-        popover,
-      ),
+    addField(
+      popover,
+      "Label",
+      model.label,
+      (value) =>
+        run(
+          () => editor.updateSection(id, { label: value }),
+          undefined,
+          popover,
+        ),
+      { multiline: true },
     );
     const sectionLocation = findSectionLocation(editor.document, id);
     addActions(popover, [
@@ -3225,7 +3292,7 @@ export function renderEditor(target, input, options = {}) {
       return;
     }
 
-    removePopover(target.querySelector(".la-frame"));
+    removePopover(baseController?.svg?.closest(".la-frame"));
     baseController = renderDiagram(target, editor.document, {
       ...options,
       selectable: true,
@@ -3235,13 +3302,13 @@ export function renderEditor(target, input, options = {}) {
         transient = null;
         selectedIds = detail.id ? [detail.id] : [];
         applySelectedVisuals(baseController.svg, selectedIds);
-        const frame = target.querySelector(".la-frame");
+        const frame = baseController.svg.closest(".la-frame");
         contextualEditor(frame, baseController.layout);
         options.onSelect?.(detail);
       },
     });
 
-    const frame = target.querySelector(".la-frame");
+    const frame = baseController.svg.closest(".la-frame");
     frame.dataset.mode = "edit";
     decorate(frame, baseController.svg, baseController.layout);
     applySelectedVisuals(baseController.svg, selectedIds);
@@ -3286,13 +3353,11 @@ export function renderEditor(target, input, options = {}) {
     },
     select(id) {
       transient = null;
-      selectedIds = id ? [id] : [];
-      draw();
+      baseController.select(id);
     },
     clearSelection() {
       transient = null;
-      selectedIds = [];
-      draw();
+      baseController.clearSelection();
     },
     undo() {
       return run(() => editor.undo(), []);
@@ -3301,12 +3366,18 @@ export function renderEditor(target, input, options = {}) {
       return run(() => editor.redo(), []);
     },
     replaceSource(source) {
-      return run(() => editor.replaceSource(source), []);
+      return run(
+        () => editor.replaceSource(source),
+        [],
+        null,
+        null,
+        false,
+      );
     },
     destroy() {
       destroyed = true;
       activeCancel?.();
-      removePopover(target.querySelector(".la-frame"));
+      removePopover(baseController?.svg?.closest(".la-frame"));
       baseController?.destroy();
     },
   };

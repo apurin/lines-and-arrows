@@ -41,7 +41,7 @@ tooltips.
   icon user
 
 @API
-  icon server
+  icon cloud
   tag comment
   tooltip Public entry point
   tooltip-icon chat-circle
@@ -50,11 +50,11 @@ tooltips.
   icon gear
 
 @Queue
-  icon inbox
+  icon tray
 
 Customer -> API: Start job
   tag critical
-  tooltip Must be acknowledged before the interview continues
+  tooltip Must be acknowledged\nbefore processing continues
   tooltip-icon warning
 
 critical Job execution
@@ -75,12 +75,15 @@ API --> Customer: Job complete
 The format is UTF-8, line-oriented, and indentation-based.
 
 - One indentation level is two spaces.
-- Tabs are invalid.
-- Blank lines are ignored.
+- Tabs are invalid on nonblank lines.
+- Blank lines, including lines containing only spaces or tabs, are ignored.
 - A line whose first non-space characters are `//` is a comment.
+- A comment's indentation places it in the same structural scope as the
+  surrounding actor, property, timeline item, group, or section.
 - Inline comments are not supported. This keeps values such as URLs
   unambiguous.
-- All text values are single-line in this draft.
+- Source values stay on one physical line; `\n` represents supported visible
+  line breaks without changing indentation or structure.
 
 Indentation expresses ownership:
 
@@ -96,7 +99,7 @@ An actor declaration begins with `@`:
 
 ```lines-and-arrows
 @API
-  icon server
+  icon cloud
   tag comment
   tooltip Public entry point
 ```
@@ -106,8 +109,8 @@ Actor properties are optional:
 | Property | Meaning |
 | --- | --- |
 | `icon IDENTIFIER` | A stable icon-catalog identifier. |
-| `tag TEXT` | A short, visible label. |
-| `tooltip TEXT` | Additional detail exposed on hover, focus, or an equivalent interaction. |
+| `tag TEXT` | A short, visible, single-line label. |
+| `tooltip TEXT` | Additional detail exposed on hover, focus, or an equivalent interaction. May contain `\n`. |
 | `tooltip-icon IDENTIFIER` | An optional icon-catalog identifier for the tooltip control. |
 
 An actor may have at most one of each property. Property order does not change
@@ -147,6 +150,12 @@ Omit the `:` when the message has no label. When it is present, the first `:`
 after the target separates the target from the label, and the label must not be
 empty.
 
+Use `\n` where a message label should break across visible lines:
+
+```lines-and-arrows
+Client -> API: Submit report\nand supporting evidence
+```
+
 A message may have one `tag`, one `tooltip`, and one `tooltip-icon`:
 
 ```lines-and-arrows
@@ -168,10 +177,8 @@ tag. Renderers show its information control in the message metadata row.
 | `-->` | A visually distinct message. Commonly used for a response, result, or acknowledgement. | Dotted or dashed line with an arrowhead. |
 | `->x` | A lost or undelivered message: the intended target does not receive it. | Solid line ending in a cross. |
 
-`->` and `-->` intentionally follow PlantUML's distinction: PlantUML defines
-the latter as a dotted arrow, while using it for responses is a convention
-rather than an enforced semantic rule. Lines & Arrows likewise does not infer
-request/response pairs or synchronization from either form.
+The arrow form preserves a visual distinction. It does not infer
+request/response pairs, synchronization, or execution behavior.
 
 The cross has a narrower meaning than a failed operation. It means delivery
 failed or the message was lost. If a target receives a request and rejects it,
@@ -181,12 +188,6 @@ represent that as a delivered request followed by a response:
 Client -> API: Create order
 API --> Client: Rejected
 ```
-
-[PlantUML's sequence-diagram
-documentation](https://plantuml.com/en/sequence-diagram) does not define `~>`
-as a standard sequence arrow. Its `->>` form changes the arrowhead drawing but
-does not define an asynchronous semantic. Neither `~>` nor `->>` is part of
-this draft. Unknown arrow forms are syntax errors.
 
 ## Groups
 
@@ -199,13 +200,15 @@ repeat Each uploaded chunk
 ```
 
 The first word is the group type. Everything after it is the visible label.
+The label may contain `\n`; the group type stays on one line.
 Group types use lowercase letters, numbers, and hyphens, beginning with a
 letter.
 
 The type vocabulary is deliberately open. `choice`, `repeat`, `parallel`,
 `optional`, `critical`, and domain-specific values such as `review` all use the
 same structure. A renderer that does not recognize a type must preserve it and
-may display the group with a neutral treatment.
+may display the group with a neutral treatment. `gap` is the one reserved type:
+it introduces a timeline gap and cannot introduce a group body.
 
 Groups may be nested.
 
@@ -222,9 +225,10 @@ choice Inventory result
     API --> Customer: Unavailable
 ```
 
-The text after `|` is the section label. A group body contains either direct
-timeline items or sections, not both at the same indentation level. Every group
-and every section must contain at least one timeline item.
+Separate `|` from the section label with at least one space. The label may
+contain `\n`. A group body contains either direct timeline items or sections,
+not both at the same indentation level. Every group and every section must
+contain at least one timeline item.
 
 ## Gaps
 
@@ -236,9 +240,9 @@ gap 30 seconds later
 Worker --> API: Completed
 ```
 
-The text after `gap` is required and visible. In a lifeline-based renderer, the
-gap crosses every lifeline. In another kind of renderer, it must remain an
-equally prominent timeline marker.
+The text after `gap` is required, visible, and may contain `\n`. In a
+lifeline-based renderer, the gap crosses every lifeline. In another kind of
+renderer, it must remain an equally prominent timeline marker.
 
 A gap means that time passed, context changed, or an omitted part of the
 sequence separates the surrounding interactions. It does not encode duration
@@ -256,14 +260,36 @@ Comments occupy their own line and are ignored by the diagram:
 API -> Worker: Start job
 ```
 
-Comments may be indented for readability, but indentation does not attach them
-to an actor, message, group, or gap. Editors should preserve comments where
-practical.
+Indent comments like the construct they describe. A comment before an actor,
+timeline item, or section is attached to that construct. A comment among actor
+or message properties stays after the same header or property. An indented
+comment after the final child of a group or section stays at the end of that
+body. Comments before the first construct or after the timeline belong to the
+document.
+
+This structural attachment avoids source line bookkeeping. Moving or grouping
+a construct moves its attached comments. Deleting a construct deletes its
+attached comments. Removing a group or section wrapper discards comments owned
+by that wrapper while retaining comments owned by the children that remain.
+Comments never become visible or selectable diagram controls.
 
 ## Names and text
 
 Actor names, labels, tags, and tooltips are trimmed but otherwise preserve their
 Unicode text and capitalization.
+
+The two text escapes are:
+
+- `\n` for an intentional visible line break;
+- `\\` for a literal backslash.
+
+Line breaks are supported in message, group, section, and gap labels and in
+tooltips. Actor names, tags, group types, `icon` values, and `tooltip-icon`
+values stay on one line. Those fields identify objects or occupy deliberately
+compact controls, so line breaks would be ambiguous rather than useful.
+
+Other backslash combinations have no special meaning. A canonical writer
+escapes every literal backslash, so text always parses back to the same value.
 
 In this draft:
 
@@ -273,10 +299,10 @@ In this draft:
 - group labels, section labels, message labels, tags, and tooltips may contain
   punctuation, including additional colons;
 - empty names and explicitly empty text values are invalid;
-- there is no quoting or escape syntax.
+- a `\n` escape is invalid in a field defined as single-line.
 
-These restrictions keep the first parser small and deterministic. Quoting can
-be added later if real diagrams require otherwise.
+These restrictions keep parsing small and deterministic without adding a
+quoting syntax.
 
 ## Compact grammar
 
@@ -288,37 +314,41 @@ document         = comments, [ actors ], timeline, comments ;
 comments         = { comment | blank } ;
 
 actors           = actor, { comments, actor } ;
-actor            = "@", actor-name, newline, { actor-property | comment } ;
+actor            = "@", single-line-text, newline,
+                   { actor-property | comment } ;
 actor-property   = indent, ( icon | tag | tooltip | tooltip-icon ), newline ;
-icon             = "icon", space, text ;
-tag              = "tag", space, text ;
-tooltip          = "tooltip", space, text ;
-tooltip-icon     = "tooltip-icon", space, text ;
+icon             = "icon", space, single-line-text ;
+tag              = "tag", space, single-line-text ;
+tooltip          = "tooltip", space, escaped-text ;
+tooltip-icon     = "tooltip-icon", space, single-line-text ;
 
 timeline         = { timeline-item | comment | blank } ;
 timeline-item    = message | group | gap ;
 
-message          = actor-name, space, arrow, space, actor-name,
-                   [ ":", [ space ], text ], newline,
+message          = single-line-text, space, arrow, space, single-line-text,
+                   [ ":", [ space ], escaped-text ], newline,
                    { message-property | comment } ;
 message-property = indent, ( tag | tooltip | tooltip-icon ), newline ;
 arrow            = "->" | "-->" | "->x" ;
 
-group            = group-type, space, text, newline,
+group            = group-type, space, escaped-text, newline,
                    ( group-body | sections ) ;
 group-body       = indent, timeline-item,
                    { indent, timeline-item | comment | blank } ;
 sections         = section, { section } ;
-section          = indent, "|", space, text, newline, group-body ;
+section          = indent, "|", space, escaped-text, newline, group-body ;
 
-gap              = "gap", space, text, newline ;
+gap              = "gap", space, escaped-text, newline ;
 comment          = [ indent ], "//", [ text ], newline ;
 blank            = newline ;
 group-type       = letter, { lowercase-letter | digit | "-" } ;
+escaped-text     = { unicode-character | "\n" | "\\" } ;
+single-line-text = escaped-text without "\n" ;
 ```
 
 `timeline` must contain at least one timeline item. The grammar is descriptive;
-an implementation should parse arrow tokens longest-first.
+an implementation should parse arrow tokens longest-first. `gap` is excluded
+from `group-type` because it is reserved by the `gap` production.
 
 ## Validation and round trips
 
@@ -329,14 +359,23 @@ A parser must report, at minimum:
 - duplicate message tags, tooltips, or tooltip icons;
 - unknown actor references in a document with explicit declarations;
 - empty names, explicit labels, groups, sections, or gaps;
+- line-break escapes in single-line fields;
 - mixed direct items and sections in one group;
+- a section marker without separator whitespace;
+- use of the reserved `gap` keyword as a group type;
 - unsupported arrow forms;
 - actor declarations after the timeline begins.
 
 A parse-write round trip must preserve document meaning. A canonical writer may
 normalize indentation, blank lines, and property order, but must not change
 actor order, timeline order, hierarchy, text, arrow forms, actor or tooltip
-icon identifiers, tags, or tooltips.
+icon identifiers, tags, tooltips, or the structural placement and relative
+indentation of comments. Canonical output writes real line breaks inside values
+as `\n` and literal backslashes as `\\`.
+
+Programmatic documents follow the same grammar. `serialize(document)` validates
+the document before returning source and rejects structures that would lose
+meaning, including a group containing both direct items and sections.
 
 ## Renderer contract
 
@@ -353,7 +392,3 @@ conforming renderer:
 6. preserves unknown group types and actor or tooltip icon identifiers on
    write;
 7. never writes layout or theme choices back into the source.
-
-PlantUML import and export are adapters around this format, not the definition
-of it. Some PlantUML documents will necessarily lose unsupported presentation
-or behavioral features when normalized into Lines & Arrows.

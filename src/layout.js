@@ -7,6 +7,7 @@ import {
   metadataMetrics,
   selfMessageWidth,
 } from "./metadata.js";
+import { textLines } from "./text.js";
 
 const DEFAULTS = {
   actorWidth: 96,
@@ -28,10 +29,79 @@ const DEFAULTS = {
   bottomPadding: 36,
 };
 
+const MINIMUMS = {
+  actorWidth: 56,
+  actorHeight: 42,
+  actorMetadataGap: 4,
+  actorMetadataHeight: 20,
+  actorGap: 8,
+  marginX: 8,
+  marginTop: 8,
+  timelineTopGap: 8,
+  messageHeight: 36,
+  messageMetadataHeight: 16,
+  messageLabelMaxWidth: 56,
+  gapHeight: 40,
+  groupHeaderHeight: 24,
+  sectionHeaderHeight: 24,
+  groupPaddingBottom: 6,
+  groupGap: 8,
+  bottomPadding: 18,
+};
+
+const ACTOR_METADATA_TIMELINE_GAP = 4;
+const MESSAGE_LABEL_TOP_EXTENT = 21;
+const SELF_MESSAGE_LABEL_TOP_EXTENT = 32;
 const SELF_MESSAGE_LIFELINE_GAP = 18;
 const GROUP_DEPTH_INSET = 9;
 const GROUP_CONTENT_INSET = 14;
 const GROUP_SELF_MESSAGE_RIGHT_PADDING = 20;
+const GROUP_LABEL_LINE_HEIGHT = 13;
+const SECTION_LABEL_LINE_HEIGHT = 12;
+const GAP_LABEL_LINE_HEIGHT = 12;
+
+function resolveOptions(overrides) {
+  const options = { ...DEFAULTS };
+  const requested =
+    overrides && typeof overrides === "object" ? overrides : {};
+
+  for (const key of Object.keys(DEFAULTS)) {
+    const override = requested[key];
+    if (!Number.isFinite(override)) {
+      continue;
+    }
+    options[key] = Math.max(MINIMUMS[key], override);
+  }
+
+  return options;
+}
+
+function firstItemLabelAdjustment(document, options) {
+  const item = document.items[0];
+  if (item?.type !== "message" || !item.label) {
+    return 0;
+  }
+
+  const topExtent =
+    item.source === item.target
+      ? SELF_MESSAGE_LABEL_TOP_EXTENT
+      : MESSAGE_LABEL_TOP_EXTENT;
+  return topExtent - options.messageHeight / 2;
+}
+
+function reserveActorMetadata(document, options) {
+  if (!document.actors.some((actor) => actor.tag || actor.tooltip)) {
+    return;
+  }
+
+  options.timelineTopGap = Math.max(
+    options.timelineTopGap,
+    options.actorMetadataGap +
+      options.actorMetadataHeight +
+      ACTOR_METADATA_TIMELINE_GAP +
+      firstItemLabelAdjustment(document, options),
+  );
+}
 
 function collectMessageWidths(
   items,
@@ -117,13 +187,27 @@ function layoutItems(
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index];
     if (item.type === "message") {
+      const labelMetrics = messageLabelMetrics(
+        item.label,
+        state.options.messageLabelMaxWidth,
+      );
+      const labelAllowance = Math.max(
+        0,
+        labelMetrics.height - labelMetrics.lineHeight,
+      );
       const metadataAllowance =
         item.tag || item.tooltip
           ? state.options.messageMetadataHeight
           : 0;
-      const height = state.options.messageHeight + metadataAllowance;
+      const height =
+        state.options.messageHeight +
+        labelAllowance +
+        metadataAllowance;
       const top = state.y;
-      const y = top + state.options.messageHeight / 2;
+      const y =
+        top +
+        state.options.messageHeight / 2 +
+        labelAllowance;
       state.rows.push({
         ...item,
         top,
@@ -170,7 +254,10 @@ function layoutItems(
 
     if (item.type === "gap") {
       const top = state.y;
-      const height = state.options.gapHeight;
+      const labelAllowance =
+        Math.max(0, textLines(item.label).length - 1) *
+        GAP_LABEL_LINE_HEIGHT;
+      const height = state.options.gapHeight + labelAllowance;
       state.rows.push({
         ...item,
         top,
@@ -202,22 +289,31 @@ function layoutItems(
       index,
     };
     state.groups.push(group);
-    state.y += state.options.groupHeaderHeight;
+    group.headerHeight =
+      state.options.groupHeaderHeight +
+      Math.max(0, textLines(item.label).length - 1) *
+        GROUP_LABEL_LINE_HEIGHT;
+    state.y += group.headerHeight;
 
     if (item.sections.length > 0) {
       for (const section of item.sections) {
         const sectionTop = state.y;
+        const headerHeight =
+          state.options.sectionHeaderHeight +
+          Math.max(0, textLines(section.label).length - 1) *
+            SECTION_LABEL_LINE_HEIGHT;
         state.sections.push({
           ...section,
           top: sectionTop,
-          y: sectionTop + state.options.sectionHeaderHeight / 2,
+          y: sectionTop + headerHeight / 2,
+          headerHeight,
           depth: depth + 1,
           left: group.left + GROUP_CONTENT_INSET,
           right: group.right - GROUP_CONTENT_INSET,
           parentId: group.id,
           index: item.sections.indexOf(section),
         });
-        state.y += state.options.sectionHeaderHeight;
+        state.y += headerHeight;
         layoutItems(
           section.items,
           state,
@@ -249,7 +345,8 @@ function layoutItems(
 }
 
 export function layoutDiagram(document, overrides = {}) {
-  const options = { ...DEFAULTS, ...overrides };
+  const options = resolveOptions(overrides);
+  reserveActorMetadata(document, options);
   const selfMessageWidths = new Map();
   const messageLabelWidths = new Map();
   const actorIndexes = new Map(

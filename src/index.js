@@ -1,7 +1,9 @@
 export {
   LinesAndArrowsSyntaxError,
   parse,
-} from "./parser.js";
+  serialize,
+  validate,
+} from "./syntax.js";
 export { layoutDiagram } from "./layout.js";
 export { renderDiagram } from "./render.js";
 export { renderEditor } from "./edit-render.js";
@@ -13,7 +15,6 @@ export {
   findSectionLocation,
   getContainer,
 } from "./editor.js";
-export { serialize } from "./serialize.js";
 export {
   PHOSPHOR_ICON_VERSION,
   PHOSPHOR_ICON_WEIGHT,

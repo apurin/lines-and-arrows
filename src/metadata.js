@@ -1,3 +1,5 @@
+import { textLines } from "./text.js";
+
 const TAG_MAX_LENGTH = 16;
 const TAG_FONT_SIZE = 10;
 const TAG_MIN_TEXT_WIDTH = 30;
@@ -52,7 +54,6 @@ export function messageLabelMetrics(
   maxWidth = MESSAGE_LABEL_MAX_WIDTH,
 ) {
   const text = String(label ?? "");
-  const characters = Array.from(text);
   const characterWidth =
     MESSAGE_LABEL_FONT_SIZE * MESSAGE_LABEL_WIDTH_FACTOR;
   const minimumWidth =
@@ -71,20 +72,30 @@ export function messageLabelMetrics(
         characterWidth,
     ),
   );
-  const visibleLabel =
-    characters.length <= maxTextCharacters
-      ? text
-      : maxTextCharacters === 1
-        ? "…"
-        : `${characters
-            .slice(0, maxTextCharacters - 1)
-            .join("")}…`;
+  const visibleLines = label
+    ? textLines(text).map((line) => {
+        const characters = Array.from(line);
+        if (characters.length <= maxTextCharacters) {
+          return line;
+        }
+        return maxTextCharacters === 1
+          ? "…"
+          : `${characters
+              .slice(0, maxTextCharacters - 1)
+              .join("")}…`;
+      })
+    : [];
+  const visibleLabel = visibleLines.join("\n");
+  const longestLineLength = Math.max(
+    0,
+    ...visibleLines.map((line) => Array.from(line).length),
+  );
   const width = label
     ? Math.min(
         availableWidth,
         Math.max(
           MESSAGE_LABEL_MIN_TEXT_WIDTH,
-          Array.from(visibleLabel).length * characterWidth,
+          longestLineLength * characterWidth,
         ) + MESSAGE_LABEL_HORIZONTAL_PADDING,
       )
     : 0;
@@ -92,11 +103,18 @@ export function messageLabelMetrics(
   const textWidth = label
     ? Math.max(
         MESSAGE_LABEL_MIN_TEXT_WIDTH,
-        Array.from(visibleLabel).length * characterWidth,
+        longestLineLength * characterWidth,
       )
     : 0;
 
-  return { visibleLabel, width, textWidth };
+  return {
+    visibleLabel,
+    visibleLines,
+    lineHeight: 13,
+    height: visibleLines.length * 13,
+    width,
+    textWidth,
+  };
 }
 
 export function selfMessageWidth(

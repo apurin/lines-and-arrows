@@ -1,38 +1,87 @@
+import {
+  cloneDocument,
+  freezeDocument,
+} from "./document.js";
 import { parse } from "./parser.js";
 import { serialize } from "./serialize.js";
 
 export const ROOT_CONTAINER_ID = "root";
 
-let generatedId = 0;
 const GROUP_TYPE_PATTERN = /^[a-z][a-z0-9-]*$/;
 
-function nextId(kind) {
-  generatedId += 1;
-  return `${kind}:edit-${generatedId}`;
-}
+class DocumentIdAllocator {
+  #reserved = new Set([ROOT_CONTAINER_ID]);
+  #nextByKind = new Map();
 
-function clone(value) {
-  if (typeof structuredClone === "function") {
-    return structuredClone(value);
+  reserveDocument(document) {
+    const ids = new Set();
+    const reserve = (value) => {
+      if (value == null || value === "") {
+        return;
+      }
+      if (typeof value !== "string") {
+        throw new Error("Document IDs must be strings.");
+      }
+      if (value === ROOT_CONTAINER_ID) {
+        throw new Error(`Document ID "${value}" is reserved.`);
+      }
+      if (ids.has(value)) {
+        throw new Error(`Duplicate document ID "${value}".`);
+      }
+      ids.add(value);
+    };
+
+    for (const actor of document.actors) {
+      reserve(actor.id);
+    }
+    visitItems(document.items, (item) => reserve(item.id));
+
+    for (const id of ids) {
+      this.#reserved.add(id);
+    }
   }
-  return JSON.parse(JSON.stringify(value));
+
+  next(kind) {
+    let candidateNumber = this.#nextByKind.get(kind) ?? 1;
+    let candidate = `${kind}:edit-${candidateNumber}`;
+    while (this.#reserved.has(candidate)) {
+      candidateNumber += 1;
+      candidate = `${kind}:edit-${candidateNumber}`;
+    }
+    this.#nextByKind.set(kind, candidateNumber + 1);
+    this.#reserved.add(candidate);
+    return candidate;
+  }
 }
 
 function optionalText(value) {
-  const text = String(value ?? "").trim();
+  const text = String(value ?? "").replace(/\r\n?/g, "\n").trim();
   return text || null;
 }
 
-function requiredText(value, label) {
-  const text = String(value ?? "").trim();
+function optionalSingleLineText(value, label) {
+  const text = optionalText(value);
+  if (text?.includes("\n")) {
+    throw new Error(`${label} must stay on one line.`);
+  }
+  return text;
+}
+
+function requiredText(value, label, options = {}) {
+  const text = String(value ?? "").replace(/\r\n?/g, "\n").trim();
   if (!text) {
     throw new Error(`${label} cannot be empty.`);
+  }
+  if (options.multiline === false && text.includes("\n")) {
+    throw new Error(`${label} must stay on one line.`);
   }
   return text;
 }
 
 function requiredGroupType(value) {
-  const text = requiredText(value, "Group type");
+  const text = requiredText(value, "Group type", {
+    multiline: false,
+  });
   if (!GROUP_TYPE_PATTERN.test(text)) {
     throw new Error(
       "Group type must start with a lowercase letter and contain only lowercase letters, numbers, or hyphens.",
@@ -59,19 +108,29 @@ function visitItems(items, visitor, parentId = ROOT_CONTAINER_ID) {
   }
 }
 
-export function ensureDocumentIds(document) {
+function assignDocumentIds(document, allocator) {
+  allocator.reserveDocument(document);
+
   for (const actor of document.actors) {
-    actor.id ||= `actor:${actor.name}`;
+    actor.id ||= allocator.next("actor");
   }
 
   visitItems(document.items, (item) => {
     if (item.type === "section") {
-      item.id ||= nextId("section");
+      item.id ||= allocator.next("section");
     } else {
-      item.id ||= nextId("item");
+      item.id ||= allocator.next("item");
     }
   });
   return document;
+}
+
+export function ensureDocumentIds(document) {
+  const draft = cloneDocument(document);
+  validateDocument(draft);
+  return freezeDocument(
+    assignDocumentIds(draft, new DocumentIdAllocator()),
+  );
 }
 
 export function findItemLocation(document, id) {
@@ -172,17 +231,19 @@ function uniqueActorName(document, preferred = "New actor") {
   return `${preferred} ${suffix}`;
 }
 
-function createMessage(document, properties = {}) {
+function createMessage(document, allocator, properties = {}) {
   if (document.actors.length === 0) {
     throw new Error("Add an actor before adding a message.");
   }
   const source = requiredText(
     properties.source ?? document.actors[0]?.name,
     "Message source",
+    { multiline: false },
   );
   const target = requiredText(
     properties.target ?? document.actors[1]?.name ?? source,
     "Message target",
+    { multiline: false },
   );
   for (const name of [source, target]) {
     if (!document.actors.some((actor) => actor.name === name)) {
@@ -196,39 +257,44 @@ function createMessage(document, properties = {}) {
 
   return {
     type: "message",
-    id: nextId("item"),
+    id: allocator.next("item"),
     source,
     target,
     arrow,
     label: optionalText(properties.label),
-    tag: optionalText(properties.tag),
+    tag: optionalSingleLineText(properties.tag, "tag"),
     tooltip: optionalText(properties.tooltip),
-    tooltipIcon: optionalText(properties.tooltipIcon),
-    line: 0,
+    tooltipIcon: optionalSingleLineText(
+      properties.tooltipIcon,
+      "tooltipIcon",
+    ),
+    leadingComments: [],
+    propertyComments: [],
   };
 }
 
-function createTimelineItem(document, type) {
+function createTimelineItem(document, allocator, type) {
   if (type === "message") {
-    return createMessage(document);
+    return createMessage(document, allocator);
   }
   if (type === "gap") {
     return {
       type: "gap",
-      id: nextId("item"),
+      id: allocator.next("item"),
       label: "Time passes",
-      line: 0,
+      leadingComments: [],
     };
   }
   if (type === "group") {
     return {
       type: "group",
-      id: nextId("item"),
+      id: allocator.next("item"),
       groupType: "group",
       label: "New group",
-      items: [createMessage(document)],
+      items: [createMessage(document, allocator)],
       sections: [],
-      line: 0,
+      leadingComments: [],
+      bodyTrailingComments: [],
     };
   }
   throw new Error(`Unsupported timeline item type "${type}".`);
@@ -286,20 +352,22 @@ function cleanupEmptyGroups(items) {
 }
 
 function validateDocument(document) {
-  const source = serialize(document);
-  parse(source);
-  return source;
+  return serialize(document);
 }
 
 export class DiagramEditor {
   #document;
+  #ids = new DocumentIdAllocator();
   #undo = [];
   #redo = [];
   #lastCommand = null;
 
   constructor(input) {
-    this.#document = ensureDocumentIds(
-      typeof input === "string" ? parse(input) : clone(input),
+    const draft =
+      typeof input === "string" ? parse(input) : cloneDocument(input);
+    validateDocument(draft);
+    this.#document = freezeDocument(
+      assignDocumentIds(draft, this.#ids),
     );
   }
 
@@ -324,12 +392,12 @@ export class DiagramEditor {
   }
 
   #commit(command, mutate) {
-    const before = clone(this.#document);
+    const before = this.#document;
     const beforeSource = serialize(before);
-    const draft = clone(this.#document);
+    const draft = cloneDocument(before);
     const result = mutate(draft);
     draft.explicitActors = true;
-    ensureDocumentIds(draft);
+    assignDocumentIds(draft, this.#ids);
     const afterSource = validateDocument(draft);
 
     if (afterSource === beforeSource) {
@@ -338,20 +406,21 @@ export class DiagramEditor {
 
     this.#undo.push(before);
     this.#redo = [];
-    this.#document = draft;
+    this.#document = freezeDocument(draft);
     this.#lastCommand = command;
     return result;
   }
 
   replaceSource(source) {
-    const next = ensureDocumentIds(parse(source));
+    const next = parse(source);
     const nextSource = serialize(next);
     if (nextSource === this.source) {
       return false;
     }
-    this.#undo.push(clone(this.#document));
+    assignDocumentIds(next, this.#ids);
+    this.#undo.push(this.#document);
     this.#redo = [];
-    this.#document = next;
+    this.#document = freezeDocument(next);
     this.#lastCommand = "source";
     return true;
   }
@@ -360,7 +429,7 @@ export class DiagramEditor {
     if (!this.canUndo) {
       return false;
     }
-    this.#redo.push(clone(this.#document));
+    this.#redo.push(this.#document);
     this.#document = this.#undo.pop();
     this.#lastCommand = "undo";
     return true;
@@ -370,7 +439,7 @@ export class DiagramEditor {
     if (!this.canRedo) {
       return false;
     }
-    this.#undo.push(clone(this.#document));
+    this.#undo.push(this.#document);
     this.#document = this.#redo.pop();
     this.#lastCommand = "redo";
     return true;
@@ -380,13 +449,14 @@ export class DiagramEditor {
     return this.#commit("add-actor", (document) => {
       const actor = {
         type: "actor",
-        id: nextId("actor"),
+        id: this.#ids.next("actor"),
         name: uniqueActorName(document),
         icon: null,
         tag: null,
         tooltip: null,
         tooltipIcon: null,
-        line: 0,
+        leadingComments: [],
+        propertyComments: [],
       };
       const target = Math.max(0, Math.min(index, document.actors.length));
       document.actors.splice(target, 0, actor);
@@ -404,7 +474,9 @@ export class DiagramEditor {
 
       const previousName = actor.name;
       if (Object.hasOwn(patch, "name")) {
-        const name = requiredText(patch.name, "Actor name");
+        const name = requiredText(patch.name, "Actor name", {
+          multiline: false,
+        });
         if (
           document.actors.some(
             (candidate) => candidate !== actor && candidate.name === name,
@@ -423,14 +495,12 @@ export class DiagramEditor {
         });
       }
 
-      for (const property of [
-        "icon",
-        "tag",
-        "tooltip",
-        "tooltipIcon",
-      ]) {
+      for (const property of ["icon", "tag", "tooltip", "tooltipIcon"]) {
         if (Object.hasOwn(patch, property)) {
-          actor[property] = optionalText(patch[property]);
+          actor[property] =
+            property === "tooltip"
+              ? optionalText(patch[property])
+              : optionalSingleLineText(patch[property], property);
         }
       }
       document.explicitActors = true;
@@ -501,7 +571,7 @@ export class DiagramEditor {
       if (!container) {
         throw new Error("Timeline insertion point no longer exists.");
       }
-      const item = createTimelineItem(document, type);
+      const item = createTimelineItem(document, this.#ids, type);
       const target = Math.max(0, Math.min(index, container.items.length));
       container.items.splice(target, 0, item);
       return item.id;
@@ -514,7 +584,7 @@ export class DiagramEditor {
       if (!container) {
         throw new Error("Timeline insertion point no longer exists.");
       }
-      const item = createMessage(document, properties);
+      const item = createMessage(document, this.#ids, properties);
       const target = Math.max(0, Math.min(index, container.items.length));
       container.items.splice(target, 0, item);
       return item.id;
@@ -532,7 +602,9 @@ export class DiagramEditor {
       if (item.type === "message") {
         for (const property of ["source", "target"]) {
           if (Object.hasOwn(patch, property)) {
-            const name = requiredText(patch[property], property);
+            const name = requiredText(patch[property], property, {
+              multiline: false,
+            });
             if (!document.actors.some((actor) => actor.name === name)) {
               throw new Error(`Unknown actor "${name}".`);
             }
@@ -548,13 +620,12 @@ export class DiagramEditor {
         if (Object.hasOwn(patch, "label")) {
           item.label = optionalText(patch.label);
         }
-        for (const property of [
-          "tag",
-          "tooltip",
-          "tooltipIcon",
-        ]) {
+        for (const property of ["tag", "tooltip", "tooltipIcon"]) {
           if (Object.hasOwn(patch, property)) {
-            item[property] = optionalText(patch[property]);
+            item[property] =
+              property === "tooltip"
+                ? optionalText(patch[property])
+                : optionalSingleLineText(patch[property], property);
           }
         }
       } else if (item.type === "gap") {
@@ -674,12 +745,13 @@ export class DiagramEditor {
       const grouped = container.items.splice(first, indices.length);
       const group = {
         type: "group",
-        id: nextId("item"),
+        id: this.#ids.next("item"),
         groupType: requiredGroupType(groupType),
         label: requiredText(label, "Group label"),
         items: grouped,
         sections: [],
-        line: 0,
+        leadingComments: [],
+        bodyTrailingComments: [],
       };
       container.items.splice(first, 0, group);
       return group.id;
@@ -713,17 +785,19 @@ export class DiagramEditor {
       group.sections = [
         {
           type: "section",
-          id: nextId("section"),
+          id: this.#ids.next("section"),
           label: "first",
           items: group.items,
-          line: 0,
+          leadingComments: [],
+          bodyTrailingComments: [],
         },
         {
           type: "section",
-          id: nextId("section"),
+          id: this.#ids.next("section"),
           label: "second",
-          items: [createMessage(document)],
-          line: 0,
+          items: [createMessage(document, this.#ids)],
+          leadingComments: [],
+          bodyTrailingComments: [],
         },
       ];
       group.items = [];
@@ -742,10 +816,11 @@ export class DiagramEditor {
       }
       const section = {
         type: "section",
-        id: nextId("section"),
+        id: this.#ids.next("section"),
         label: `section ${group.sections.length + 1}`,
-        items: [createMessage(document)],
-        line: 0,
+        items: [createMessage(document, this.#ids)],
+        leadingComments: [],
+        bodyTrailingComments: [],
       };
       const target = Math.max(
         0,

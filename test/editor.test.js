@@ -4,9 +4,9 @@ import assert from "node:assert/strict";
 import {
   DiagramEditor,
   ROOT_CONTAINER_ID,
+  ensureDocumentIds,
   findItemLocation,
 } from "../src/editor.js";
-import { layoutDiagram } from "../src/layout.js";
 import { parse } from "../src/parser.js";
 import { serialize } from "../src/serialize.js";
 
@@ -66,18 +66,15 @@ test("adds and reorders actors without changing their references", () => {
   const editor = new DiagramEditor(SOURCE);
   const id = editor.addActor(1);
   editor.updateActor(id, { name: "Queue", icon: "tray" });
-  const layout = layoutDiagram(editor.document);
   editor.moveActor(id, editor.document.actors.length);
 
   assert.deepEqual(
     editor.document.actors.map((actor) => actor.name),
     ["Client", "API", "Worker", "Queue"],
   );
-  assert.equal(
-    layout.actors.find((actor) => actor.name === "Queue").id,
-    id,
-  );
+  assert.equal(editor.document.actors.at(-1).id, id);
   assert.match(editor.source, /@Queue\n  icon tray/);
+  assert.doesNotMatch(JSON.stringify(editor.document), /"line"/);
 });
 
 test("adds, moves, updates, and removes timeline items", () => {
@@ -248,4 +245,226 @@ A -> B: Replaced
   assert.match(editor.source, /A -> B: Replaced/);
   editor.undo();
   assert.match(editor.source, /Client -> API: Start/);
+});
+
+test("encodes multiline edits without creating timeline items", () => {
+  const editor = new DiagramEditor(SOURCE);
+  const message = editor.document.items[0];
+  const originalItemCount = editor.document.items.length;
+
+  editor.updateItem(message.id, {
+    label: "Changed\nAPI -> Client: not another item",
+    tooltip: "First line\nStored at C:\\work",
+  });
+
+  assert.equal(editor.document.items.length, originalItemCount);
+  assert.match(
+    editor.source,
+    /Changed\\nAPI -> Client: not another item/,
+  );
+  assert.match(editor.source, /First line\\nStored at C:\\\\work/);
+
+  const reparsed = parse(editor.source);
+  assert.equal(reparsed.items.length, originalItemCount);
+  assert.equal(
+    reparsed.items[0].label,
+    "Changed\nAPI -> Client: not another item",
+  );
+  assert.equal(
+    reparsed.items[0].tooltip,
+    "First line\nStored at C:\\work",
+  );
+});
+
+test("rejects multiline edits for identity and compact fields", () => {
+  const editor = new DiagramEditor(SOURCE);
+  const actor = editor.document.actors[0];
+  const message = editor.document.items[0];
+
+  assert.throws(
+    () => editor.updateActor(actor.id, { name: "Client\nAdmin" }),
+    /must stay on one line/,
+  );
+  assert.throws(
+    () => editor.updateItem(message.id, { tag: "first\nsecond" }),
+    /must stay on one line/,
+  );
+});
+
+test("allocates collision-free IDs within each editor session", () => {
+  const document = parse(`@A
+@B
+
+choice Outcome
+  | first
+    A -> B: Existing
+`);
+  document.actors[0].id = "actor:edit-1";
+  document.actors[1].id = "actor:custom";
+  document.items[0].id = "item:edit-1";
+  document.items[0].sections[0].id = "section:edit-1";
+
+  const editor = new DiagramEditor(document);
+
+  assert.equal(editor.addActor(), "actor:edit-2");
+  assert.equal(
+    editor.addMessage(ROOT_CONTAINER_ID, editor.document.items.length, {
+      source: "A",
+      target: "B",
+    }),
+    "item:edit-2",
+  );
+  assert.equal(
+    editor.addSection(editor.document.items[0].id),
+    "section:edit-2",
+  );
+});
+
+test("does not reuse generated IDs across deletion or history", () => {
+  const editor = new DiagramEditor(SOURCE);
+  const firstId = editor.addActor();
+
+  editor.removeActor(firstId);
+  editor.undo();
+  assert.equal(editor.document.actors.at(-1).id, firstId);
+  editor.redo();
+
+  const secondId = editor.addActor();
+  assert.notEqual(secondId, firstId);
+});
+
+test("rejects duplicate or reserved IDs at the editor boundary", () => {
+  const duplicate = parse(SOURCE);
+  duplicate.actors[0].id = duplicate.items[0].id;
+
+  assert.throws(
+    () => new DiagramEditor(duplicate),
+    /Duplicate document ID "item:0"/,
+  );
+
+  const reserved = parse(SOURCE);
+  reserved.actors[0].id = ROOT_CONTAINER_ID;
+  assert.throws(
+    () => new DiagramEditor(reserved),
+    /Document ID "root" is reserved/,
+  );
+});
+
+test("owns recursively immutable document snapshots", () => {
+  const editor = new DiagramEditor(SOURCE);
+  const first = editor.document;
+  const originalName = first.actors[0].name;
+
+  assert.equal(Object.isFrozen(first), true);
+  assert.equal(Object.isFrozen(first.actors), true);
+  assert.equal(Object.isFrozen(first.items[1].items), true);
+  assert.throws(() => {
+    first.actors[0].name = "Changed outside a command";
+  }, TypeError);
+  assert.throws(() => {
+    first.items.push(first.items[0]);
+  }, TypeError);
+  assert.equal(editor.source.includes(originalName), true);
+
+  editor.updateActor(first.actors[0].id, { name: "Browser" });
+  assert.notEqual(editor.document, first);
+  assert.equal(first.actors[0].name, originalName);
+  assert.equal(editor.document.actors[0].name, "Browser");
+
+  editor.undo();
+  assert.equal(editor.document, first);
+});
+
+test("adds IDs without mutating a caller-owned document", () => {
+  const input = parse(SOURCE);
+  const result = ensureDocumentIds(input);
+
+  assert.equal(input.actors[0].id, undefined);
+  assert.equal(typeof result.actors[0].id, "string");
+  assert.equal(Object.isFrozen(result), true);
+  assert.equal(Object.isFrozen(result.actors[0]), true);
+});
+
+test("rejects ambiguous or invalid programmatic documents", () => {
+  const mixed = parse(SOURCE);
+  const group = mixed.items[1];
+  group.sections = [
+    {
+      type: "section",
+      id: "section:custom",
+      label: "alternative",
+      items: [structuredClone(group.items[0])],
+    },
+  ];
+
+  assert.throws(
+    () => serialize(mixed),
+    /cannot contain both direct items and sections/,
+  );
+  assert.throws(
+    () => new DiagramEditor(mixed),
+    /cannot contain both direct items and sections/,
+  );
+
+  const invalidReference = parse(SOURCE);
+  invalidReference.items[0].target = "Missing actor";
+  assert.throws(
+    () => serialize(invalidReference),
+    /Unknown actor "Missing actor"/,
+  );
+});
+
+test("moves comments with their structural owner and deletes them together", () => {
+  const editor = new DiagramEditor(`@A
+@B
+
+// first note
+A -> B: First
+// second note
+B --> A: Second
+`);
+  const first = editor.document.items[0];
+  const second = editor.document.items[1];
+
+  editor.moveItem(second.id, ROOT_CONTAINER_ID, 0);
+  assert.match(
+    editor.source,
+    /\/\/ second note\nB --> A: Second\n\/\/ first note\nA -> B: First/,
+  );
+
+  editor.removeItem(second.id);
+  assert.doesNotMatch(editor.source, /second note|Second/);
+  assert.match(editor.source, /\/\/ first note\nA -> B: First/);
+
+  const groupId = editor.wrapItems(
+    ROOT_CONTAINER_ID,
+    [first.id],
+    "review",
+    "Grouped",
+  );
+  assert.match(
+    editor.source,
+    /review Grouped\n  \/\/ first note\n  A -> B: First/,
+  );
+
+  editor.ungroup(groupId);
+  assert.match(editor.source, /\/\/ first note\nA -> B: First/);
+});
+
+test("discarding a wrapper discards only wrapper-owned comments", () => {
+  const editor = new DiagramEditor(`@A
+@B
+
+// group note
+review Grouped
+  // child note
+  A -> B: First
+  // group tail
+`);
+  const group = editor.document.items[0];
+
+  editor.ungroup(group.id);
+
+  assert.doesNotMatch(editor.source, /group note|group tail/);
+  assert.match(editor.source, /\/\/ child note\nA -> B: First/);
 });

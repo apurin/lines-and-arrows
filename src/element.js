@@ -5,6 +5,7 @@ import {
   phosphorIconResolver,
 } from "./icons.js";
 import { renderDiagram } from "./render.js";
+import { dedentInlineSource } from "./text.js";
 
 const HTMLElementBase = globalThis.HTMLElement ?? class {};
 
@@ -28,8 +29,9 @@ export class LinesAndArrowsElement extends HTMLElementBase {
   }
 
   connectedCallback() {
-    if (!this.#source && this.textContent.trim()) {
-      this.#source = this.textContent.trim();
+    const inlineSource = dedentInlineSource(this.textContent);
+    if (!this.#source && inlineSource) {
+      this.#source = inlineSource;
       this.textContent = "";
     }
     this.#syncThemeListener();
@@ -41,7 +43,7 @@ export class LinesAndArrowsElement extends HTMLElementBase {
       "change",
       this.#handleThemeChange,
     );
-    this.#controller?.destroy();
+    this.#destroyController();
   }
 
   attributeChangedCallback() {
@@ -203,17 +205,24 @@ export class LinesAndArrowsElement extends HTMLElementBase {
     }
   }
 
+  #destroyController() {
+    const controller = this.#controller;
+    this.#controller = null;
+    controller?.destroy?.();
+  }
+
   #render() {
     if (!this.shadowRoot) {
       return;
     }
     if (!this.#source.trim()) {
+      this.#destroyController();
       this.shadowRoot.replaceChildren();
       return;
     }
 
     try {
-      this.#controller?.destroy?.();
+      this.#destroyController();
       const renderOptions = {
         theme: this.theme,
         label: this.getAttribute("label") || "Sequence diagram",

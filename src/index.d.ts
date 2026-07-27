@@ -1,72 +1,44 @@
+import type {
+  Actor,
+  Arrow,
+  DiagramDocument,
+  DiagramDocumentSnapshot,
+  Gap,
+  Group,
+  Immutable,
+  Message,
+  Section,
+  TimelineItem,
+  TimelineItemKind,
+} from "./model.js";
+
+export type {
+  Actor,
+  Arrow,
+  Comment,
+  DiagramDocument,
+  DiagramDocumentSnapshot,
+  Gap,
+  Group,
+  Immutable,
+  Message,
+  PropertyComment,
+  PropertyCommentAnchor,
+  Section,
+  TimelineItem,
+  TimelineItemKind,
+  ValidationError,
+  ValidationResult,
+} from "./model.js";
+export {
+  LinesAndArrowsSyntaxError,
+  parse,
+  serialize,
+  validate,
+} from "./syntax.js";
+
 export type ThemeName = "light" | "dark" | "auto";
 export type EditorMode = "view" | "edit";
-export type Arrow = "->" | "-->" | "->x";
-export type TimelineItemKind = "message" | "gap" | "group";
-
-export interface Actor {
-  type: "actor";
-  id?: string;
-  name: string;
-  icon: string | null;
-  tag: string | null;
-  tooltip: string | null;
-  tooltipIcon: string | null;
-  line: number;
-  inferred?: boolean;
-}
-
-export interface Message {
-  type: "message";
-  id: string;
-  source: string;
-  target: string;
-  arrow: Arrow;
-  label: string | null;
-  tag: string | null;
-  tooltip: string | null;
-  tooltipIcon: string | null;
-  line: number;
-}
-
-export interface Gap {
-  type: "gap";
-  id: string;
-  label: string;
-  line: number;
-}
-
-export interface Section {
-  type: "section";
-  id: string;
-  label: string;
-  items: TimelineItem[];
-  line: number;
-}
-
-export interface Group {
-  type: "group";
-  id: string;
-  groupType: string;
-  label: string;
-  items: TimelineItem[];
-  sections: Section[];
-  line: number;
-}
-
-export type TimelineItem = Message | Gap | Group;
-
-export interface DiagramDocument {
-  type: "diagram";
-  actors: Actor[];
-  items: TimelineItem[];
-  comments: Array<{
-    type: "comment";
-    text: string;
-    line: number;
-    indent: number;
-  }>;
-  explicitActors: boolean;
-}
 
 export interface Theme {
   name: "light" | "dark";
@@ -92,24 +64,34 @@ export interface Theme {
 }
 
 export interface SelectionDetail {
-  id?: string | null;
-  ids?: string[];
-  kind:
+  readonly id?: string | null;
+  readonly ids?: readonly string[];
+  readonly kind:
     | TimelineItem["type"]
     | "actor"
     | "section"
     | "range"
     | null;
-  item?: Actor | TimelineItem | Section | null;
-  items?: TimelineItem[];
+  readonly item?: Immutable<Actor | TimelineItem | Section> | null;
+  readonly items?: readonly Immutable<TimelineItem>[];
 }
 
 export interface ChangeDetail {
-  source: string;
-  ast: DiagramDocument;
-  command: string | null;
-  canUndo: boolean;
-  canRedo: boolean;
+  readonly source: string;
+  readonly ast: DiagramDocumentSnapshot;
+  readonly command: string | null;
+  readonly canUndo: boolean;
+  readonly canRedo: boolean;
+}
+
+export interface ErrorDetail {
+  readonly error: unknown;
+}
+
+export interface LinesAndArrowsEventMap {
+  "la-select": CustomEvent<SelectionDetail>;
+  "la-change": CustomEvent<ChangeDetail>;
+  "la-error": CustomEvent<ErrorDetail>;
 }
 
 export interface IconCatalogItem {
@@ -119,6 +101,10 @@ export interface IconCatalogItem {
 }
 
 export type IconCatalogEntry = string | IconCatalogItem;
+export type IconResolver = (
+  iconName: string,
+  resolvedTheme: "light" | "dark",
+) => string | null | undefined;
 
 export const PHOSPHOR_ICON_VERSION: "2.1.1";
 export const PHOSPHOR_ICON_WEIGHT: "bold";
@@ -134,11 +120,8 @@ export interface RenderOptions {
   label?: string;
   selectable?: boolean;
   initialSelectedId?: string | null;
-  iconResolver?: (
-    iconName: string,
-    resolvedTheme: "light" | "dark",
-  ) => string | null | undefined;
-  iconCatalog?: IconCatalogEntry[];
+  iconResolver?: IconResolver | null;
+  iconCatalog?: readonly IconCatalogEntry[];
   onSelect?: (detail: SelectionDetail) => void;
   layout?: Record<string, number>;
 }
@@ -149,6 +132,7 @@ export interface DiagramLayout {
   contentLeft: number;
   contentRight: number;
   lifelineTop: number;
+  lifelineBottom: number;
   options: Record<string, number>;
   actorByName: Map<string, DiagramLayout["actors"][number]>;
   actors: Array<
@@ -166,6 +150,7 @@ export interface DiagramLayout {
       y: number;
       top: number;
       bottom: number;
+      height: number;
       depth: number;
       parentId: string;
       index: number;
@@ -178,6 +163,7 @@ export interface DiagramLayout {
       left: number;
       right: number;
       height: number;
+      headerHeight: number;
       depth: number;
       parentId: string;
       index: number;
@@ -189,6 +175,7 @@ export interface DiagramLayout {
       y: number;
       left: number;
       right: number;
+      headerHeight: number;
       depth: number;
       parentId: string;
       index: number;
@@ -197,7 +184,7 @@ export interface DiagramLayout {
 }
 
 export interface RenderController {
-  readonly ast: DiagramDocument;
+  readonly ast: DiagramDocumentSnapshot;
   readonly layout: DiagramLayout;
   readonly svg: SVGSVGElement;
   readonly selectedId: string | null;
@@ -245,14 +232,11 @@ export interface TimelineContainer {
   owner: DiagramDocument | Group | Section;
 }
 
-export class LinesAndArrowsSyntaxError extends SyntaxError {
-  line: number;
-  column: number;
-}
-
 export class DiagramEditor {
-  constructor(input: string | DiagramDocument);
-  readonly document: DiagramDocument;
+  constructor(
+    input: string | DiagramDocument | DiagramDocumentSnapshot,
+  );
+  readonly document: DiagramDocumentSnapshot;
   readonly source: string;
   readonly canUndo: boolean;
   readonly canRedo: boolean;
@@ -324,35 +308,33 @@ export class DiagramEditor {
 
 export const ROOT_CONTAINER_ID: "root";
 export function ensureDocumentIds(
-  document: DiagramDocument,
-): DiagramDocument;
+  document: DiagramDocument | DiagramDocumentSnapshot,
+): DiagramDocumentSnapshot;
 export function findItemLocation(
-  document: DiagramDocument,
+  document: DiagramDocument | DiagramDocumentSnapshot,
   id: string,
-): ItemLocation | null;
+): Immutable<ItemLocation> | null;
 export function findSectionLocation(
-  document: DiagramDocument,
+  document: DiagramDocument | DiagramDocumentSnapshot,
   id: string,
-): SectionLocation | null;
+): Immutable<SectionLocation> | null;
 export function getContainer(
-  document: DiagramDocument,
+  document: DiagramDocument | DiagramDocumentSnapshot,
   id: string,
-): TimelineContainer | null;
+): Immutable<TimelineContainer> | null;
 
-export function parse(source: string): DiagramDocument;
-export function serialize(document: DiagramDocument): string;
 export function layoutDiagram(
-  document: DiagramDocument,
+  document: DiagramDocument | DiagramDocumentSnapshot,
   overrides?: Record<string, number>,
 ): DiagramLayout;
 export function renderDiagram(
   target: Element | ShadowRoot,
-  input: string | DiagramDocument,
+  input: string | DiagramDocument | DiagramDocumentSnapshot,
   options?: RenderOptions,
 ): RenderController;
 export function renderEditor(
   target: Element | ShadowRoot,
-  input: string | DiagramDocument,
+  input: string | DiagramDocument | DiagramDocumentSnapshot,
   options?: EditorRenderOptions,
 ): EditorController;
 export function resolveTheme(
@@ -366,8 +348,10 @@ export class LinesAndArrowsElement extends HTMLElement {
   theme: ThemeName;
   mode: EditorMode;
   selectable: boolean;
-  iconResolver: RenderOptions["iconResolver"];
-  iconCatalog: IconCatalogEntry[];
+  get iconResolver(): IconResolver | null;
+  set iconResolver(value: IconResolver | null);
+  get iconCatalog(): IconCatalogEntry[];
+  set iconCatalog(value: readonly IconCatalogEntry[] | null);
   layout: RenderOptions["layout"] | null;
   readonly selectedId: string | null;
   readonly selectedIds: string[];
@@ -378,9 +362,45 @@ export class LinesAndArrowsElement extends HTMLElement {
   undo(): boolean;
   redo(): boolean;
   replaceSource(source: string): boolean;
+  addEventListener<Type extends keyof LinesAndArrowsEventMap>(
+    type: Type,
+    listener:
+      | ((
+          this: LinesAndArrowsElement,
+          event: LinesAndArrowsEventMap[Type],
+        ) => unknown)
+      | null,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  addEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject | null,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  removeEventListener<Type extends keyof LinesAndArrowsEventMap>(
+    type: Type,
+    listener:
+      | ((
+          this: LinesAndArrowsElement,
+          event: LinesAndArrowsEventMap[Type],
+        ) => unknown)
+      | null,
+    options?: boolean | EventListenerOptions,
+  ): void;
+  removeEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject | null,
+    options?: boolean | EventListenerOptions,
+  ): void;
 }
 
 export function defineLinesAndArrows(
   name?: string,
   registry?: CustomElementRegistry,
 ): typeof LinesAndArrowsElement;
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "lines-and-arrows": LinesAndArrowsElement;
+  }
+}

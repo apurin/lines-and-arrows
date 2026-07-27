@@ -5,7 +5,13 @@ import {
   metadataMetrics,
   selfMessageWidth,
 } from "./metadata.js";
+import {
+  documentSnapshot,
+  freezeDocument,
+} from "./document.js";
 import { parse } from "./parser.js";
+import { serialize } from "./serialize.js";
+import { textLines } from "./text.js";
 import { resolveTheme } from "./theme.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -229,6 +235,23 @@ function textWidth(text, fontSize = 12, minimum = 0) {
   return Math.max(minimum, text.length * fontSize * 0.56);
 }
 
+function appendTextLines(
+  text,
+  lines,
+  x,
+  firstY,
+  lineHeight,
+) {
+  for (const [index, line] of lines.entries()) {
+    const segment = svgElement("tspan", {
+      x,
+      y: firstY + index * lineHeight,
+    });
+    segment.textContent = line;
+    text.append(segment);
+  }
+}
+
 function surfaceForDepth(depth, tokens) {
   if (depth <= 0) {
     return tokens.canvas;
@@ -365,7 +388,7 @@ function makeSelectable(group, item, selection, label) {
 
   const select = (event) => {
     event.stopPropagation();
-    selection.select(item.id, item);
+    selection.select(item.id);
   };
 
   group.addEventListener("click", select);
@@ -383,31 +406,40 @@ function wrapTooltip(text, maxWidth, fontSize = 10) {
     8,
     Math.floor(maxWidth / (fontSize * 0.56)),
   );
-  const words = String(text).trim().split(/\s+/);
-  const pieces = words.flatMap((word) => {
-    if (word.length <= maxCharacters) {
-      return [word];
-    }
-    const chunks = [];
-    for (let index = 0; index < word.length; index += maxCharacters) {
-      chunks.push(word.slice(index, index + maxCharacters));
-    }
-    return chunks;
-  });
   const lines = [];
-  let current = "";
-
-  for (const piece of pieces) {
-    const candidate = current ? `${current} ${piece}` : piece;
-    if (current && textWidth(candidate, fontSize) > maxWidth) {
-      lines.push(current);
-      current = piece;
-    } else {
-      current = candidate;
+  for (const explicitLine of textLines(String(text).trim())) {
+    if (!explicitLine) {
+      lines.push("");
+      continue;
     }
-  }
-  if (current) {
-    lines.push(current);
+    const pieces = explicitLine.split(/\s+/).flatMap((word) => {
+      if (word.length <= maxCharacters) {
+        return [word];
+      }
+      const chunks = [];
+      for (
+        let index = 0;
+        index < word.length;
+        index += maxCharacters
+      ) {
+        chunks.push(word.slice(index, index + maxCharacters));
+      }
+      return chunks;
+    });
+    let current = "";
+
+    for (const piece of pieces) {
+      const candidate = current ? `${current} ${piece}` : piece;
+      if (current && textWidth(candidate, fontSize) > maxWidth) {
+        lines.push(current);
+        current = piece;
+      } else {
+        current = candidate;
+      }
+    }
+    if (current) {
+      lines.push(current);
+    }
   }
   return lines.length > 0 ? lines : [""];
 }
@@ -842,7 +874,6 @@ function renderGroupHeader(
   parent,
   group,
   tokens,
-  headerHeight,
 ) {
   const surface =
     group.depth % 2 === 0
@@ -850,7 +881,7 @@ function renderGroupHeader(
       : tokens.groupNestedFill;
   const left = group.left + 16;
   const right = group.right - 16;
-  const y = group.top + headerHeight / 2 + 4;
+  const y = group.top + 19;
   const typeWidth = textWidth(group.groupType, 11);
   const headerTextGap = 8;
   const labelX = left + typeWidth + headerTextGap;
@@ -862,8 +893,13 @@ function renderGroupHeader(
     6,
     Math.floor(availableLabelWidth / (11 * 0.56)),
   );
-  const visibleLabel = truncate(group.label, labelCharacters);
-  const labelWidth = textWidth(visibleLabel, 11);
+  const visibleLines = textLines(group.label).map((line) =>
+    truncate(line, labelCharacters),
+  );
+  const labelWidth = Math.max(
+    0,
+    ...visibleLines.map((line) => textWidth(line, 11)),
+  );
   const header = svgElement("g", {
     class: "la-group-header",
     "pointer-events": "none",
@@ -882,14 +918,14 @@ function renderGroupHeader(
     }),
   );
 
-  if (visibleLabel) {
+  if (visibleLines.some(Boolean)) {
     header.append(
       svgElement("rect", {
         class: "la-group-label-shape",
         x: labelX - backplatePadding,
-        y: y - 14,
+        y: group.top + 5,
         width: labelWidth + backplatePadding * 2,
-        height: 20,
+        height: visibleLines.length * 13 + 7,
         rx: 5,
         fill: surface,
       }),
@@ -898,12 +934,11 @@ function renderGroupHeader(
 
   const label = svgElement("text", {
     x: labelX,
-    y,
     "font-size": 11,
     "font-weight": 650,
     fill: tokens.text,
   });
-  label.textContent = visibleLabel;
+  appendTextLines(label, visibleLines, labelX, group.top + 19, 13);
 
   const type = svgElement("text", {
     x: left,
@@ -927,7 +962,14 @@ function renderSection(parent, section, tokens, selection) {
 
   const lineStart = section.left;
   const lineEnd = section.right;
-  const labelWidth = textWidth(section.label, 10, 36) + 16;
+  const visibleLines = textLines(section.label).map((line) =>
+    truncate(line, 28),
+  );
+  const labelWidth =
+    Math.max(
+      36,
+      ...visibleLines.map((line) => textWidth(line, 10)),
+    ) + 16;
 
   group.append(
     svgElement("line", {
@@ -943,21 +985,26 @@ function renderSection(parent, section, tokens, selection) {
   group.append(
     svgElement("rect", {
       x: lineStart + 10,
-      y: section.y - 10,
+      y: section.top + 3,
       width: labelWidth,
-      height: 20,
+      height: visibleLines.length * 12 + 8,
       rx: 5,
       fill: surfaceForDepth(section.depth, tokens),
     }),
   );
   const label = svgElement("text", {
     x: lineStart + 18,
-    y: section.y + 3.5,
     "font-size": 10,
     "font-weight": 650,
     fill: tokens.mutedText,
   });
-  label.textContent = truncate(section.label, 28);
+  appendTextLines(
+    label,
+    visibleLines,
+    lineStart + 18,
+    section.top + 16,
+    12,
+  );
   group.append(label);
   parent.append(group);
 }
@@ -1172,7 +1219,12 @@ function renderMessage(
   }
 
   if (row.label) {
-    const { visibleLabel, textWidth: labelTextWidth } =
+    const {
+      visibleLines,
+      textWidth: labelTextWidth,
+      lineHeight,
+      height: labelHeight,
+    } =
       messageLabelMetrics(
         row.label,
         layout.options.messageLabelMaxWidth,
@@ -1186,9 +1238,9 @@ function renderMessage(
           geometry.labelX -
           labelTextWidth / 2 -
           labelPaddingX,
-        y: geometry.labelY - 12,
+        y: geometry.labelY - labelHeight + 1,
         width: labelTextWidth + labelPaddingX * 2,
-        height: 18,
+        height: labelHeight + 5,
         rx: 4,
         fill: surfaceForDepth(row.depth, tokens),
         "pointer-events": "none",
@@ -1198,14 +1250,21 @@ function renderMessage(
     const label = svgElement("text", {
       class: "la-message-label",
       x: geometry.labelX,
-      y: geometry.labelY + 1,
       "text-anchor": "middle",
       "font-size": 11,
       "font-weight": 560,
       fill: tokens.text,
       "pointer-events": "none",
     });
-    label.textContent = visibleLabel;
+    appendTextLines(
+      label,
+      visibleLines,
+      geometry.labelX,
+      geometry.labelY -
+        (visibleLines.length - 1) * lineHeight +
+        1,
+      lineHeight,
+    );
     group.append(label);
   }
 
@@ -1243,7 +1302,15 @@ function renderGap(parent, row, layout, tokens, selection) {
   makeSelectable(group, row, selection, `Gap: ${row.label}`);
   addTitle(group, row.label);
 
-  const labelWidth = textWidth(row.label, 10, 48) + 22;
+  const visibleLines = textLines(row.label).map((line) =>
+    truncate(line, 46),
+  );
+  const labelWidth =
+    Math.max(
+      48,
+      ...visibleLines.map((line) => textWidth(line, 10)),
+    ) + 22;
+  const labelHeight = visibleLines.length * 12 + 12;
   const centerX = layout.width / 2;
   const topEdge = row.top + 8;
   const bottomEdge = row.top + row.height - 8;
@@ -1302,9 +1369,9 @@ function renderGap(parent, row, layout, tokens, selection) {
   group.append(
     svgElement("rect", {
       x: centerX - labelWidth / 2,
-      y: row.y - 12,
+      y: row.y - labelHeight / 2,
       width: labelWidth,
-      height: 24,
+      height: labelHeight,
       rx: 7,
       fill: tokens.canvas,
     }),
@@ -1312,19 +1379,55 @@ function renderGap(parent, row, layout, tokens, selection) {
 
   const label = svgElement("text", {
     x: centerX,
-    y: row.y + 3.5,
     "text-anchor": "middle",
     "font-size": 10,
     "font-weight": 650,
     fill: tokens.mutedText,
   });
-  label.textContent = truncate(row.label, 46);
+  appendTextLines(
+    label,
+    visibleLines,
+    centerX,
+    row.y -
+      ((visibleLines.length - 1) * 12) / 2 +
+      3.5,
+    12,
+  );
   group.append(label);
   parent.append(group);
 }
 
+function indexSelectableModels(documentModel) {
+  const models = new Map();
+
+  for (const actor of documentModel.actors) {
+    models.set(actor.id ?? `actor:${actor.name}`, actor);
+  }
+
+  function visit(items) {
+    for (const item of items) {
+      models.set(item.id, item);
+      if (item.type !== "group") {
+        continue;
+      }
+      if (item.sections.length > 0) {
+        for (const section of item.sections) {
+          models.set(section.id, section);
+          visit(section.items);
+        }
+      } else {
+        visit(item.items);
+      }
+    }
+  }
+
+  visit(documentModel.items);
+  return models;
+}
+
 function createSelectionController(root, options) {
   const enabled = options.selectable !== false;
+  const models = options.models;
   let selectedId = null;
   let selectedItem = null;
 
@@ -1350,23 +1453,30 @@ function createSelectionController(root, options) {
   }
 
   const controller = {
-    select(id, item = null, emit = true) {
+    select(id, emit = true) {
       if (!enabled) {
         return;
       }
-      selectedId = id ?? null;
-      selectedItem = item;
+      const nextId = id ?? null;
+      const item = nextId === null ? null : models.get(nextId);
+      if (nextId !== null && !item) {
+        throw new RangeError(
+          `No selectable diagram element has ID "${nextId}".`,
+        );
+      }
+      selectedId = nextId;
+      selectedItem = item ?? null;
       apply();
 
       if (!emit) {
         return;
       }
 
-      const detail = {
+      const detail = Object.freeze({
         id: selectedId,
         kind: item?.type ?? null,
-        item,
-      };
+        item: item ?? null,
+      });
       options.onSelect?.(detail);
 
       const eventTarget = options.eventTarget;
@@ -1381,7 +1491,7 @@ function createSelectionController(root, options) {
       }
     },
     clear(emit = true) {
-      this.select(null, null, emit);
+      this.select(null, emit);
     },
     get id() {
       return selectedId;
@@ -1405,7 +1515,13 @@ export function renderDiagram(target, input, options = {}) {
   }
   options = withDefaultIconOptions(options);
 
-  const documentModel = typeof input === "string" ? parse(input) : input;
+  const documentModel =
+    typeof input === "string"
+      ? freezeDocument(parse(input))
+      : documentSnapshot(input);
+  if (typeof input !== "string") {
+    serialize(documentModel);
+  }
   const tokens = resolveTheme(options.theme, globalThis);
   const layout = layoutDiagram(documentModel, options.layout);
   const prefix = `la-${rendererSequence}`;
@@ -1447,6 +1563,7 @@ export function renderDiagram(target, input, options = {}) {
   const selection = createSelectionController(svg, {
     ...renderOptions,
     eventTarget,
+    models: indexSelectableModels(documentModel),
   });
 
   for (const group of layout.groups) {
@@ -1456,12 +1573,7 @@ export function renderDiagram(target, input, options = {}) {
   renderLifelines(svg, layout, tokens);
 
   for (const group of layout.groups) {
-    renderGroupHeader(
-      svg,
-      group,
-      tokens,
-      layout.options.groupHeaderHeight,
-    );
+    renderGroupHeader(svg, group, tokens);
   }
   for (const section of layout.sections) {
     renderSection(svg, section, tokens, selection);
@@ -1495,7 +1607,7 @@ export function renderDiagram(target, input, options = {}) {
   }
   svg.append(tooltipLayer);
   if (selection.enabled && options.initialSelectedId) {
-    selection.select(options.initialSelectedId, null, false);
+    selection.select(options.initialSelectedId, false);
   }
 
   if (selection.enabled) {
@@ -1510,11 +1622,13 @@ export function renderDiagram(target, input, options = {}) {
   target.replaceChildren(style, frame);
 
   return {
-    ast: documentModel,
+    get ast() {
+      return documentModel;
+    },
     layout,
     svg,
     select(id) {
-      selection.select(id, null);
+      selection.select(id);
     },
     clearSelection() {
       selection.clear();
@@ -1523,7 +1637,8 @@ export function renderDiagram(target, input, options = {}) {
       return selection.id;
     },
     destroy() {
-      target.replaceChildren();
+      style.remove();
+      frame.remove();
     },
   };
 }
