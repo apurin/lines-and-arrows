@@ -15,7 +15,7 @@
   "jsdelivr": "./dist/lines-and-arrows.auto.min.js",
   "unpkg": "./dist/lines-and-arrows.auto.min.js",
   "bin": {
-    "lines-and-arrows": "./bin/lines-and-arrows.js"
+    "lines-and-arrows": "bin/lines-and-arrows.js"
   },
   "exports": {
     ".": {
