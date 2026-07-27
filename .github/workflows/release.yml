@@ -1,0 +1,54 @@
+name: Release package
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the release
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Use an OIDC-capable npm
+        run: npm install --global npm@11
+
+      - name: Verify the tag and package version agree
+        run: test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
+
+      - name: Install release dependencies
+        run: npm ci
+
+      - name: Run programmatic checks
+        run: npm test
+
+      - name: Build browser distributions
+        run: npm run build
+
+      - name: Inspect the package
+        run: npm pack --dry-run
+
+      - name: Publish to npm
+        run: npm publish
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag

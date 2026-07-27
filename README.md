@@ -9,21 +9,17 @@ The runtime is dependency-free JavaScript. It works as an npm module, a native
 browser module, or an opt-in web component. Handwritten type declarations are
 included for TypeScript consumers; the project has no TypeScript build step.
 
-> **Status:** active development. Publishing is disabled in the package
-> manifest, so the npm and CDN examples describe the intended public surface.
+> **Status:** available for use and under active development before 1.0.
 
 ## Browser module
 
-The jsDelivr URL follows the latest published package:
+The jsDelivr entry registers the web component automatically:
 
 ```html
-<script type="module">
-  import {
-    defineLinesAndArrows,
-  } from "https://cdn.jsdelivr.net/npm/@lines-and-arrows/core/+esm";
-
-  defineLinesAndArrows();
-</script>
+<script
+  type="module"
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.1"
+></script>
 
 <lines-and-arrows mode="view" theme="auto">
   @Client
@@ -32,6 +28,18 @@ The jsDelivr URL follows the latest published package:
   Client -> API: Start
   API --> Client: Complete
 </lines-and-arrows>
+```
+
+The `@0.1` compatibility alias receives patch releases without crossing into a
+potentially breaking `0.2`. Use an exact version when a deployment must remain
+fully pinned.
+
+For direct CDN access to the JavaScript API without automatic registration:
+
+```js
+import {
+  renderDiagram,
+} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.1/dist/lines-and-arrows.min.js";
 ```
 
 Set `mode="edit"` to enable the visual editor. Use `selectable="false"` when a
@@ -87,7 +95,7 @@ Agents and build tools can check source without creating a DOM:
 ```js
 import {
   validate,
-} from "@lines-and-arrows/core/syntax";
+} from "lines-and-arrows/syntax";
 
 const result = validate(source);
 
@@ -128,7 +136,7 @@ import {
   renderDiagram,
   renderEditor,
   serialize,
-} from "@lines-and-arrows/core";
+} from "lines-and-arrows";
 
 const document = parse(source);
 const canonicalSource = serialize(document);
@@ -179,10 +187,8 @@ helper API.
 
 ## Install
 
-The intended package name is `@lines-and-arrows/core`:
-
 ```sh
-npm install @lines-and-arrows/core
+npm install lines-and-arrows
 ```
 
 The published package contains the JavaScript runtime, optional type
@@ -211,7 +217,7 @@ Phosphor Icons is MIT licensed. See
 Run the programmatic checks:
 
 ```sh
-npm test
+npm run check
 ```
 
 Run the local demo:

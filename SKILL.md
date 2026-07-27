@@ -13,7 +13,7 @@ description: Author, validate, and revise Lines & Arrows sequence diagrams. Use 
    backslashes as `\\`, and keep identity and icon fields on one line.
 3. Validate a file with
    `lines-and-arrows validate --json FILE`, or call `validate(source)` from
-   `@lines-and-arrows/core/syntax`.
+   `lines-and-arrows/syntax`.
 4. Use the returned line to repair syntax errors.
 5. Read [syntax.md](./syntax.md) only when the complete grammar or renderer
    contract is needed.

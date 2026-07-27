@@ -5,7 +5,7 @@ import {
   LinesAndArrowsSyntaxError,
   parse,
   serialize,
-} from "@lines-and-arrows/core/syntax";
+} from "lines-and-arrows/syntax";
 
 const COMPLETE_SOURCE = `@Customer
   icon user

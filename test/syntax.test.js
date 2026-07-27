@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { validate } from "@lines-and-arrows/core/syntax";
+import { validate } from "lines-and-arrows/syntax";
 
 const CLI = fileURLToPath(
   new URL("../bin/lines-and-arrows.js", import.meta.url),

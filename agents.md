@@ -98,7 +98,7 @@ critical Process job
 ```js
 import {
   validate,
-} from "@lines-and-arrows/core/syntax";
+} from "lines-and-arrows/syntax";
 
 const result = validate(source);
 if (!result.valid) {
