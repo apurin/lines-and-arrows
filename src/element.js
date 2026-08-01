@@ -11,7 +11,13 @@ const HTMLElementBase = globalThis.HTMLElement ?? class {};
 
 export class LinesAndArrowsElement extends HTMLElementBase {
   static get observedAttributes() {
-    return ["theme", "label", "mode", "selectable"];
+    return [
+      "theme",
+      "label",
+      "mode",
+      "selectable",
+      "branding",
+    ];
   }
 
   #source = "";
@@ -90,6 +96,18 @@ export class LinesAndArrowsElement extends HTMLElementBase {
       this.setAttribute("selectable", "false");
     } else {
       this.removeAttribute("selectable");
+    }
+  }
+
+  get branding() {
+    return this.getAttribute("branding") !== "false";
+  }
+
+  set branding(value) {
+    if (value === false) {
+      this.setAttribute("branding", "false");
+    } else {
+      this.removeAttribute("branding");
     }
   }
 
@@ -227,6 +245,7 @@ export class LinesAndArrowsElement extends HTMLElementBase {
         theme: this.theme,
         label: this.getAttribute("label") || "Sequence diagram",
         selectable: this.mode === "edit" ? true : this.selectable,
+        branding: this.branding,
         iconResolver: this.#iconResolver,
         iconCatalog: this.#iconCatalog,
         layout: this.#layout,

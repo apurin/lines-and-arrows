@@ -15,6 +15,12 @@ import { textLines } from "./text.js";
 import { resolveTheme } from "./theme.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+const BRANDING_HREF = "https://lines-and-arrows.dev/";
+const BRANDING_LABEL = "Powered by Lines & Arrows";
+const BRANDING_FONT_SIZE = 7;
+const BRANDING_HEIGHT = 15;
+const BRANDING_LIFELINE_OVERLAP = 3;
+const BRANDING_BOTTOM_MARGIN = 2;
 let tooltipSequence = 0;
 
 const VIEW_STYLES = `
@@ -159,6 +165,33 @@ const VIEW_STYLES = `
     visibility: visible;
   }
 
+  .la-branding {
+    opacity: 0.48;
+    outline: none;
+    transition: opacity 100ms ease;
+  }
+
+  .la-branding:hover,
+  .la-branding:focus-visible {
+    opacity: 0.78;
+  }
+
+  .la-branding-surface {
+    fill: var(--la-group-fill);
+    fill-opacity: 0.72;
+    stroke: var(--la-section-line);
+    stroke-opacity: 0.5;
+  }
+
+  .la-branding-text {
+    fill: var(--la-muted-text);
+  }
+
+  .la-branding:focus-visible .la-branding-surface {
+    stroke: var(--la-selection);
+    stroke-opacity: 0.72;
+  }
+
   .la-frame[data-selectable="true"]
     .la-group-hit:hover
     + .la-group-shape,
@@ -198,7 +231,8 @@ const VIEW_STYLES = `
     .la-group-shape,
     .la-message-line,
     .la-gap-rule,
-    .la-tooltip-trigger-shape {
+    .la-tooltip-trigger-shape,
+    .la-branding {
       transition: none;
     }
   }
@@ -1397,6 +1431,55 @@ function renderGap(parent, row, layout, tokens, selection) {
   parent.append(group);
 }
 
+function renderBranding(parent, layout) {
+  const width = Math.ceil(
+    textWidth(BRANDING_LABEL, BRANDING_FONT_SIZE) + 12,
+  );
+  const left = (layout.width - width) / 2;
+  const top = Math.min(
+    layout.lifelineBottom - BRANDING_LIFELINE_OVERLAP,
+    layout.height - BRANDING_BOTTOM_MARGIN - BRANDING_HEIGHT,
+  );
+  const link = svgElement("a", {
+    class: "la-branding",
+    part: "branding",
+    href: BRANDING_HREF,
+    target: "_blank",
+    rel: "noopener noreferrer",
+    "aria-label": `${BRANDING_LABEL}. Open website`,
+  });
+  const title = svgElement("title");
+  title.textContent = "Open the Lines & Arrows website";
+  link.append(
+    title,
+    svgElement("rect", {
+      class: "la-branding-surface",
+      x: left,
+      y: top,
+      width,
+      height: BRANDING_HEIGHT,
+      rx: BRANDING_HEIGHT / 2,
+      "stroke-width": 0.75,
+    }),
+  );
+  const label = svgElement("text", {
+    class: "la-branding-text",
+    x: left + width / 2,
+    y: top + 10,
+    "text-anchor": "middle",
+    "font-size": BRANDING_FONT_SIZE,
+    "font-weight": 600,
+    "letter-spacing": 0.05,
+    "pointer-events": "none",
+  });
+  label.textContent = BRANDING_LABEL;
+  link.append(label);
+  link.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+  });
+  parent.append(link);
+}
+
 function indexSelectableModels(documentModel) {
   const models = new Map();
 
@@ -1523,6 +1606,7 @@ export function renderDiagram(target, input, options = {}) {
     serialize(documentModel);
   }
   const tokens = resolveTheme(options.theme, globalThis);
+  const branding = options.branding !== false;
   const layout = layoutDiagram(documentModel, options.layout);
   const prefix = `la-${rendererSequence}`;
   rendererSequence += 1;
@@ -1604,6 +1688,9 @@ export function renderDiagram(target, input, options = {}) {
       selection,
       tooltipLayer,
     );
+  }
+  if (branding) {
+    renderBranding(svg, layout);
   }
   svg.append(tooltipLayer);
   if (selection.enabled && options.initialSelectedId) {

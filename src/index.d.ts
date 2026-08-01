@@ -119,6 +119,7 @@ export interface RenderOptions {
   theme?: ThemeName;
   label?: string;
   selectable?: boolean;
+  branding?: boolean;
   initialSelectedId?: string | null;
   iconResolver?: IconResolver | null;
   iconCatalog?: readonly IconCatalogEntry[];
@@ -348,6 +349,7 @@ export class LinesAndArrowsElement extends HTMLElement {
   theme: ThemeName;
   mode: EditorMode;
   selectable: boolean;
+  branding: boolean;
   get iconResolver(): IconResolver | null;
   set iconResolver(value: IconResolver | null);
   get iconCatalog(): IconCatalogEntry[];

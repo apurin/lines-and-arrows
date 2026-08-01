@@ -42,10 +42,13 @@ import {
 } from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.1/dist/lines-and-arrows.min.js";
 ```
 
-Set `mode="edit"` to enable the visual editor. Use `selectable="false"` when a
-view should have no selectable diagram elements. Source nested naturally inside
-the element may share the page's indentation; the component removes that
-common indentation while preserving the diagram's relative indentation.
+Set `mode="edit"` to enable the visual editor, including canvas undo and redo
+controls. Use `selectable="false"` when a view should have no selectable diagram
+elements. A quiet “Powered by Lines & Arrows” website link appears by default;
+set `branding="false"` to hide it.
+Source nested naturally inside the element may share the page's indentation;
+the component removes that common indentation while preserving the diagram's
+relative indentation.
 
 ## Syntax
 
@@ -144,6 +147,7 @@ const canonicalSource = serialize(document);
 const viewer = renderDiagram(container, document, {
   theme: "auto",
   selectable: false,
+  branding: true,
 });
 
 const editor = new DiagramEditor(canonicalSource);
@@ -167,11 +171,13 @@ also validates programmatically constructed documents and rejects ambiguous
 structures, such as a group containing both direct items and sections.
 
 The `<lines-and-arrows>` element exposes `source`, `mode`, `theme`,
-`selectable`, `layout`, `iconResolver`, and `iconCatalog`, plus selection,
-history, and source-replacement methods. `select(id)` and user selection both
-emit `la-select` with the selected immutable model item. `la-change` is emitted
-only after a command commits a different source; its detail contains the new
-source, immutable AST snapshot, command name, and history state.
+`selectable`, `branding`, `layout`, `iconResolver`, and `iconCatalog`, plus
+selection, history, and source-replacement methods. The JavaScript renderers
+accept the same `branding` boolean and default it to `true`. `select(id)` and
+user selection both emit `la-select` with the selected immutable model item.
+`la-change` is emitted only after a command commits a different source; its
+detail contains the new source, immutable AST snapshot, command name, and
+history state.
 In edit mode, `replaceSource()` returns `true` only when it commits a different
 valid source. Invalid source returns `false` and emits `la-error`, whose detail
 contains the original error.
@@ -192,8 +198,7 @@ npm install lines-and-arrows
 ```
 
 The published package contains the JavaScript runtime, optional type
-declarations, validation CLI, agent guidance, syntax reference, licenses, and
-notices.
+declarations, validation CLI, syntax reference, licenses, and notices.
 
 ## Themes and icons
 

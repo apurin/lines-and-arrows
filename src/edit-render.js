@@ -16,6 +16,9 @@ import { renderDiagram } from "./render.js";
 const SVG_NS = "http://www.w3.org/2000/svg";
 const TIMELINE_INSERTION_CONTROL_OFFSET = 12;
 const TIMELINE_INSERTION_CONTROL_RADIUS = 8;
+const HISTORY_CONTROL_SIZE = 24;
+const HISTORY_CONTROL_GAP = 2;
+const HISTORY_CONTROL_MARGIN = 7;
 
 export const EDIT_STYLES = `
   .la-frame[data-mode="edit"] {
@@ -30,6 +33,54 @@ export const EDIT_STYLES = `
 
   .la-frame[data-mode="edit"] .la-selectable[data-selected="true"] {
     cursor: grab;
+  }
+
+  .la-history-control {
+    cursor: pointer;
+    outline: none;
+  }
+
+  .la-history-control-surface {
+    fill: transparent;
+    stroke: transparent;
+    transition:
+      fill 100ms ease,
+      stroke 100ms ease;
+  }
+
+  .la-history-control-icon {
+    stroke: var(--la-muted-text);
+    transition:
+      opacity 100ms ease,
+      stroke 100ms ease;
+  }
+
+  .la-history-control:not([aria-disabled="true"]):hover
+    .la-history-control-surface,
+  .la-history-control:not([aria-disabled="true"]):focus-visible
+    .la-history-control-surface {
+    fill: var(--la-accent-soft);
+    stroke: color-mix(
+      in srgb,
+      var(--la-selection) 32%,
+      transparent
+    );
+  }
+
+  .la-history-control:not([aria-disabled="true"]):hover
+    .la-history-control-icon,
+  .la-history-control:not([aria-disabled="true"]):focus-visible
+    .la-history-control-icon {
+    stroke: var(--la-selection);
+  }
+
+  .la-history-control[aria-disabled="true"] {
+    cursor: default;
+  }
+
+  .la-history-control[aria-disabled="true"]
+    .la-history-control-icon {
+    opacity: 0.3;
   }
 
   .la-insertion {
@@ -550,7 +601,9 @@ export const EDIT_STYLES = `
     .la-insertion-plus,
     .la-reorder-handle,
     .la-connection-origin-visible,
-    .la-message-endpoint-visible {
+    .la-message-endpoint-visible,
+    .la-history-control-surface,
+    .la-history-control-icon {
       transition: none;
     }
   }
@@ -566,6 +619,110 @@ function svgElement(name, attributes = {}) {
     }
   }
   return element;
+}
+
+function historyControl(kind, x, enabled, onActivate) {
+  const undo = kind === "undo";
+  const label = undo ? "Undo" : "Redo";
+  const control = svgElement("g", {
+    class: "la-history-control",
+    transform: `translate(${x} 0)`,
+    role: "button",
+    tabindex: enabled ? 0 : -1,
+    "aria-label": label,
+    "aria-disabled": String(!enabled),
+    "aria-keyshortcuts": undo
+      ? "Control+Z Meta+Z"
+      : "Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y",
+    "data-field": `history-${kind}`,
+  });
+  const title = svgElement("title");
+  title.textContent = undo
+    ? "Undo (Ctrl/Command+Z)"
+    : "Redo (Ctrl/Command+Shift+Z)";
+  const icon = svgElement("path", {
+    class: "la-history-control-icon",
+    d: undo
+      ? "M 9 7 L 5 11 L 9 15 M 5.5 11 H 13 C 16.5 11 19 13.5 19 17"
+      : "M 15 7 L 19 11 L 15 15 M 18.5 11 H 11 C 7.5 11 5 13.5 5 17",
+    fill: "none",
+    "stroke-width": 1.7,
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+    "pointer-events": "none",
+  });
+  control.append(
+    title,
+    svgElement("rect", {
+      class: "la-history-control-surface",
+      x: 0.5,
+      y: 0.5,
+      width: HISTORY_CONTROL_SIZE - 1,
+      height: HISTORY_CONTROL_SIZE - 1,
+      rx: 7,
+      "stroke-width": 1,
+      "pointer-events": "all",
+    }),
+    icon,
+  );
+
+  const activate = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (enabled) {
+      onActivate();
+    }
+  };
+  control.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+  });
+  control.addEventListener("click", activate);
+  control.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      activate(event);
+    }
+  });
+  return control;
+}
+
+function historyControls(layout, editor, run) {
+  const width =
+    HISTORY_CONTROL_SIZE * 2 + HISTORY_CONTROL_GAP;
+  const controls = svgElement("g", {
+    class: "la-history-controls",
+    transform: `translate(${
+      layout.width - HISTORY_CONTROL_MARGIN - width
+    } ${HISTORY_CONTROL_MARGIN})`,
+    role: "group",
+    "aria-label": "Edit history",
+  });
+  controls.append(
+    historyControl(
+      "undo",
+      0,
+      editor.canUndo,
+      () =>
+        run(
+          () => editor.undo(),
+          [],
+          null,
+          "history-undo",
+        ),
+    ),
+    historyControl(
+      "redo",
+      HISTORY_CONTROL_SIZE + HISTORY_CONTROL_GAP,
+      editor.canRedo,
+      () =>
+        run(
+          () => editor.redo(),
+          [],
+          null,
+          "history-redo",
+        ),
+    ),
+  );
+  return controls;
 }
 
 function eventPoint(svg, event) {
@@ -3061,6 +3218,7 @@ export function renderEditor(target, input, options = {}) {
     if (tooltipLayer) {
       svg.append(tooltipLayer);
     }
+    svg.append(historyControls(layout, editor, run));
 
     let suppressClick = false;
     svg.addEventListener(
@@ -3079,7 +3237,8 @@ export function renderEditor(target, input, options = {}) {
       if (
         event.button !== 0 ||
         event.target.closest?.("[data-la-id]") ||
-        event.target.closest?.(".la-insertion")
+        event.target.closest?.(".la-insertion") ||
+        event.target.closest?.(".la-history-controls")
       ) {
         return;
       }
