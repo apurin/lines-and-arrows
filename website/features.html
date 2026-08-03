@@ -5,37 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Explore Lines & Arrows features through concise syntax examples and their rendered sequence diagrams."
+      content="Explore Lines &amp; Arrows features through concise syntax examples and their rendered sequence diagrams."
     />
     <title>Features - Lines &amp; Arrows</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20260726-11" />
+    <link rel="stylesheet" href="./styles.css?v=20260731-1" />
   </head>
   <body class="features-page">
     <a class="skip-link" href="#main">Skip to content</a>
 
     <header class="site-header">
       <nav class="nav-shell" aria-label="Primary navigation">
-        <a
-          class="wordmark"
-          href="./index.html"
-          aria-label="L↗A, Lines and Arrows home"
-        >
+        <a class="wordmark" href="./index.html" aria-label="Lines and Arrows home">
           <span class="wordmark-mark" aria-hidden="true">L↗A</span>
-          <span>Lines &amp; Arrows</span>
+          <span class="wordmark-name">Lines &amp; Arrows</span>
         </a>
 
         <div class="nav-links">
           <a href="./showcase.html">Showcase</a>
           <a href="./features.html" aria-current="page">Features</a>
-          <a href="./index.html#embed">Embed</a>
           <a href="./agents.md">agents.md</a>
           <a
-            class="icon-link"
+            class="nav-github"
             href="https://github.com/apurin/lines-and-arrows"
             target="_blank"
             rel="noreferrer"
-            title="GitHub repository (not public yet)"
             aria-label="Lines and Arrows on GitHub"
           >
             <img
@@ -44,43 +38,30 @@
               width="20"
               height="20"
             />
+            <span>GitHub</span>
           </a>
+          <div class="theme-switcher" role="group" aria-label="Color theme">
+            <button type="button" data-site-theme="light" aria-pressed="true">
+              <span class="control-icon icon-sun" aria-hidden="true"></span>
+              <span class="visually-hidden">Light theme</span>
+            </button>
+            <button type="button" data-site-theme="dark" aria-pressed="false">
+              <span class="control-icon icon-moon" aria-hidden="true"></span>
+              <span class="visually-hidden">Dark theme</span>
+            </button>
+          </div>
         </div>
       </nav>
     </header>
 
     <main id="main">
-      <section class="features-intro section-shell" id="top">
-        <div>
-          <h1>A small language with useful depth.</h1>
-          <p>
-            Read the source on the left. See the same sequence rendered on the
-            right.
-          </p>
-        </div>
-
-        <div
-          class="hero-segmented hero-theme-switcher features-theme-switcher"
-          role="group"
-          aria-label="Color theme"
-        >
-          <button
-            type="button"
-            data-site-theme="light"
-            aria-pressed="true"
-          >
-            <span class="control-icon icon-sun" aria-hidden="true"></span>
-            Light
-          </button>
-          <button
-            type="button"
-            data-site-theme="dark"
-            aria-pressed="false"
-          >
-            <span class="control-icon icon-moon" aria-hidden="true"></span>
-            Dark
-          </button>
-        </div>
+      <section class="page-intro features-intro section-shell" id="top">
+        <p class="eyebrow"><span></span> Seven building blocks</p>
+        <h1>A small language.<br />Useful depth.</h1>
+        <p class="page-intro-lede">
+          Read the compact source. See the same sequence. Switch to Edit and
+          change it without leaving the page.
+        </p>
       </section>
 
       <section class="feature-row section-shell" id="actors" data-feature>
@@ -325,17 +306,18 @@ Planner --> Agent: Final result</code></pre>
         </figure>
       </section>
 
-      <section class="features-next section-shell">
+      <section class="page-next section-shell">
         <div>
-          <h2>Ready to put it on a page?</h2>
+          <p class="eyebrow">The next line is yours</p>
+          <h2>Ready to put one on a page?</h2>
           <p>
-            The homepage shows both embedding paths. Agents can use the shorter
-            Markdown reference.
+            Start from the live diagram or hand the concise authoring guide to
+            an agent.
           </p>
         </div>
-        <div class="features-next-actions">
-          <a class="button button-primary" href="./index.html#embed">
-            See embedding
+        <div class="page-next-actions">
+          <a class="button button-primary" href="./index.html#top">
+            Open the live diagram
           </a>
           <a class="button button-secondary" href="./agents.md">
             Read agents.md
@@ -345,45 +327,15 @@ Planner --> Agent: Final result</code></pre>
     </main>
 
     <footer class="site-footer section-shell">
-      <div>
-        <a class="wordmark footer-wordmark" href="./index.html">
-          <span class="wordmark-mark" aria-hidden="true">L↗A</span>
-          <span>Lines &amp; Arrows</span>
-        </a>
-        <p>Small language. Clear sequences.</p>
-      </div>
-
+      <p><strong>Lines &amp; Arrows</strong> <span>Small language. Clear sequences.</span></p>
       <div class="footer-links">
-        <a
-          href="https://github.com/apurin/lines-and-arrows"
-          target="_blank"
-          rel="noreferrer"
-          title="GitHub repository (not public yet)"
-        >
-          <img
-            src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/github-logo-bold.svg"
-            alt=""
-            width="19"
-            height="19"
-          />
-          GitHub
-        </a>
-        <a
-          href="https://www.linkedin.com/in/apurin"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <img
-            src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/linkedin-logo-bold.svg"
-            alt=""
-            width="19"
-            height="19"
-          />
-          Anton Purin
-        </a>
+        <a href="./showcase.html">Showcase</a>
+        <a href="./features.html">Features</a>
+        <a href="./agents.md">agents.md</a>
+        <a href="https://www.linkedin.com/in/apurin" target="_blank" rel="noreferrer">Anton Purin ↗</a>
       </div>
     </footer>
 
-    <script type="module" src="./features.js?v=20260726-3"></script>
+    <script type="module" src="./features.js?v=20260803-2"></script>
   </body>
 </html>

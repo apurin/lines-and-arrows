@@ -1,9 +1,8 @@
 import {
   defineLinesAndArrows,
   parse,
-  phosphorIconCatalog,
-  phosphorIconResolver,
-} from "../src/index.js";
+} from "./runtime.js?v=20260803-2";
+import { initializeSiteTheme } from "./site.js";
 
 defineLinesAndArrows();
 
@@ -270,7 +269,7 @@ const renderShowcase = ({
         <figure class="showcase-figure">
           <div class="showcase-toolbar">
             <div
-              class="hero-segmented showcase-mode-switcher"
+              class="surface-switcher showcase-mode-switcher"
               role="group"
               aria-label="${escapeHtml(title)} diagram mode"
             >
@@ -352,9 +351,6 @@ document
 
 document.body.classList.remove("is-loading");
 
-const root = document.documentElement;
-const themeButtons = [...document.querySelectorAll("[data-site-theme]")];
-const diagrams = [...document.querySelectorAll("[data-showcase-diagram]")];
 const showcaseLayout = {
   actorHeight: 48,
   actorGap: 82,
@@ -370,51 +366,7 @@ const showcaseLayout = {
   bottomPadding: 28,
 };
 
-const readSavedTheme = () => {
-  try {
-    const saved = localStorage.getItem("lines-and-arrows-theme");
-    return saved === "light" || saved === "dark" ? saved : null;
-  } catch {
-    return null;
-  }
-};
-
-const systemTheme = matchMedia("(prefers-color-scheme: dark)").matches
-  ? "dark"
-  : "light";
-let activeTheme = readSavedTheme() ?? systemTheme;
-
-const applyTheme = (theme, persist = false) => {
-  activeTheme = theme === "dark" ? "dark" : "light";
-  root.dataset.theme = activeTheme;
-
-  for (const diagram of diagrams) {
-    diagram.theme = activeTheme;
-  }
-
-  for (const button of themeButtons) {
-    button.setAttribute(
-      "aria-pressed",
-      String(button.dataset.siteTheme === activeTheme),
-    );
-  }
-
-  if (persist) {
-    try {
-      localStorage.setItem("lines-and-arrows-theme", activeTheme);
-    } catch {
-      // The theme still applies when storage is unavailable.
-    }
-  }
-};
-
-for (const button of themeButtons) {
-  button.addEventListener("click", () => {
-    applyTheme(button.dataset.siteTheme, true);
-  });
-}
-
-applyTheme(activeTheme);
+const theme = initializeSiteTheme();
 
 for (const showcase of document.querySelectorAll("[data-showcase]")) {
   const diagram = showcase.querySelector("[data-showcase-diagram]");
@@ -431,10 +383,8 @@ for (const showcase of document.querySelectorAll("[data-showcase]")) {
   ];
   const initialSource = sourceInput.value.trim();
 
-  diagram.iconResolver = phosphorIconResolver;
-  diagram.iconCatalog = phosphorIconCatalog;
   diagram.layout = showcaseLayout;
-  diagram.theme = activeTheme;
+  diagram.theme = theme.theme;
 
   const setSurface = (surface) => {
     for (const button of surfaceButtons) {

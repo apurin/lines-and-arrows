@@ -1,22 +1,65 @@
 # Lines & Arrows for agents
 
-Use Lines & Arrows when an interaction sequence must stay easy for another agent
-or a human to inspect and edit.
+Use Lines & Arrows to describe an interaction sequence as compact, editable
+text.
 
-## Authoring rules
+## Authoring workflow
 
-- Write UTF-8, line-oriented text.
-- Use two spaces per indentation level. Never use tabs.
-- Keep coordinates, colors, dimensions, and theme choices out of the source.
-- Declare actors first when actor order or metadata matters.
-- If any actor is declared, declare every referenced actor.
-- Use `->` for a request or action.
-- Use `-->` for a visually distinct response or result.
-- Use `->x` only when a message is lost or not delivered.
-- Put nested timeline items under an open group type.
+1. Write the source using the shapes below.
+2. Preserve actor order, timeline order, group nesting, and all visible text.
+3. Run `lines-and-arrows validate --json FILE` or call `validate(source)`.
+4. Fix the reported line, then validate again.
+
+Validation uses only JavaScript and does not require a DOM or renderer.
+
+## Core rules
+
+- Use UTF-8 text and two spaces per indentation level.
+- Declare every actor first when actor order or metadata matters.
+- When any actor is declared, declare every referenced actor.
+- Use `->` for a solid message, `-->` for a dashed message, and `->x` for a
+  lost message.
+- Omit the colon when a message has no label.
+- Write `\n` for a visible line break in a label or tooltip and `\\` for a
+  literal backslash.
+- Keep actor names, tags, group types, and icon identifiers on one line.
+- Indent nested timeline items under an open group type.
 - Put alternative or parallel lanes under `| section name`.
 - Use `gap TEXT` for meaningful omitted time or context.
-- Put comments on their own line with `//`.
+- Put comments on their own line with `//` and indent them like the construct
+  they describe; structural edits carry those comments with that construct.
+- Keep coordinates, colors, dimensions, and themes out of the source.
+
+## Syntax shapes
+
+```lines-and-arrows
+@Actor Name
+  icon catalog-identifier
+  tag short visible text
+  tooltip additional detail\non another line
+  tooltip-icon catalog-identifier
+
+Source -> Target: Optional label\ncontinued label
+  tag short visible text
+  tooltip additional detail
+  tooltip-icon catalog-identifier
+
+group-type Visible label
+  Source -> Target: Nested item
+
+choice Visible label
+  | first outcome
+    Source --> Target: Result
+  | second outcome
+    Source ->x Target: Lost message
+
+gap Visible discontinuity
+// Source comment
+```
+
+Group types are open vocabulary except for the reserved `gap` keyword. Values
+such as `choice`, `repeat`, `parallel`, `optional`, `critical`, and
+domain-specific lowercase names all use the same structure.
 
 ## Complete example
 
@@ -50,65 +93,18 @@ critical Process job
   Worker --> Agent: Report result
 ```
 
-## Syntax shapes
-
-```lines-and-arrows
-@Actor Name
-  icon catalog-identifier
-  tag short visible text
-  tooltip additional detail
-  tooltip-icon catalog-identifier
-
-Source -> Target: Optional label
-  tag short visible text
-  tooltip additional detail
-  tooltip-icon catalog-identifier
-
-group-type Visible label
-  Source -> Target: Nested item
-
-choice Visible label
-  | first outcome
-    Source --> Target: Result
-  | second outcome
-    Source ->x Target: Lost message
-
-gap Visible discontinuity
-// Source-only comment
-```
-
-Group types are open vocabulary. `choice`, `repeat`, `parallel`, `optional`,
-`critical`, and domain-specific lowercase names all use the same structure.
-
-## Embed
+## Programmatic validation
 
 ```js
 import {
-  defineLinesAndArrows,
-  parse,
-  renderDiagram,
-} from "@lines-and-arrows/core";
+  validate,
+} from "lines-and-arrows/syntax";
 
-const diagramDocument = parse(source);
-const view = renderDiagram(container, diagramDocument, { theme: "auto" });
-
-defineLinesAndArrows();
-const element = document.querySelector("lines-and-arrows");
-element.source = source;
-element.mode = "view";
-element.theme = "auto";
+const result = validate(source);
+if (!result.valid) {
+  throw new Error(result.error.message);
+}
 ```
 
-```html
-<lines-and-arrows mode="view" theme="auto"></lines-and-arrows>
-```
-
-## Validate before returning
-
-- The document has at least one timeline item.
-- Indentation never skips a level.
-- Explicit labels, groups, sections, and gaps are not empty.
-- Actor declarations appear before the timeline.
-- A group body contains direct items or sections at one level, not both.
-- The arrow form is exactly `->`, `-->`, or `->x`.
-- Layout and presentation remain renderer concerns.
+Read [syntax.md](./syntax.md) when the complete grammar or round-trip contract
+is needed.

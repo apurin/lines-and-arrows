@@ -5,37 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Explore eleven editable Lines & Arrows sequence diagrams from software engineering, AI, markets, science, and civic systems."
+      content="Explore eleven editable Lines &amp; Arrows sequence diagrams from software engineering, AI, markets, science, and civic systems."
     />
     <title>Showcase - Lines &amp; Arrows</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20260726-11" />
+    <link rel="stylesheet" href="./styles.css?v=20260731-1" />
   </head>
   <body class="showcase-page is-loading">
     <a class="skip-link" href="#main">Skip to content</a>
 
     <header class="site-header">
       <nav class="nav-shell" aria-label="Primary navigation">
-        <a
-          class="wordmark"
-          href="./index.html"
-          aria-label="L↗A, Lines and Arrows home"
-        >
+        <a class="wordmark" href="./index.html" aria-label="Lines and Arrows home">
           <span class="wordmark-mark" aria-hidden="true">L↗A</span>
-          <span>Lines &amp; Arrows</span>
+          <span class="wordmark-name">Lines &amp; Arrows</span>
         </a>
 
         <div class="nav-links">
           <a href="./showcase.html" aria-current="page">Showcase</a>
           <a href="./features.html">Features</a>
-          <a href="./index.html#embed">Embed</a>
           <a href="./agents.md">agents.md</a>
           <a
-            class="icon-link"
+            class="nav-github"
             href="https://github.com/apurin/lines-and-arrows"
             target="_blank"
             rel="noreferrer"
-            title="GitHub repository (not public yet)"
             aria-label="Lines and Arrows on GitHub"
           >
             <img
@@ -44,35 +38,30 @@
               width="20"
               height="20"
             />
+            <span>GitHub</span>
           </a>
+          <div class="theme-switcher" role="group" aria-label="Color theme">
+            <button type="button" data-site-theme="light" aria-pressed="true">
+              <span class="control-icon icon-sun" aria-hidden="true"></span>
+              <span class="visually-hidden">Light theme</span>
+            </button>
+            <button type="button" data-site-theme="dark" aria-pressed="false">
+              <span class="control-icon icon-moon" aria-hidden="true"></span>
+              <span class="visually-hidden">Dark theme</span>
+            </button>
+          </div>
         </div>
       </nav>
     </header>
 
     <main id="main">
-      <section class="showcase-intro section-shell" id="top">
-        <div>
-          <h1>Sequences happen everywhere.</h1>
-          <p>
-            Eleven editable stories from code, agents, markets, cells, cities,
-            oceans, and the systems between them.
-          </p>
-        </div>
-
-        <div
-          class="hero-segmented hero-theme-switcher features-theme-switcher"
-          role="group"
-          aria-label="Color theme"
-        >
-          <button type="button" data-site-theme="light" aria-pressed="true">
-            <span class="control-icon icon-sun" aria-hidden="true"></span>
-            Light
-          </button>
-          <button type="button" data-site-theme="dark" aria-pressed="false">
-            <span class="control-icon icon-moon" aria-hidden="true"></span>
-            Dark
-          </button>
-        </div>
+      <section class="page-intro showcase-intro section-shell" id="top">
+        <p class="eyebrow"><span></span> Eleven editable stories</p>
+        <h1>Sequences happen<br />everywhere.</h1>
+        <p class="page-intro-lede">
+          Code, agents, markets, cells, cities, oceans, and the systems between
+          them. Every example is live.
+        </p>
       </section>
 
       <nav
@@ -869,65 +858,36 @@ Poll Worker --> Voter: Ballot deposited</textarea>
         </figure>
       </section>
 
-      <section class="features-next section-shell">
+      <section class="page-next section-shell">
         <div>
+          <p class="eyebrow">Your sequence next</p>
           <h2>Now make one of your own.</h2>
           <p>
             The feature guide explains each building block. The homepage shows
             how to embed the result.
           </p>
         </div>
-        <div class="features-next-actions">
+        <div class="page-next-actions">
           <a class="button button-primary" href="./features.html">
             Explore features
           </a>
-          <a class="button button-secondary" href="./index.html#embed">
-            See embedding
+          <a class="button button-secondary" href="./index.html#top">
+            Open the live diagram
           </a>
         </div>
       </section>
     </main>
 
     <footer class="site-footer section-shell">
-      <div>
-        <a class="wordmark footer-wordmark" href="./index.html">
-          <span class="wordmark-mark" aria-hidden="true">L↗A</span>
-          <span>Lines &amp; Arrows</span>
-        </a>
-        <p>Small language. Clear sequences.</p>
-      </div>
-
+      <p><strong>Lines &amp; Arrows</strong> <span>Eleven stories. One small language.</span></p>
       <div class="footer-links">
-        <a
-          href="https://github.com/apurin/lines-and-arrows"
-          target="_blank"
-          rel="noreferrer"
-          title="GitHub repository (not public yet)"
-        >
-          <img
-            src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/github-logo-bold.svg"
-            alt=""
-            width="19"
-            height="19"
-          />
-          GitHub
-        </a>
-        <a
-          href="https://www.linkedin.com/in/apurin"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <img
-            src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/linkedin-logo-bold.svg"
-            alt=""
-            width="19"
-            height="19"
-          />
-          Anton Purin
-        </a>
+        <a href="./showcase.html">Showcase</a>
+        <a href="./features.html">Features</a>
+        <a href="./agents.md">agents.md</a>
+        <a href="https://www.linkedin.com/in/apurin" target="_blank" rel="noreferrer">Anton Purin ↗</a>
       </div>
     </footer>
 
-    <script type="module" src="./showcase.js?v=20260726-4"></script>
+    <script type="module" src="./showcase.js?v=20260803-2"></script>
   </body>
 </html>

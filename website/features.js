@@ -1,15 +1,11 @@
 import {
   defineLinesAndArrows,
   parse,
-  phosphorIconCatalog,
-  phosphorIconResolver,
-} from "../src/index.js";
+} from "./runtime.js?v=20260803-2";
+import { initializeSiteTheme } from "./site.js";
 
 defineLinesAndArrows();
 
-const root = document.documentElement;
-const themeButtons = [...document.querySelectorAll("[data-site-theme]")];
-const diagrams = [...document.querySelectorAll("[data-feature-diagram]")];
 const featureLayout = {
   actorHeight: 48,
   actorGap: 60,
@@ -25,51 +21,7 @@ const featureLayout = {
   bottomPadding: 24,
 };
 
-const readSavedTheme = () => {
-  try {
-    const saved = localStorage.getItem("lines-and-arrows-theme");
-    return saved === "light" || saved === "dark" ? saved : null;
-  } catch {
-    return null;
-  }
-};
-
-const systemTheme = matchMedia("(prefers-color-scheme: dark)").matches
-  ? "dark"
-  : "light";
-let activeTheme = readSavedTheme() ?? systemTheme;
-
-const applyTheme = (theme, persist = false) => {
-  activeTheme = theme === "dark" ? "dark" : "light";
-  root.dataset.theme = activeTheme;
-
-  for (const diagram of diagrams) {
-    diagram.theme = activeTheme;
-  }
-
-  for (const button of themeButtons) {
-    button.setAttribute(
-      "aria-pressed",
-      String(button.dataset.siteTheme === activeTheme),
-    );
-  }
-
-  if (persist) {
-    try {
-      localStorage.setItem("lines-and-arrows-theme", activeTheme);
-    } catch {
-      // The theme still applies when storage is unavailable.
-    }
-  }
-};
-
-for (const button of themeButtons) {
-  button.addEventListener("click", () => {
-    applyTheme(button.dataset.siteTheme, true);
-  });
-}
-
-applyTheme(activeTheme);
+const theme = initializeSiteTheme();
 
 for (const feature of document.querySelectorAll("[data-feature]")) {
   const sourceCode = feature.querySelector(".feature-source code");
@@ -86,7 +38,7 @@ for (const feature of document.querySelectorAll("[data-feature]")) {
   const status = document.createElement("p");
 
   toolbar.className = "feature-toolbar";
-  switcher.className = "hero-segmented feature-mode-switcher";
+  switcher.className = "surface-switcher feature-mode-switcher";
   switcher.setAttribute("role", "group");
   switcher.setAttribute("aria-label", `${title} diagram mode`);
 
@@ -109,10 +61,8 @@ for (const feature of document.querySelectorAll("[data-feature]")) {
   figure.prepend(toolbar);
   figure.append(status);
 
-  diagram.iconResolver = phosphorIconResolver;
-  diagram.iconCatalog = phosphorIconCatalog;
   diagram.layout = featureLayout;
-  diagram.theme = activeTheme;
+  diagram.theme = theme.theme;
 
   const setMode = (mode) => {
     const editing = mode === "edit";
