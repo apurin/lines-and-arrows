@@ -9,7 +9,7 @@
     />
     <title>Features - Lines &amp; Arrows</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20260731-1" />
+    <link rel="stylesheet" href="./styles.css?v=20260803-6" />
   </head>
   <body class="features-page">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -17,7 +17,6 @@
     <header class="site-header">
       <nav class="nav-shell" aria-label="Primary navigation">
         <a class="wordmark" href="./index.html" aria-label="Lines and Arrows home">
-          <span class="wordmark-mark" aria-hidden="true">L↗A</span>
           <span class="wordmark-name">Lines &amp; Arrows</span>
         </a>
 
@@ -56,7 +55,7 @@
 
     <main id="main">
       <section class="page-intro features-intro section-shell" id="top">
-        <p class="eyebrow"><span></span> Seven building blocks</p>
+        <p class="eyebrow"><span></span> Nine capabilities</p>
         <h1>A small language.<br />Useful depth.</h1>
         <p class="page-intro-lede">
           Read the compact source. See the same sequence. Switch to Edit and
@@ -306,6 +305,77 @@ Planner --> Agent: Final result</code></pre>
         </figure>
       </section>
 
+      <section
+        class="feature-row feature-row-text-only section-shell"
+        id="history"
+      >
+        <div class="feature-copy">
+          <h2>Undo and redo are built in.</h2>
+          <p>
+            Edit without fear. Canvas controls and familiar keyboard shortcuts
+            step backward or forward while keeping the diagram and its text in
+            sync.
+          </p>
+        </div>
+      </section>
+
+      <section
+        class="feature-row feature-row-themes section-shell"
+        id="themes"
+        data-theme-feature
+      >
+        <div class="feature-copy">
+          <h2>Every diagram fits its page.</h2>
+          <p>
+            Choose light, dark, or automatic theming. The same source stays
+            readable in documentation, product interfaces, and editor
+            surfaces.
+          </p>
+        </div>
+        <figure
+          class="theme-preview-grid"
+          aria-label="The same sequence diagram in light, dark, and automatic themes"
+        >
+          <div class="theme-preview theme-preview-light">
+            <p>Light</p>
+            <lines-and-arrows
+              data-theme-preview="light"
+              data-fixed-theme="light"
+              theme="light"
+              mode="view"
+              selectable="false"
+              branding="false"
+              label="A request and response rendered in the light theme"
+            ></lines-and-arrows>
+          </div>
+          <div class="theme-preview theme-preview-dark">
+            <p>Dark</p>
+            <lines-and-arrows
+              data-theme-preview="dark"
+              data-fixed-theme="dark"
+              theme="dark"
+              mode="view"
+              selectable="false"
+              branding="false"
+              label="A request and response rendered in the dark theme"
+            ></lines-and-arrows>
+          </div>
+          <div class="theme-preview theme-preview-auto">
+            <p>Auto</p>
+            <lines-and-arrows
+              data-theme-preview="auto"
+              data-fixed-theme="auto"
+              theme="auto"
+              mode="view"
+              selectable="false"
+              branding="false"
+              label="A request and response following the system color theme"
+            ></lines-and-arrows>
+          </div>
+        </figure>
+        <p class="feature-error theme-preview-error" role="alert" aria-live="polite"></p>
+      </section>
+
       <section class="page-next section-shell">
         <div>
           <p class="eyebrow">The next line is yours</p>
@@ -336,6 +406,6 @@ Planner --> Agent: Final result</code></pre>
       </div>
     </footer>
 
-    <script type="module" src="./features.js?v=20260803-2"></script>
+    <script type="module" src="./features.js?v=20260803-3"></script>
   </body>
 </html>

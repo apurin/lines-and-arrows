@@ -22,7 +22,13 @@ export const initializeSiteTheme = () => {
     root.dataset.theme = activeTheme;
 
     for (const diagram of document.querySelectorAll("lines-and-arrows")) {
-      diagram.theme = activeTheme;
+      const fixedTheme = diagram.dataset.fixedTheme;
+      diagram.theme =
+        fixedTheme === "light" ||
+        fixedTheme === "dark" ||
+        fixedTheme === "auto"
+          ? fixedTheme
+          : activeTheme;
     }
 
     for (const button of buttons) {

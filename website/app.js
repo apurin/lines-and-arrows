@@ -4,7 +4,7 @@ import {
   phosphorIconCatalog,
   phosphorIconResolver,
 } from "./runtime.js?v=20260803-2";
-import { initializeSiteTheme } from "./site.js";
+import { initializeSiteTheme } from "./site.js?v=20260803-2";
 
 defineLinesAndArrows();
 

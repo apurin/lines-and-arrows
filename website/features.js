@@ -2,7 +2,7 @@ import {
   defineLinesAndArrows,
   parse,
 } from "./runtime.js?v=20260803-2";
-import { initializeSiteTheme } from "./site.js";
+import { initializeSiteTheme } from "./site.js?v=20260803-2";
 
 defineLinesAndArrows();
 
@@ -20,6 +20,22 @@ const featureLayout = {
   groupGap: 8,
   bottomPadding: 24,
 };
+
+const themePreviewLayout = {
+  actorHeight: 40,
+  actorGap: 36,
+  marginX: 18,
+  marginTop: 12,
+  timelineTopGap: 22,
+  messageHeight: 42,
+  bottomPadding: 12,
+};
+
+const themePreviewSource = `@Browser
+@API
+
+Browser -> API: Ask
+API --> Browser: Answer`;
 
 const theme = initializeSiteTheme();
 
@@ -97,4 +113,20 @@ for (const feature of document.querySelectorAll("[data-feature]")) {
     error.textContent =
       event.detail.error?.message ?? "Unable to render example.";
   });
+}
+
+const themePreviewError = document.querySelector(".theme-preview-error");
+
+try {
+  parse(themePreviewSource);
+
+  for (const diagram of document.querySelectorAll("[data-theme-preview]")) {
+    diagram.layout = themePreviewLayout;
+    diagram.source = themePreviewSource;
+  }
+} catch (problem) {
+  themePreviewError.textContent =
+    problem instanceof Error
+      ? problem.message
+      : "Unable to render the theme previews.";
 }

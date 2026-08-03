@@ -2,7 +2,7 @@ import {
   defineLinesAndArrows,
   parse,
 } from "./runtime.js?v=20260803-2";
-import { initializeSiteTheme } from "./site.js";
+import { initializeSiteTheme } from "./site.js?v=20260803-2";
 
 defineLinesAndArrows();
 
@@ -367,6 +367,22 @@ const showcaseLayout = {
 };
 
 const theme = initializeSiteTheme();
+const showcaseRenderers = new Map();
+const showcaseObserver =
+  typeof globalThis.IntersectionObserver === "function"
+    ? new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) {
+              continue;
+            }
+
+            showcaseRenderers.get(entry.target.id)?.();
+          }
+        },
+        { rootMargin: "900px 0px" },
+      )
+    : null;
 
 for (const showcase of document.querySelectorAll("[data-showcase]")) {
   const diagram = showcase.querySelector("[data-showcase-diagram]");
@@ -386,7 +402,36 @@ for (const showcase of document.querySelectorAll("[data-showcase]")) {
   diagram.layout = showcaseLayout;
   diagram.theme = theme.theme;
 
+  let rendered = false;
+
+  const ensureRendered = () => {
+    if (rendered) {
+      return true;
+    }
+
+    try {
+      parse(initialSource);
+      diagram.source = initialSource;
+      diagramPane.classList.add("is-ready");
+      rendered = true;
+      showcaseObserver?.unobserve(showcase);
+      return true;
+    } catch (problem) {
+      error.textContent =
+        problem instanceof Error
+          ? problem.message
+          : "Unable to render example.";
+      return false;
+    }
+  };
+
+  showcaseRenderers.set(showcase.id, ensureRendered);
+
   const setSurface = (surface) => {
+    if (!ensureRendered()) {
+      return;
+    }
+
     for (const button of surfaceButtons) {
       button.setAttribute(
         "aria-pressed",
@@ -424,6 +469,10 @@ for (const showcase of document.querySelectorAll("[data-showcase]")) {
   }
 
   const applySource = () => {
+    if (!ensureRendered()) {
+      return;
+    }
+
     error.textContent = "";
 
     try {
@@ -445,16 +494,6 @@ for (const showcase of document.querySelectorAll("[data-showcase]")) {
     }
   });
 
-  try {
-    parse(initialSource);
-    diagram.source = initialSource;
-    setSurface("view");
-    diagramPane.classList.add("is-ready");
-  } catch (problem) {
-    error.textContent =
-      problem instanceof Error ? problem.message : "Unable to render example.";
-  }
-
   diagram.addEventListener("la-change", (event) => {
     sourceInput.value = event.detail.source;
     error.textContent = "";
@@ -464,4 +503,34 @@ for (const showcase of document.querySelectorAll("[data-showcase]")) {
     error.textContent =
       event.detail.error?.message ?? "Unable to apply source.";
   });
+
+  if (showcaseObserver) {
+    showcaseObserver.observe(showcase);
+  } else {
+    ensureRendered();
+  }
 }
+
+const revealHashTarget = () => {
+  let id = "";
+
+  try {
+    id = decodeURIComponent(globalThis.location.hash.slice(1));
+  } catch {
+    return;
+  }
+
+  const target = document.getElementById(id);
+  if (!target?.matches("[data-showcase]")) {
+    return;
+  }
+
+  showcaseRenderers.get(target.id)?.();
+  const previousScrollBehavior = document.documentElement.style.scrollBehavior;
+  document.documentElement.style.scrollBehavior = "auto";
+  target.scrollIntoView({ block: "start" });
+  document.documentElement.style.scrollBehavior = previousScrollBehavior;
+};
+
+globalThis.addEventListener("hashchange", revealHashTarget);
+globalThis.requestAnimationFrame(revealHashTarget);

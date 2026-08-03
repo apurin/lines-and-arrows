@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Open source sequence diagrams with simple text for AI agents and a visual editor for humans. Free, MIT licensed, and ready from a CDN."
+      content="Open source sequence diagrams stored as readable text, with a visual editor for people and a simple format for AI agents."
     />
-    <title>Lines &amp; Arrows | Sequence diagrams for humans and AI agents</title>
+    <title>Lines &amp; Arrows | Sequence diagrams as text, with a visual editor</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20260801-4" />
+    <link rel="stylesheet" href="./styles.css?v=20260803-6" />
   </head>
   <body class="home-page">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -17,7 +17,6 @@
     <header class="site-header">
       <nav class="nav-shell" aria-label="Primary navigation">
         <a class="wordmark" href="#top" aria-label="Lines and Arrows home">
-          <span class="wordmark-mark" aria-hidden="true">L↗A</span>
           <span class="wordmark-name">Lines &amp; Arrows</span>
         </a>
 
@@ -57,11 +56,10 @@
     <main id="main">
       <section class="home-hero section-shell" id="top">
         <div class="hero-copy">
-          <p class="eyebrow"><span></span> Open source sequence diagrams</p>
-          <h1>Agents write them.<br />Humans shape them.</h1>
+          <h1>Sequence diagrams.<br />Cool as shit.</h1>
           <p class="hero-lede">
-            A tiny text format with a polished viewer and visual editor. Free,
-            MIT licensed, and hosted on a public CDN.
+            Open source sequence diagrams with a visual editor and concise text.
+            Boil 'em, mash 'em, stick 'em in a stew.
           </p>
           <div class="hero-actions">
             <a class="button button-primary" href="./showcase.html">
@@ -80,8 +78,8 @@
             </a>
           </div>
           <ul class="hero-facts" aria-label="Project facts">
-            <li>For AI agents</li>
-            <li>Available on CDN</li>
+            <li>Best for AI agents</li>
+            <li>Runs in the browser</li>
             <li>Free and MIT</li>
           </ul>
         </div>
@@ -159,8 +157,8 @@
           </div>
 
           <figcaption>
-            The canvas and the source stay in sync.
-            <a href="./agents.md">Give agents the short guide&nbsp;↗</a>
+            Visual changes update the text. Text changes update the diagram.
+            <a href="./agents.md">Read the agent guide&nbsp;↗</a>
           </figcaption>
           <p class="visually-hidden" id="hero-mode-status" aria-live="polite">
             View mode. Read-only diagram.
@@ -168,28 +166,54 @@
         </figure>
       </section>
 
-      <section class="use-anywhere section-shell" id="embed" aria-labelledby="use-anywhere-title">
-        <div class="use-anywhere-copy">
-          <h2 id="use-anywhere-title">
-            Write as text. Share as a diagram. Edit in place.
-          </h2>
-          <p>
-            Use it in specifications, plans, interviews, and docs. Agents write
-            the source; people refine the same diagram visually.
-          </p>
-        </div>
-        <div class="use-anywhere-links">
-          <a href="https://github.com/apurin/lines-and-arrows" target="_blank" rel="noreferrer">
-            Open source on GitHub <span aria-hidden="true">↗</span>
-          </a>
-          <a href="./agents.md">Authoring guide for agents <span aria-hidden="true">↗</span></a>
-          <a href="../LICENSE">Free under MIT <span aria-hidden="true">↗</span></a>
-        </div>
+      <section
+        class="home-principles-section section-shell"
+        id="embed"
+        aria-label="How Lines and Arrows works"
+      >
+        <dl class="home-principles">
+          <div>
+            <dt>Same source</dt>
+            <dd>Edit the diagram visually or change the text. Both stay in sync.</dd>
+          </div>
+          <div>
+            <dt>For agents</dt>
+            <dd>Agents can write and check the text without opening the visual editor.</dd>
+          </div>
+          <div>
+            <dt>Automatic layout</dt>
+            <dd>
+              Describe the order. Lines &amp; Arrows places the actors, messages,
+              groups, and gaps.
+            </dd>
+          </div>
+          <div>
+            <dt>Drawn in the browser</dt>
+            <dd>The page draws the diagram. Its source is not sent to a rendering service.</dd>
+          </div>
+          <div>
+            <dt>Dependency-free runtime</dt>
+            <dd>
+              The renderer uses browser-native JavaScript with no runtime
+              package dependencies or rendering server.
+            </dd>
+          </div>
+          <div>
+            <dt>Add it to a page</dt>
+            <dd>
+              Use the CDN, host it yourself, or install the package. No
+              framework is required.
+            </dd>
+          </div>
+        </dl>
       </section>
     </main>
 
     <footer class="site-footer section-shell">
-      <p><strong>Lines &amp; Arrows</strong> <span>AI-ready sequence diagrams with a visual editor.</span></p>
+      <p>
+        <strong>Lines &amp; Arrows</strong>
+        <span>Sequence diagrams as text, with a visual editor.</span>
+      </p>
       <div class="footer-links">
         <a href="./showcase.html">Showcase</a>
         <a href="./features.html">Features</a>
@@ -198,6 +222,6 @@
       </div>
     </footer>
 
-    <script type="module" src="./app.js?v=20260803-2"></script>
+    <script type="module" src="./app.js?v=20260803-3"></script>
   </body>
 </html>
