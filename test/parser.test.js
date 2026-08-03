@@ -66,7 +66,7 @@ test("parses the complete language sample", () => {
   );
 });
 
-test("accepts the documented compact syntax variants", () => {
+test("accepts compact syntax variants", () => {
   const cases = [
     {
       name: "implicit actors, unnamed and self messages, and every arrow",

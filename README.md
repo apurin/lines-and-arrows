@@ -84,8 +84,9 @@ API --> Client: Accepted
 API ->x Queue: Delivery lost
 ```
 
-See [syntax.md](./syntax.md) for the complete language definition and
-[agents.md](./agents.md) for a compact authoring reference.
+See [syntax.md](./syntax.md) for the complete language definition and the
+[agent usage guide](https://github.com/apurin/lines-and-arrows/blob/main/website/agents.md)
+for a compact authoring reference.
 
 Use `\n` for an intentional line break in labels and tooltips, and `\\` for a
 literal backslash. Actor names, tags, group types, and icon identifiers stay on
@@ -232,6 +233,45 @@ python3 -m http.server 4173
 ```
 
 Then open `http://localhost:4173/demo/`.
+
+## Publishing
+
+The npm package, CDN distribution, GitHub release, and product website are
+separate artifacts:
+
+- `lines-and-arrows` is the single unscoped npm package.
+- jsDelivr serves the browser bundles directly from published npm versions.
+- GitHub Releases record each stable package release.
+- The product website in `website/` has its own deployment lifecycle.
+
+The `files` allowlist in `package.json` defines the npm package contents. It
+contains the runtime source, browser distributions, validation CLI, type
+declarations, consumer documentation, and license notices. Repository tests,
+build tooling, demos, and website files remain repository-only.
+
+Stable releases use semantic versions. Before `1.0`, patch releases preserve
+the current minor-version contract, while a new minor version may introduce
+breaking changes. Consumers can choose between:
+
+- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.2` for compatible patch
+  updates within the `0.2` line.
+- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.2.0` for an immutable,
+  exactly pinned release.
+
+Publishing runs exclusively through the
+[release workflow](https://github.com/apurin/lines-and-arrows/blob/main/.github/workflows/release.yml)
+using npm trusted publishing and GitHub Actions OIDC. A stable release follows
+this flow:
+
+1. Update the matching version in `package.json` and `package-lock.json`.
+2. Run `npm ci`, `npm run check`, and `npm pack --dry-run`.
+3. Commit the release and create an annotated `vX.Y.Z` tag.
+4. Push the commit and tag to GitHub.
+5. The release workflow confirms that the tag and package version match,
+   repeats the checks in a clean environment, builds the CDN bundles, publishes
+   the package with npm provenance, and creates the GitHub Release.
+6. Verify the npm `latest` tag, a fresh npm installation, and both the exact
+   and minor-version jsDelivr URLs.
 
 ## License
 
