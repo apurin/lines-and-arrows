@@ -636,10 +636,6 @@ function historyControl(kind, x, enabled, onActivate) {
       : "Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y",
     "data-field": `history-${kind}`,
   });
-  const title = svgElement("title");
-  title.textContent = undo
-    ? "Undo (Ctrl/Command+Z)"
-    : "Redo (Ctrl/Command+Shift+Z)";
   const icon = svgElement("path", {
     class: "la-history-control-icon",
     d: undo
@@ -652,7 +648,6 @@ function historyControl(kind, x, enabled, onActivate) {
     "pointer-events": "none",
   });
   control.append(
-    title,
     svgElement("rect", {
       class: "la-history-control-surface",
       x: 0.5,
@@ -1170,7 +1165,6 @@ function addPopover(
       close.type = "button";
       close.className = "la-edit-close";
       close.setAttribute("aria-label", "Close dialog");
-      close.title = "Close";
       close.textContent = "×";
       close.addEventListener("click", () => removePopover(frame));
       header.append(close);
@@ -1243,7 +1237,6 @@ function addInsertionPicker(popover, actions) {
     button.type = "button";
     button.className = "la-insert-option";
     button.setAttribute("aria-label", action.label);
-    button.title = action.label;
     button.append(
       iconVisual(
         action.icon,
@@ -1469,9 +1462,6 @@ export function createIconPicker(
   trigger.setAttribute("aria-label", options.label);
   trigger.setAttribute("aria-haspopup", "dialog");
   trigger.setAttribute("aria-expanded", "false");
-  trigger.title = currentName
-    ? `${options.label}: ${currentName}`
-    : options.label;
   trigger.append(
     iconVisual(
       currentName,
@@ -1499,7 +1489,6 @@ export function createIconPicker(
   clear.type = "button";
   clear.className = "la-icon-picker-clear";
   clear.setAttribute("aria-label", options.clearLabel);
-  clear.title = options.clearLabel;
   clear.append(
     iconVisual(
       catalogByName.has("x-circle") ? "x-circle" : null,
@@ -1533,7 +1522,6 @@ export function createIconPicker(
       "aria-selected",
       String(currentName === icon.name),
     );
-    button.title = icon.label;
     button.append(
       iconVisual(
         icon.name,

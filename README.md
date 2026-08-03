@@ -18,7 +18,7 @@ The jsDelivr entry registers the web component automatically:
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.1"
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.2"
 ></script>
 
 <lines-and-arrows mode="view" theme="auto">
@@ -30,8 +30,8 @@ The jsDelivr entry registers the web component automatically:
 </lines-and-arrows>
 ```
 
-The `@0.1` compatibility alias receives patch releases without crossing into a
-potentially breaking `0.2`. Use an exact version when a deployment must remain
+The `@0.2` compatibility alias receives patch releases without crossing into a
+potentially breaking `0.3`. Use an exact version when a deployment must remain
 fully pinned.
 
 For direct CDN access to the JavaScript API without automatic registration:
@@ -39,7 +39,7 @@ For direct CDN access to the JavaScript API without automatic registration:
 ```js
 import {
   renderDiagram,
-} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.1/dist/lines-and-arrows.min.js";
+} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.2/dist/lines-and-arrows.min.js";
 ```
 
 Set `mode="edit"` to enable the visual editor, including canvas undo and redo

@@ -1,6 +1,6 @@
 {
   "name": "lines-and-arrows",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "A lightweight sequence diagram language, SVG viewer, and visual editor.",
   "homepage": "https://lines-and-arrows.dev",
   "repository": {

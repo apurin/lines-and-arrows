@@ -155,14 +155,53 @@ const VIEW_STYLES = `
   }
 
   .la-tooltip-popover {
-    opacity: 0;
-    visibility: hidden;
+    position: fixed;
+    z-index: 4;
+    inset: auto;
+    display: none;
+    box-sizing: border-box;
+    max-width: min(208px, calc(100vw - 16px));
+    margin: 0;
+    padding: 8px 10px;
+    overflow: visible;
+    border: 0;
+    border-radius: 7px;
+    background: var(--la-tooltip);
+    color: var(--la-canvas);
+    box-shadow: 0 3px 12px
+      color-mix(in srgb, var(--la-text) 10%, transparent);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: 560 10px/1.4 var(
+      --la-font-family,
+      ui-sans-serif,
+      system-ui,
+      sans-serif
+    );
     pointer-events: none;
   }
 
-  .la-tooltip-popover[data-visible="true"] {
-    opacity: 1;
-    visibility: visible;
+  .la-tooltip-popover[data-visible="true"],
+  .la-tooltip-popover:popover-open {
+    display: block;
+  }
+
+  .la-tooltip-popover::before {
+    content: "";
+    position: absolute;
+    left: var(--la-tooltip-arrow-x, 50%);
+    width: 8px;
+    height: 8px;
+    background: inherit;
+    transform: translateX(-50%) rotate(45deg);
+  }
+
+  .la-tooltip-popover[data-side="below"]::before {
+    top: -4px;
+  }
+
+  .la-tooltip-popover[data-side="above"]::before {
+    bottom: -4px;
   }
 
   .la-branding {
@@ -247,15 +286,6 @@ function svgElement(name, attributes = {}) {
     element.setAttribute(key, String(value));
   }
   return element;
-}
-
-function addTitle(parent, text) {
-  if (!text) {
-    return;
-  }
-  const title = svgElement("title");
-  title.textContent = text;
-  parent.append(title);
 }
 
 function truncate(text, length) {
@@ -398,6 +428,7 @@ function applyTokens(frame, tokens) {
     "--la-accent-soft": tokens.accentSoft,
     "--la-tag-fill": tokens.tagFill,
     "--la-tag-text": tokens.tagText,
+    "--la-tooltip": tokens.tooltip,
     "--la-selection": tokens.selection,
   };
 
@@ -435,131 +466,82 @@ function makeSelectable(group, item, selection, label) {
   return true;
 }
 
-function wrapTooltip(text, maxWidth, fontSize = 10) {
-  const maxCharacters = Math.max(
-    8,
-    Math.floor(maxWidth / (fontSize * 0.56)),
-  );
-  const lines = [];
-  for (const explicitLine of textLines(String(text).trim())) {
-    if (!explicitLine) {
-      lines.push("");
-      continue;
-    }
-    const pieces = explicitLine.split(/\s+/).flatMap((word) => {
-      if (word.length <= maxCharacters) {
-        return [word];
-      }
-      const chunks = [];
-      for (
-        let index = 0;
-        index < word.length;
-        index += maxCharacters
-      ) {
-        chunks.push(word.slice(index, index + maxCharacters));
-      }
-      return chunks;
-    });
-    let current = "";
-
-    for (const piece of pieces) {
-      const candidate = current ? `${current} ${piece}` : piece;
-      if (current && textWidth(candidate, fontSize) > maxWidth) {
-        lines.push(current);
-        current = piece;
-      } else {
-        current = candidate;
-      }
-    }
-    if (current) {
-      lines.push(current);
-    }
-  }
-  return lines.length > 0 ? lines : [""];
-}
-
-function renderTooltipPopover(
-  layer,
-  tooltip,
-  triggerX,
-  triggerY,
-  triggerSize,
-  tokens,
-  side,
-  bounds,
-) {
+function renderTooltipPopover(layer, tooltip) {
   tooltipSequence += 1;
   const id = `la-tooltip-${tooltipSequence}`;
-  const availableWidth = Math.max(80, bounds.right - bounds.left);
-  const textMaxWidth = Math.min(188, availableWidth - 20);
-  const lines = wrapTooltip(tooltip, textMaxWidth);
-  const width = Math.min(
-    availableWidth,
-    Math.max(
-      80,
-      Math.max(...lines.map((line) => textWidth(line, 10))) + 20,
-    ),
-  );
-  const height = lines.length * 14 + 16;
-  const triggerCenter = triggerX + triggerSize / 2;
-  const left = Math.max(
-    bounds.left,
-    Math.min(triggerCenter - width / 2, bounds.right - width),
-  );
-  const top =
-    side === "below"
-      ? triggerY + triggerSize + 7
-      : triggerY - height - 7;
-  const arrowX = Math.max(
-    left + 10,
-    Math.min(triggerCenter, left + width - 10),
-  );
-  const popover = svgElement("g", {
-    id,
-    class: "la-tooltip-popover",
-    "data-visible": "false",
-    role: "tooltip",
-    "aria-label": tooltip,
-  });
-
-  popover.append(
-    svgElement("rect", {
-      x: left,
-      y: top,
-      width,
-      height,
-      rx: 7,
-      fill: tokens.tooltip,
-    }),
-    svgElement("path", {
-      d:
-        side === "below"
-          ? `M ${arrowX - 4} ${top} L ${arrowX} ${top - 4} L ${arrowX + 4} ${top} Z`
-          : `M ${arrowX - 4} ${top + height} L ${arrowX} ${
-              top + height + 4
-            } L ${arrowX + 4} ${top + height} Z`,
-      fill: tokens.tooltip,
-    }),
-  );
-
-  const text = svgElement("text", {
-    x: left + 10,
-    y: top + 13,
-    "font-size": 10,
-    "font-weight": 560,
-    fill: tokens.canvas,
-  });
-  for (const [index, line] of lines.entries()) {
-    const segment = svgElement("tspan", {
-      x: left + 10,
-      dy: index === 0 ? 0 : 14,
-    });
-    segment.textContent = line;
-    text.append(segment);
-  }
-  popover.append(text);
+  const popover = document.createElement("div");
+  popover.id = id;
+  popover.className = "la-tooltip-popover";
+  popover.dataset.visible = "false";
+  popover.setAttribute("part", "tooltip");
+  popover.setAttribute("popover", "manual");
+  popover.setAttribute("role", "tooltip");
+  popover.textContent = tooltip;
   layer.append(popover);
   return { id, popover };
+}
+
+function positionTooltipPopover(popover, trigger) {
+  if (!popover.isConnected || !trigger.isConnected) {
+    return;
+  }
+  const triggerRect = trigger.getBoundingClientRect();
+  const popoverRect = popover.getBoundingClientRect();
+  const viewportWidth =
+    globalThis.innerWidth ?? document.documentElement.clientWidth;
+  const viewportHeight =
+    globalThis.innerHeight ?? document.documentElement.clientHeight;
+  const padding = 8;
+  const gap = 7;
+  const triggerCenter = triggerRect.left + triggerRect.width / 2;
+  const spaceBelow = viewportHeight - padding - triggerRect.bottom - gap;
+  const spaceAbove = triggerRect.top - gap - padding;
+  const side =
+    spaceBelow >= popoverRect.height || spaceBelow >= spaceAbove
+      ? "below"
+      : "above";
+  const preferredLeft = triggerCenter - popoverRect.width / 2;
+  const maxLeft = Math.max(
+    padding,
+    viewportWidth - padding - popoverRect.width,
+  );
+  const left = Math.max(padding, Math.min(preferredLeft, maxLeft));
+  const preferredTop =
+    side === "below"
+      ? triggerRect.bottom + gap
+      : triggerRect.top - gap - popoverRect.height;
+  const maxTop = Math.max(
+    padding,
+    viewportHeight - padding - popoverRect.height,
+  );
+  const top = Math.max(padding, Math.min(preferredTop, maxTop));
+  const arrowX = Math.max(
+    10,
+    Math.min(triggerCenter - left, popoverRect.width - 10),
+  );
+
+  popover.style.left = `${left}px`;
+  popover.style.top = `${top}px`;
+  popover.style.setProperty("--la-tooltip-arrow-x", `${arrowX}px`);
+  popover.dataset.side = side;
+}
+
+function setTooltipPopoverVisible(popover, visible) {
+  popover.dataset.visible = String(visible);
+  if (typeof popover.showPopover !== "function") {
+    popover.removeAttribute("popover");
+    return;
+  }
+
+  try {
+    if (visible && !popover.matches(":popover-open")) {
+      popover.showPopover();
+    } else if (!visible && popover.matches(":popover-open")) {
+      popover.hidePopover();
+    }
+  } catch {
+    popover.removeAttribute("popover");
+  }
 }
 
 function renderMetadata(
@@ -614,7 +596,6 @@ function renderMetadata(
     });
     text.textContent = visibleTag;
     tagGroup.append(text);
-    addTitle(tagGroup, tag);
     parent.append(tagGroup);
   }
 
@@ -623,17 +604,9 @@ function renderMetadata(
   }
 
   const triggerX = left + tagWidth + gap;
-  const globalTriggerX = triggerX + options.offsetX;
-  const globalTriggerY = y + options.offsetY;
   const { id, popover } = renderTooltipPopover(
     options.tooltipLayer,
     tooltip,
-    globalTriggerX,
-    globalTriggerY,
-    triggerSize,
-    tokens,
-    options.tooltipSide,
-    options.bounds,
   );
   const trigger = svgElement("g", {
     class: "la-tooltip-trigger",
@@ -692,10 +665,25 @@ function renderMetadata(
   let hovered = false;
   let focused = false;
   let pinned = false;
+  let tracking = false;
+  const position = () => positionTooltipPopover(popover, trigger);
+  const setTracking = (enabled) => {
+    if (tracking === enabled) {
+      return;
+    }
+    tracking = enabled;
+    const action = enabled ? "addEventListener" : "removeEventListener";
+    globalThis[action]?.("scroll", position, true);
+    globalThis[action]?.("resize", position);
+  };
   const sync = () => {
     const visible = hovered || focused || pinned;
-    popover.dataset.visible = String(visible);
+    setTooltipPopoverVisible(popover, visible);
     trigger.setAttribute("aria-expanded", String(visible));
+    setTracking(visible);
+    if (visible) {
+      position();
+    }
   };
   trigger.addEventListener("pointerenter", () => {
     hovered = true;
@@ -735,6 +723,10 @@ function renderMetadata(
       trigger.blur();
     }
   });
+  options.tooltipLayer.cleanups.push(() => {
+    setTracking(false);
+    setTooltipPopoverVisible(popover, false);
+  });
   parent.append(trigger);
 }
 
@@ -757,8 +749,6 @@ function renderActor(
     selection,
     `Actor ${actor.name}${actor.tooltip ? `. ${actor.tooltip}` : ""}`,
   );
-  addTitle(group, actor.name);
-
   group.append(
     svgElement("rect", {
       class: "la-focus-ring",
@@ -843,16 +833,9 @@ function renderActor(
     tokens,
     {
       anchor: "middle",
-      offsetX: actor.x,
-      offsetY: actor.y,
       tooltipLayer,
       iconResolver: options.iconResolver,
       tooltipIconFilter: options.tooltipIconFilter,
-      tooltipSide: "below",
-      bounds: {
-        left: 8,
-        right: layout.width - 8,
-      },
     },
   );
 
@@ -869,8 +852,6 @@ function renderGroupBackground(parent, group, tokens, selection) {
     selection,
     `${group.groupType} group, ${group.label}`,
   );
-  addTitle(selectable, `${group.groupType}: ${group.label}`);
-
   selectable.append(
     svgElement("rect", {
       x: group.left,
@@ -992,8 +973,6 @@ function renderSection(parent, section, tokens, selection) {
     class: "la-section",
   });
   makeSelectable(group, section, selection, `Section ${section.label}`);
-  addTitle(group, section.label);
-
   const lineStart = section.left;
   const lineEnd = section.right;
   const visibleLines = textLines(section.label).map((line) =>
@@ -1151,8 +1130,6 @@ function renderMessage(
       row.tooltip ? `. ${row.tooltip}` : ""
     }`,
   );
-  addTitle(group, row.label || `${row.source} to ${row.target}`);
-
   const geometry = messagePath(
     row,
     source.centerX,
@@ -1313,16 +1290,9 @@ function renderMessage(
     tokens,
     {
       anchor: "middle",
-      offsetX: 0,
-      offsetY: 0,
       tooltipLayer,
       iconResolver: options.iconResolver,
       tooltipIconFilter: options.tooltipIconFilter,
-      tooltipSide: "below",
-      bounds: {
-        left: 8,
-        right: layout.width - 8,
-      },
     },
   );
 
@@ -1334,8 +1304,6 @@ function renderGap(parent, row, layout, tokens, selection) {
     class: "la-gap",
   });
   makeSelectable(group, row, selection, `Gap: ${row.label}`);
-  addTitle(group, row.label);
-
   const visibleLines = textLines(row.label).map((line) =>
     truncate(line, 46),
   );
@@ -1448,10 +1416,7 @@ function renderBranding(parent, layout) {
     rel: "noopener noreferrer",
     "aria-label": `${BRANDING_LABEL}. Open website`,
   });
-  const title = svgElement("title");
-  title.textContent = "Open the Lines & Arrows website";
   link.append(
-    title,
     svgElement("rect", {
       class: "la-branding-surface",
       x: left,
@@ -1638,10 +1603,9 @@ export function renderDiagram(target, input, options = {}) {
       "tooltip-icon-color",
     )})`,
   };
-  const tooltipLayer = svgElement("g", {
-    class: "la-tooltip-layer",
-    "pointer-events": "none",
-  });
+  const tooltipLayer = document.createElement("div");
+  tooltipLayer.className = "la-tooltip-layer";
+  tooltipLayer.cleanups = [];
 
   const eventTarget = target.host ?? target;
   const selection = createSelectionController(svg, {
@@ -1692,7 +1656,6 @@ export function renderDiagram(target, input, options = {}) {
   if (branding) {
     renderBranding(svg, layout);
   }
-  svg.append(tooltipLayer);
   if (selection.enabled && options.initialSelectedId) {
     selection.select(options.initialSelectedId, false);
   }
@@ -1705,7 +1668,7 @@ export function renderDiagram(target, input, options = {}) {
     });
   }
 
-  frame.append(svg);
+  frame.append(svg, tooltipLayer);
   target.replaceChildren(style, frame);
 
   return {
@@ -1724,6 +1687,9 @@ export function renderDiagram(target, input, options = {}) {
       return selection.id;
     },
     destroy() {
+      for (const cleanup of tooltipLayer.cleanups) {
+        cleanup();
+      }
       style.remove();
       frame.remove();
     },
