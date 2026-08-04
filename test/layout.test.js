@@ -54,9 +54,9 @@ Agent -> Agent: Check the plan`),
     agent.height +
     selfLayout.options.actorMetadataGap +
     selfLayout.options.actorMetadataHeight;
-  const selfLabelTop = selfMessage.y - 32;
+  const selfLabelTop = selfMessage.y - 34;
 
-  assert.equal(selfLayout.options.timelineTopGap, 44);
+  assert.equal(selfLayout.options.timelineTopGap, 33);
   assert.ok(selfLabelTop >= selfMetadataBottom + 4);
 });
 

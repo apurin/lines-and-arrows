@@ -10,7 +10,11 @@ import {
   recommendedActorIconNames,
   withDefaultIconOptions,
 } from "./icons.js";
-import { SELF_MESSAGE_MIN_WIDTH } from "./metadata.js";
+import {
+  SELF_MESSAGE_MIN_WIDTH,
+  messageLabelMetrics,
+  selfMessageWidth,
+} from "./metadata.js";
 import { renderDiagram } from "./render.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -119,7 +123,9 @@ export const EDIT_STYLES = `
   .la-inline-gap-delete:hover,
   .la-inline-gap-delete:focus-visible,
   .la-inline-actor-delete:hover,
-  .la-inline-actor-delete:focus-visible {
+  .la-inline-actor-delete:focus-visible,
+  .la-inline-message-delete:hover,
+  .la-inline-message-delete:focus-visible {
     box-shadow: 0 0 0 2px
       color-mix(in srgb, var(--la-danger) 24%, transparent);
   }
@@ -507,6 +513,152 @@ export const EDIT_STYLES = `
   .la-inline-actor-editor .la-edit-error {
     position: absolute;
     top: calc(100% + var(--la-inline-actor-metadata-gap, 6px) + 24px);
+    left: 50%;
+    width: max-content;
+    max-width: 220px;
+    margin: 0;
+    padding: 3px 6px;
+    border-radius: 6px;
+    background: var(--la-canvas);
+    text-align: center;
+    transform: translateX(-50%);
+  }
+
+  .la-inline-message-editor {
+    position: fixed;
+    z-index: 4;
+    overflow: visible;
+    pointer-events: none;
+    font-family: var(
+      --la-font-family,
+      ui-sans-serif,
+      system-ui,
+      sans-serif
+    );
+  }
+
+  .la-inline-message-editor *,
+  .la-inline-message-editor *::before,
+  .la-inline-message-editor *::after {
+    box-sizing: border-box;
+  }
+
+  .la-inline-message-label {
+    position: absolute;
+    margin: 0;
+    padding: 2px 5px;
+    overflow: hidden;
+    pointer-events: auto;
+    border: 0;
+    outline: none;
+    resize: none;
+    background: transparent;
+    color: var(--la-text);
+    font: 560 var(--la-inline-message-label-font-size, 11px)/var(
+        --la-inline-message-label-line-height,
+        13px
+      ) var(
+        --la-font-family,
+        ui-sans-serif,
+        system-ui,
+        sans-serif
+      );
+    text-align: center;
+  }
+
+  .la-inline-message-label::placeholder {
+    color: var(--la-muted-text);
+    opacity: 1;
+  }
+
+  .la-inline-message-delete {
+    position: absolute;
+    z-index: 9;
+    pointer-events: auto;
+    transform: translate(-50%, -50%);
+  }
+
+  .la-inline-message-metadata {
+    position: absolute;
+    display: flex;
+    gap: var(--la-inline-message-pill-gap, 4px);
+    align-items: center;
+    pointer-events: auto;
+    transform: translateX(
+      calc(
+        -50% + var(--la-inline-message-metadata-shift, 0px)
+      )
+    );
+  }
+
+  .la-inline-message-arrow-styles {
+    position: absolute;
+    z-index: 6;
+    display: flex;
+    gap: var(--la-inline-message-arrow-gap, 3px);
+    align-items: center;
+    pointer-events: auto;
+    transform: translateY(-50%);
+  }
+
+  .la-inline-message-arrow-style {
+    display: grid;
+    width: var(--la-inline-message-arrow-size, 18px);
+    min-width: var(--la-inline-message-arrow-size, 18px);
+    height: var(--la-inline-message-arrow-size, 18px);
+    margin: 0;
+    padding: 0;
+    place-items: center;
+    cursor: pointer;
+    border: 1px solid var(--la-section-line);
+    border-radius: 50%;
+    outline: none;
+    background: var(--la-canvas);
+    color: var(--la-muted-text);
+  }
+
+  .la-inline-message-arrow-style:hover,
+  .la-inline-message-arrow-style:focus-visible {
+    border-color: var(--la-selection);
+    color: var(--la-text);
+  }
+
+  .la-inline-message-arrow-style[aria-pressed="true"] {
+    border-color: var(--la-selection);
+    background: var(--la-accent-soft);
+    color: var(--la-text);
+  }
+
+  .la-inline-message-arrow-style svg {
+    width: var(--la-inline-message-arrow-icon-width, 14px);
+    height: var(--la-inline-message-arrow-icon-height, 12px);
+    overflow: visible;
+  }
+
+  .la-inline-message-editor .la-icon-search {
+    height: 32px;
+    margin: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--la-section-line);
+    border-radius: 8px;
+    outline: none;
+    background: color-mix(
+      in srgb,
+      var(--la-canvas) 82%,
+      var(--la-group-fill)
+    );
+    color: var(--la-text);
+    font: 520 11px/1.2 var(
+      --la-font-family,
+      ui-sans-serif,
+      system-ui,
+      sans-serif
+    );
+  }
+
+  .la-inline-message-editor .la-edit-error {
+    position: absolute;
+    top: calc(100% + 6px);
     left: 50%;
     width: max-content;
     max-width: 220px;
@@ -989,55 +1141,6 @@ export const EDIT_STYLES = `
     text-align: center;
   }
 
-  .la-arrow-picker {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-  }
-
-  .la-arrow-option {
-    display: grid;
-    min-width: 0;
-    min-height: 34px;
-    padding: 5px 7px;
-    place-items: center;
-    border: 1px solid var(--la-section-line);
-    border-radius: 8px;
-    outline: none;
-    background: color-mix(
-      in srgb,
-      var(--la-canvas) 82%,
-      var(--la-group-fill)
-    );
-    color: var(--la-muted-text);
-    cursor: pointer;
-  }
-
-  .la-arrow-option:hover,
-  .la-arrow-option:focus-visible {
-    border-color: var(--la-selection);
-    color: var(--la-text);
-  }
-
-  .la-arrow-option:active {
-    transform: translateY(1px);
-  }
-
-  .la-arrow-option[aria-pressed="true"] {
-    border-color: var(--la-selection);
-    background: var(--la-accent-soft);
-    color: var(--la-selection);
-    box-shadow: inset 0 0 0 1px
-      color-mix(in srgb, var(--la-selection) 22%, transparent);
-  }
-
-  .la-arrow-option svg {
-    display: block;
-    width: 100%;
-    height: 18px;
-    overflow: visible;
-  }
-
   .la-edit-actions {
     display: flex;
     flex-wrap: wrap;
@@ -1484,6 +1587,14 @@ function removeInlineGapEditor(frame) {
 function removeInlineActorEditor(frame) {
   const inlineEditor = frame?.querySelector(
     ".la-inline-actor-editor",
+  );
+  inlineEditor?.cleanup?.();
+  inlineEditor?.remove();
+}
+
+function removeInlineMessageEditor(frame) {
+  const inlineEditor = frame?.querySelector(
+    ".la-inline-message-editor",
   );
   inlineEditor?.cleanup?.();
   inlineEditor?.remove();
@@ -2223,85 +2334,6 @@ export function createIconPicker(
   return picker;
 }
 
-function addArrowPicker(popover, value, onChange) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "la-edit-field";
-
-  const label = document.createElement("span");
-  label.textContent = "Arrow";
-  wrapper.append(label);
-
-  const picker = document.createElement("div");
-  picker.className = "la-arrow-picker";
-  picker.setAttribute("role", "group");
-  picker.setAttribute("aria-label", "Arrow type");
-
-  for (const option of [
-    { value: "->", label: "Solid arrow" },
-    { value: "-->", label: "Dashed arrow" },
-    { value: "->x", label: "Lost message" },
-  ]) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "la-arrow-option";
-    button.setAttribute("aria-label", option.label);
-    button.setAttribute("aria-pressed", String(value === option.value));
-
-    const preview = svgElement("svg", {
-      viewBox: "0 0 48 18",
-      "aria-hidden": "true",
-    });
-    const line = svgElement("line", {
-      x1: 4,
-      y1: 9,
-      x2: option.value === "->x" ? 38 : 42,
-      y2: 9,
-      stroke: "currentColor",
-      "stroke-width": 1.75,
-      "stroke-linecap": "round",
-    });
-    if (option.value === "-->") {
-      line.setAttribute("stroke-dasharray", "4 4");
-    }
-    preview.append(line);
-
-    if (option.value === "->x") {
-      preview.append(
-        svgElement("path", {
-          d: "M 37 4 L 45 14 M 45 4 L 37 14",
-          fill: "none",
-          stroke: "currentColor",
-          "stroke-width": 1.75,
-          "stroke-linecap": "round",
-        }),
-      );
-    } else {
-      preview.append(
-        svgElement("path", {
-          d: "M 37 4 L 43 9 L 37 14",
-          fill: "none",
-          stroke: "currentColor",
-          "stroke-width": 1.75,
-          "stroke-linecap": "round",
-          "stroke-linejoin": "round",
-        }),
-      );
-    }
-
-    button.append(preview);
-    button.addEventListener("click", () => {
-      if (option.value !== value) {
-        onChange(option.value);
-      }
-    });
-    picker.append(button);
-  }
-
-  wrapper.append(picker);
-  popover.append(wrapper);
-  return picker;
-}
-
 function addActions(popover, actions, options = {}) {
   const row = document.createElement("div");
   row.className = "la-edit-actions";
@@ -2683,6 +2715,7 @@ export function renderEditor(target, input, options = {}) {
   let transient = null;
   let pendingFocus = null;
   let pendingActorPart = null;
+  let pendingMessagePart = null;
   let pendingInlineDraw = null;
 
   const eventTarget = target.host ?? target;
@@ -2771,7 +2804,8 @@ export function renderEditor(target, input, options = {}) {
       field.focus();
       if (
         field.classList.contains("la-inline-gap-label") ||
-        field.classList.contains("la-inline-actor-name")
+        field.classList.contains("la-inline-actor-name") ||
+        field.classList.contains("la-inline-message-label")
       ) {
         field.select();
       }
@@ -3403,6 +3437,704 @@ export function renderEditor(target, input, options = {}) {
     positionEditor();
   }
 
+  function addInlineMessageEditor(frame, layout, model) {
+    const row = layout.rows.find(
+      (candidate) => candidate.id === model.id,
+    );
+    const messageElement = frame.querySelector(
+      `[data-la-id="${CSS.escape(model.id)}"]`,
+    );
+    const svg = messageElement?.ownerSVGElement;
+    const source = row
+      ? layout.actorByName.get(row.source)
+      : null;
+    const target = row
+      ? layout.actorByName.get(row.target)
+      : null;
+    if (!row || !messageElement || !svg || !source || !target) {
+      return;
+    }
+
+    const hiddenElements = [
+      ...messageElement.querySelectorAll(
+        ".la-message-label, .la-tag, .la-tooltip-trigger",
+      ),
+    ];
+    const previousVisibility = hiddenElements.map(
+      (element) => element.style.visibility,
+    );
+    for (const element of hiddenElements) {
+      element.style.visibility = "hidden";
+    }
+
+    const inlineEditor = document.createElement("div");
+    inlineEditor.className = "la-inline-message-editor";
+    inlineEditor.setAttribute("role", "group");
+    inlineEditor.setAttribute(
+      "aria-label",
+      `Edit arrow from ${model.source} to ${model.target}`,
+    );
+
+    const contentCleanups = new Set();
+    inlineEditor.addContentCleanup = (cleanup) => {
+      contentCleanups.add(cleanup);
+      return () => contentCleanups.delete(cleanup);
+    };
+    inlineEditor.cleanupContents = () => {
+      for (const cleanup of contentCleanups) {
+        cleanup();
+      }
+      contentCleanups.clear();
+    };
+
+    const labelControl = document.createElement("textarea");
+    labelControl.className = "la-inline-message-label";
+    labelControl.dataset.field = "message-label";
+    labelControl.rows = 1;
+    labelControl.placeholder = "Label";
+    labelControl.setAttribute("aria-label", "Arrow label");
+    labelControl.value = model.label ?? "";
+
+    const deleteControl = document.createElement("button");
+    deleteControl.type = "button";
+    deleteControl.className =
+      "la-inline-delete-control la-inline-message-delete";
+    deleteControl.setAttribute("aria-label", "Delete arrow");
+
+    const metadata = document.createElement("div");
+    metadata.className = "la-inline-message-metadata";
+
+    const tagControl = document.createElement("input");
+    tagControl.type = "text";
+    tagControl.className = "la-inline-actor-pill";
+    tagControl.dataset.field = "message-tag";
+    tagControl.placeholder = "Tag";
+    tagControl.setAttribute("aria-label", "Arrow tag");
+    tagControl.value = model.tag ?? "";
+
+    const tooltipWrapper = document.createElement("div");
+    tooltipWrapper.className = "la-inline-actor-tooltip-control";
+
+    const tooltipTrigger = document.createElement("button");
+    tooltipTrigger.type = "button";
+    tooltipTrigger.className = "la-inline-actor-tooltip-trigger";
+    tooltipTrigger.setAttribute("aria-label", "Edit arrow tooltip");
+    tooltipTrigger.setAttribute("aria-haspopup", "dialog");
+    tooltipTrigger.setAttribute("aria-expanded", "false");
+    tooltipTrigger.dataset.empty = String(!model.tooltip);
+    tooltipTrigger.append(
+      iconVisual(
+        model.tooltipIcon,
+        options.iconResolver,
+        frame.dataset.theme ?? "light",
+        "i",
+      ),
+    );
+
+    const tooltipDialog = document.createElement("div");
+    tooltipDialog.className = "la-inline-actor-tooltip-dialog";
+    tooltipDialog.hidden = true;
+    tooltipDialog.setAttribute("role", "dialog");
+    tooltipDialog.setAttribute("aria-label", "Edit arrow tooltip");
+
+    const tooltipControl = document.createElement("textarea");
+    tooltipControl.className = "la-inline-actor-tooltip-text";
+    tooltipControl.dataset.field = "message-tooltip-text";
+    tooltipControl.rows = 2;
+    fieldSequence += 1;
+    tooltipControl.id = `la-field-${fieldSequence}`;
+    tooltipControl.setAttribute("aria-label", "Arrow tooltip text");
+    tooltipControl.value = model.tooltip ?? "";
+
+    const tooltipTextField = document.createElement("div");
+    tooltipTextField.className = "la-inline-actor-tooltip-field";
+    const tooltipTextLabel = document.createElement("label");
+    tooltipTextLabel.htmlFor = tooltipControl.id;
+    tooltipTextLabel.textContent = "Tooltip";
+    tooltipTextField.append(tooltipTextLabel, tooltipControl);
+    tooltipWrapper.append(tooltipTrigger, tooltipDialog);
+
+    const dirtyFields = new Set();
+    let diagramScale = 1;
+    const sizeTagPill = () => {
+      const content = tagControl.value || tagControl.placeholder;
+      const baseWidth = Math.min(
+        104,
+        Math.max(50, Array.from(content).length * 5.6 + 20),
+      );
+      tagControl.style.width = `${baseWidth * diagramScale}px`;
+    };
+    sizeTagPill();
+
+    labelControl.addEventListener("input", () => {
+      dirtyFields.add("label");
+    });
+    tagControl.addEventListener("input", () => {
+      dirtyFields.add("tag");
+      sizeTagPill();
+    });
+    tooltipControl.addEventListener("input", () => {
+      dirtyFields.add("tooltip");
+      tooltipTrigger.dataset.empty = String(
+        !tooltipControl.value.trim(),
+      );
+    });
+
+    metadata.append(tagControl, tooltipWrapper);
+    inlineEditor.append(
+      labelControl,
+      deleteControl,
+      metadata,
+    );
+    frame.append(inlineEditor);
+
+    let cancelled = false;
+    const commit = (
+      extraPatch = {},
+      focusField = null,
+      deferDraw = false,
+    ) => {
+      const previousDocument = editor.document;
+      const patch = { ...extraPatch };
+      if (dirtyFields.has("label")) {
+        patch.label = labelControl.value;
+      }
+      if (dirtyFields.has("tag")) {
+        patch.tag = tagControl.value;
+      }
+      if (dirtyFields.has("tooltip")) {
+        patch.tooltip = tooltipControl.value;
+      }
+      if (Object.keys(patch).length === 0) {
+        return "unchanged";
+      }
+      try {
+        editor.updateItem(model.id, patch);
+        if (editor.document === previousDocument) {
+          const current = findItemLocation(
+            editor.document,
+            model.id,
+          )?.item;
+          labelControl.value = current?.label ?? "";
+          tagControl.value = current?.tag ?? "";
+          tooltipControl.value = current?.tooltip ?? "";
+          dirtyFields.clear();
+          sizeTagPill();
+          return "unchanged";
+        }
+        dirtyFields.clear();
+        selectedIds = [model.id];
+        transient = null;
+        pendingFocus = focusField;
+        notifyChange();
+        if (deferDraw) {
+          scheduleInlineDraw(frame);
+        } else {
+          draw();
+        }
+        return "changed";
+      } catch (error) {
+        notifyError(error, inlineEditor);
+        return "error";
+      }
+    };
+
+    const arrowStyles = document.createElement("div");
+    arrowStyles.className = "la-inline-message-arrow-styles";
+    arrowStyles.setAttribute("role", "group");
+    arrowStyles.setAttribute("aria-label", "Arrow type");
+    const arrowPointsLeft = source.centerX >= target.centerX;
+    for (const option of [
+      { value: "->", label: "Solid arrow" },
+      { value: "-->", label: "Dashed arrow" },
+      { value: "->x", label: "Lost message" },
+    ]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "la-inline-message-arrow-style";
+      button.dataset.field = `message-arrow-${option.value}`;
+      button.setAttribute("aria-label", option.label);
+      button.setAttribute(
+        "aria-pressed",
+        String(model.arrow === option.value),
+      );
+
+      const preview = svgElement("svg", {
+        viewBox: "0 0 24 16",
+        "aria-hidden": "true",
+      });
+      if (arrowPointsLeft) {
+        preview.style.transform = "scaleX(-1)";
+      }
+      const lineEnd = option.value === "->x" ? 16 : 20;
+      const line = svgElement("line", {
+        x1: 3,
+        y1: 8,
+        x2: lineEnd,
+        y2: 8,
+        stroke: "currentColor",
+        "stroke-width": 1.5,
+        "stroke-linecap": "round",
+      });
+      if (option.value === "-->") {
+        line.setAttribute("stroke-dasharray", "3 3");
+      }
+      preview.append(line);
+      if (option.value === "->x") {
+        preview.append(
+          svgElement("path", {
+            d: "M 16.5 4.5 L 22 11.5 M 22 4.5 L 16.5 11.5",
+            fill: "none",
+            stroke: "currentColor",
+            "stroke-width": 1.5,
+            "stroke-linecap": "round",
+          }),
+        );
+      } else {
+        preview.append(
+          svgElement("path", {
+            d: "M 16 4 L 21 8 L 16 12",
+            fill: "none",
+            stroke: "currentColor",
+            "stroke-width": 1.5,
+            "stroke-linecap": "round",
+            "stroke-linejoin": "round",
+          }),
+        );
+      }
+      button.append(preview);
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        commit(
+          { arrow: option.value },
+          `message-arrow-${option.value}`,
+        );
+      });
+      arrowStyles.append(button);
+    }
+    inlineEditor.append(arrowStyles);
+
+    const tooltipIconSelector = createIconSelector(
+      inlineEditor,
+      model.tooltipIcon,
+      (tooltipIcon) => {
+        commit(
+          { tooltipIcon },
+          "message-tooltip-text",
+        );
+      },
+      {
+        catalog: options.iconCatalog,
+        resolver: options.iconResolver,
+        label: "Choose tooltip icon",
+        selectorLabel: "Tooltip icon selector",
+        clearLabel: "Default information icon",
+        defaultText: "i",
+      },
+    );
+    tooltipIconSelector.classList.add(
+      "la-inline-tooltip-icon-selector",
+    );
+    inlineEditor.addContentCleanup?.(() =>
+      tooltipIconSelector.disposeSelector?.(),
+    );
+
+    const tooltipIconField = document.createElement("div");
+    tooltipIconField.className = "la-inline-actor-tooltip-field";
+    const tooltipIconLabel = document.createElement("span");
+    tooltipIconLabel.textContent = "Icon";
+    tooltipIconField.append(tooltipIconLabel, tooltipIconSelector);
+    tooltipDialog.append(tooltipTextField, tooltipIconField);
+
+    let tooltipDialogOpen = false;
+    const positionTooltipDialog = () => {
+      if (!tooltipDialogOpen || tooltipDialog.hidden) {
+        return;
+      }
+      tooltipDialog.style.setProperty(
+        "--la-inline-tooltip-dialog-shift",
+        "0px",
+      );
+      const dialogRect = tooltipDialog.getBoundingClientRect();
+      const frameRect = frame.getBoundingClientRect();
+      const viewportWidth =
+        globalThis.innerWidth ?? document.documentElement.clientWidth;
+      const leftBoundary = Math.max(8, frameRect.left + 8);
+      const rightBoundary = Math.min(
+        viewportWidth - 8,
+        frameRect.right - 8,
+      );
+      let shift = 0;
+      if (dialogRect.left < leftBoundary) {
+        shift = leftBoundary - dialogRect.left;
+      } else if (dialogRect.right > rightBoundary) {
+        shift = rightBoundary - dialogRect.right;
+      }
+      tooltipDialog.style.setProperty(
+        "--la-inline-tooltip-dialog-shift",
+        `${shift}px`,
+      );
+    };
+    const onTooltipOutsidePointerDown = (event) => {
+      if (tooltipWrapper.contains(event.target)) {
+        return;
+      }
+      closeTooltipDialog(false);
+      commit({}, null, true);
+    };
+    const openTooltipDialog = (focusText = true) => {
+      if (tooltipDialogOpen) {
+        return;
+      }
+      tooltipDialogOpen = true;
+      tooltipDialog.hidden = false;
+      tooltipTrigger.setAttribute("aria-expanded", "true");
+      frame.addEventListener(
+        "pointerdown",
+        onTooltipOutsidePointerDown,
+      );
+      queueMicrotask(() => {
+        positionTooltipDialog();
+        if (focusText) {
+          tooltipControl.focus();
+        }
+      });
+    };
+    const closeTooltipDialog = (
+      commitChanges = true,
+      restoreFocus = false,
+      deferDraw = false,
+    ) => {
+      if (!tooltipDialogOpen) {
+        return "unchanged";
+      }
+      tooltipDialogOpen = false;
+      tooltipDialog.hidden = true;
+      tooltipTrigger.setAttribute("aria-expanded", "false");
+      frame.removeEventListener(
+        "pointerdown",
+        onTooltipOutsidePointerDown,
+      );
+      const result = commitChanges
+        ? commit({}, null, deferDraw)
+        : "unchanged";
+      if (restoreFocus && result !== "changed") {
+        queueMicrotask(() => tooltipTrigger.focus());
+      }
+      return result;
+    };
+
+    tooltipTrigger.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (tooltipDialogOpen) {
+        closeTooltipDialog(true, true);
+      } else {
+        openTooltipDialog();
+      }
+    });
+    tooltipControl.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        tooltipControl.value = model.tooltip ?? "";
+        dirtyFields.delete("tooltip");
+        tooltipTrigger.dataset.empty = String(!model.tooltip);
+        closeTooltipDialog(false, true);
+        return;
+      }
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        const result = commit();
+        if (result === "unchanged") {
+          closeTooltipDialog(false, true);
+        }
+        return;
+      }
+      event.stopPropagation();
+    });
+    if (pendingFocus === "message-tooltip-text") {
+      openTooltipDialog(false);
+    }
+
+    const positionEditor = () => {
+      if (!inlineEditor.isConnected) {
+        return;
+      }
+      const svgRect = svg.getBoundingClientRect();
+      diagramScale = svgRect.width / layout.width;
+      sizeTagPill();
+      inlineEditor.style.left = `${svgRect.left}px`;
+      inlineEditor.style.top = `${svgRect.top}px`;
+      inlineEditor.style.width = `${svgRect.width}px`;
+      inlineEditor.style.height = `${svgRect.height}px`;
+
+      const selfMessage = source.centerX === target.centerX;
+      const loopWidth = selfMessage
+        ? selfMessageWidth(
+            row,
+            layout.options.messageLabelMaxWidth,
+          )
+        : 0;
+      const labelX = selfMessage
+        ? source.centerX + loopWidth / 2
+        : (source.centerX + target.centerX) / 2;
+      const labelY = selfMessage ? row.y - 22 : row.y - 9;
+      const labelMetrics = messageLabelMetrics(
+        model.label,
+        layout.options.messageLabelMaxWidth,
+      );
+      const labelTextHeight = Math.max(13, labelMetrics.height);
+      const labelWidth = Math.max(
+        60,
+        (labelMetrics.textWidth || 50) + 10,
+      );
+      const labelHeight = Math.max(18, labelTextHeight + 5);
+      const labelTop = labelY - labelTextHeight + 1;
+      labelControl.style.left = `${
+        (labelX - labelWidth / 2) * diagramScale
+      }px`;
+      labelControl.style.top = `${labelTop * diagramScale}px`;
+      labelControl.style.width = `${labelWidth * diagramScale}px`;
+      labelControl.style.height = `${labelHeight * diagramScale}px`;
+      labelControl.style.setProperty(
+        "--la-inline-message-label-font-size",
+        `${11 * diagramScale}px`,
+      );
+      labelControl.style.setProperty(
+        "--la-inline-message-label-line-height",
+        `${13 * diagramScale}px`,
+      );
+
+      inlineEditor.style.setProperty(
+        "--la-inline-delete-size",
+        `${16 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-delete-cross-thickness",
+        `${1.25 * diagramScale}px`,
+      );
+      const sourceY = selfMessage ? row.y - 13 : row.y;
+      deleteControl.style.left = `${
+        source.centerX * diagramScale
+      }px`;
+      deleteControl.style.top = `${sourceY * diagramScale}px`;
+
+      inlineEditor.style.setProperty(
+        "--la-inline-message-pill-gap",
+        `${4 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-actor-pill-height",
+        `${20 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-actor-pill-padding",
+        `${10 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-actor-pill-radius",
+        `${10 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-actor-pill-font-size",
+        `${10 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-actor-tooltip-size",
+        `${20 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-actor-tooltip-icon-size",
+        `${14 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-actor-tooltip-font-size",
+        `${11 * diagramScale}px`,
+      );
+      metadata.style.left = `${labelX * diagramScale}px`;
+      metadata.style.top = `${
+        (row.y + (selfMessage ? 20 : 7)) * diagramScale
+      }px`;
+      metadata.style.setProperty(
+        "--la-inline-message-metadata-shift",
+        "0px",
+      );
+
+      inlineEditor.style.setProperty(
+        "--la-inline-message-arrow-size",
+        `${18 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-message-arrow-gap",
+        `${3 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-message-arrow-icon-width",
+        `${14 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-message-arrow-icon-height",
+        `${12 * diagramScale}px`,
+      );
+      const arrowControlsWidth = 60 * diagramScale;
+      const arrowControlsLeft =
+        labelX * diagramScale - arrowControlsWidth / 2;
+      arrowStyles.style.left = `${arrowControlsLeft}px`;
+      arrowStyles.style.top = `${
+        (labelTop - 12) * diagramScale
+      }px`;
+
+      const metadataRect = metadata.getBoundingClientRect();
+      const frameRect = frame.getBoundingClientRect();
+      const viewportWidth =
+        globalThis.innerWidth ?? document.documentElement.clientWidth;
+      const leftBoundary = Math.max(8, frameRect.left + 8);
+      const rightBoundary = Math.min(
+        viewportWidth - 8,
+        frameRect.right - 8,
+      );
+      let metadataShift = 0;
+      if (metadataRect.left < leftBoundary) {
+        metadataShift = leftBoundary - metadataRect.left;
+      } else if (metadataRect.right > rightBoundary) {
+        metadataShift = rightBoundary - metadataRect.right;
+      }
+      metadata.style.setProperty(
+        "--la-inline-message-metadata-shift",
+        `${metadataShift}px`,
+      );
+      positionTooltipDialog();
+    };
+
+    let positionFrame = null;
+    const repositionEditor = () => {
+      if (positionFrame !== null) {
+        return;
+      }
+      if (typeof globalThis.requestAnimationFrame === "function") {
+        positionFrame = globalThis.requestAnimationFrame(() => {
+          positionFrame = null;
+          positionEditor();
+        });
+      } else {
+        positionEditor();
+      }
+    };
+    const resizeObserver = globalThis.ResizeObserver
+      ? new ResizeObserver(repositionEditor)
+      : null;
+    resizeObserver?.observe(svg);
+    globalThis.addEventListener?.("scroll", repositionEditor, true);
+    globalThis.addEventListener?.("resize", repositionEditor);
+
+    inlineEditor.addEventListener("pointerdown", (event) => {
+      if (
+        tooltipDialogOpen &&
+        !tooltipWrapper.contains(event.target)
+      ) {
+        closeTooltipDialog(false);
+      }
+      event.stopPropagation();
+    });
+    inlineEditor.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+    inlineEditor.addEventListener("focusout", (event) => {
+      if (
+        cancelled ||
+        inlineEditor.contains(event.relatedTarget)
+      ) {
+        return;
+      }
+      closeTooltipDialog(false);
+      commit({}, null, true);
+    });
+
+    const cancelInlineEdit = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      cancelled = true;
+      pendingFocus = null;
+      selectedIds = [];
+      removeInlineMessageEditor(frame);
+      applySelectedVisuals(baseController.svg, selectedIds);
+      contextualEditor(frame, layout);
+      frame.focus();
+    };
+    labelControl.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        cancelInlineEdit(event);
+        return;
+      }
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        commit();
+        return;
+      }
+      event.stopPropagation();
+    });
+    tagControl.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        cancelInlineEdit(event);
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        commit();
+        return;
+      }
+      event.stopPropagation();
+    });
+
+    deleteControl.addEventListener("pointerdown", (event) => {
+      cancelled = true;
+      event.stopPropagation();
+    });
+    deleteControl.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      run(() => editor.removeItem(model.id), []);
+    });
+
+    inlineEditor.cleanup = () => {
+      resizeObserver?.disconnect();
+      frame.removeEventListener(
+        "pointerdown",
+        onTooltipOutsidePointerDown,
+      );
+      globalThis.removeEventListener?.(
+        "scroll",
+        repositionEditor,
+        true,
+      );
+      globalThis.removeEventListener?.(
+        "resize",
+        repositionEditor,
+      );
+      if (
+        positionFrame !== null &&
+        typeof globalThis.cancelAnimationFrame === "function"
+      ) {
+        globalThis.cancelAnimationFrame(positionFrame);
+      }
+      positionFrame = null;
+      inlineEditor.cleanupContents?.();
+      for (let index = 0; index < hiddenElements.length; index += 1) {
+        hiddenElements[index].style.visibility =
+          previousVisibility[index];
+      }
+      delete inlineEditor.addContentCleanup;
+      delete inlineEditor.cleanupContents;
+      delete inlineEditor.cleanup;
+    };
+    positionEditor();
+  }
+
   function addInlineGapEditor(frame, layout, model) {
     const row = layout.rows.find(
       (candidate) => candidate.id === model.id,
@@ -3664,6 +4396,7 @@ export function renderEditor(target, input, options = {}) {
     removePopover(frame);
     removeInlineGapEditor(frame);
     removeInlineActorEditor(frame);
+    removeInlineMessageEditor(frame);
 
     if (transient?.type === "insert") {
       const popover = addPopover(
@@ -3806,97 +4539,21 @@ export function renderEditor(target, input, options = {}) {
       addInlineActorEditor(frame, layout, model);
       return;
     }
+    if (model.type === "message") {
+      addInlineMessageEditor(frame, layout, model);
+      return;
+    }
     const popover = addPopover(
       frame,
       layout,
       anchorFor(layout, id),
-      model.type === "message"
-        ? "Connection"
-        : model.type === "section"
-          ? "Section"
-          : "Group",
+      model.type === "section"
+        ? "Section"
+        : "Group",
       {
         closable: true,
       },
     );
-
-    if (model.type === "message") {
-      addArrowPicker(
-        popover,
-        model.arrow,
-        (value) =>
-          run(
-            () => editor.updateItem(id, { arrow: value }),
-            undefined,
-            popover,
-          ),
-      );
-      addField(
-        popover,
-        "Label",
-        model.label,
-        (value) =>
-          run(
-            () => editor.updateItem(id, { label: value }),
-            undefined,
-            popover,
-          ),
-        { multiline: true },
-      );
-      addField(popover, "Tag", model.tag, (value) =>
-        run(
-          () => editor.updateItem(id, { tag: value }),
-          undefined,
-          popover,
-        ),
-      );
-      addField(
-        popover,
-        "Tooltip",
-        model.tooltip,
-        (value) =>
-          run(
-            () => editor.updateItem(id, { tooltip: value }),
-            undefined,
-            popover,
-          ),
-        {
-          multiline: true,
-          trailing: ({ control, commit }) =>
-            createIconPicker(
-              popover,
-              model.tooltipIcon,
-              (tooltipIcon) =>
-                run(
-                  () =>
-                    editor.updateItem(id, {
-                      tooltip: control.value,
-                      tooltipIcon,
-                    }),
-                  undefined,
-                  popover,
-                ),
-              {
-                catalog: options.iconCatalog,
-                resolver: options.iconResolver,
-                label: "Choose tooltip icon",
-                clearLabel: "Default information icon",
-                defaultText: "i",
-                onClose: commit,
-              },
-            ),
-        },
-      );
-      addActions(popover, [
-        {
-          label: "Delete",
-          danger: true,
-          run: () =>
-            run(() => editor.removeItem(id), [], popover),
-        },
-      ]);
-      return;
-    }
 
     if (model.type === "group") {
       addField(
@@ -4796,6 +5453,7 @@ export function renderEditor(target, input, options = {}) {
     const previousFrame = baseController?.svg?.closest(".la-frame");
     removeInlineGapEditor(previousFrame);
     removeInlineActorEditor(previousFrame);
+    removeInlineMessageEditor(previousFrame);
     removePopover(previousFrame);
     baseController = renderDiagram(target, editor.document, {
       ...options,
@@ -4803,6 +5461,10 @@ export function renderEditor(target, input, options = {}) {
       actorPartActivatesSelection(actorId, field) {
         pendingActorPart = field;
         baseController?.select(actorId);
+      },
+      messagePartActivatesSelection(messageId, field) {
+        pendingMessagePart = field;
+        baseController?.select(messageId);
       },
       initialSelectedId:
         selectedIds.length === 1 ? selectedIds[0] : null,
@@ -4814,8 +5476,11 @@ export function renderEditor(target, input, options = {}) {
             ? "gap-label"
             : detail.kind === "actor"
               ? pendingActorPart ?? "actor-name"
-              : null;
+              : detail.kind === "message"
+                ? pendingMessagePart ?? "message-label"
+                : null;
         pendingActorPart = null;
+        pendingMessagePart = null;
         applySelectedVisuals(baseController.svg, selectedIds);
         const frame = baseController.svg.closest(".la-frame");
         contextualEditor(frame, baseController.layout);
@@ -4894,6 +5559,9 @@ export function renderEditor(target, input, options = {}) {
         baseController?.svg?.closest(".la-frame"),
       );
       removeInlineActorEditor(
+        baseController?.svg?.closest(".la-frame"),
+      );
+      removeInlineMessageEditor(
         baseController?.svg?.closest(".la-frame"),
       );
       removePopover(baseController?.svg?.closest(".la-frame"));

@@ -1158,7 +1158,7 @@ function messagePath(
       `L ${sourceX} ${bottom}`,
     ].join(" "),
     labelX: sourceX + loopWidth / 2,
-    labelY: top - 7,
+    labelY: top - 9,
     endX: sourceX,
     endY: bottom,
     direction: -1,
@@ -1203,6 +1203,12 @@ function renderMessage(
   if (!source || !target) {
     return;
   }
+
+  const activatePart =
+    selection.enabled &&
+    typeof options.messagePartActivatesSelection === "function"
+      ? (part) => options.messagePartActivatesSelection(row.id, part)
+      : null;
 
   const group = svgElement("g", {
     class: "la-message",
@@ -1373,13 +1379,21 @@ function renderMessage(
     row.tooltip,
     row.tooltipIcon,
     geometry.labelX,
-    row.y + (isSelfMessage ? 17 : 7),
+    row.y + (isSelfMessage ? 20 : 7),
     tokens,
     {
       anchor: "middle",
       tooltipLayer,
       iconResolver: options.iconResolver,
       tooltipIconFilter: options.tooltipIconFilter,
+      onTagActivate: activatePart
+        ? () => activatePart("message-tag")
+        : null,
+      tagActivateLabel: "Edit arrow tag",
+      onTooltipActivate: activatePart
+        ? () => activatePart("message-tooltip-text")
+        : null,
+      tooltipActivateLabel: "Edit arrow tooltip",
     },
   );
 
