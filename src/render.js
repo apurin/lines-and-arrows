@@ -577,6 +577,29 @@ function renderMetadata(
       class: "la-tag",
       transform: `translate(${left} ${y})`,
     });
+    if (options.onTagActivate) {
+      tagGroup.setAttribute("tabindex", "0");
+      tagGroup.setAttribute("role", "button");
+      tagGroup.setAttribute(
+        "aria-label",
+        options.tagActivateLabel ?? "Edit tag",
+      );
+      tagGroup.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+      });
+      tagGroup.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        options.onTagActivate();
+      });
+      tagGroup.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          options.onTagActivate();
+        }
+      });
+    }
     tagGroup.append(
       svgElement("rect", {
         width: tagWidth,
@@ -613,7 +636,9 @@ function renderMetadata(
     transform: `translate(${triggerX} ${y})`,
     tabindex: 0,
     role: "button",
-    "aria-label": "Show tooltip",
+    "aria-label": options.onTooltipActivate
+      ? options.tooltipActivateLabel ?? "Edit tooltip"
+      : "Show tooltip",
     "aria-describedby": id,
     "aria-expanded": "false",
   });
@@ -708,6 +733,10 @@ function renderMetadata(
   trigger.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
+    if (options.onTooltipActivate) {
+      options.onTooltipActivate();
+      return;
+    }
     pinned = !pinned;
     sync();
   });
@@ -715,6 +744,10 @@ function renderMetadata(
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       event.stopPropagation();
+      if (options.onTooltipActivate) {
+        options.onTooltipActivate();
+        return;
+      }
       pinned = !pinned;
       sync();
     } else if (event.key === "Escape") {
@@ -739,6 +772,11 @@ function renderActor(
   selection,
   tooltipLayer,
 ) {
+  const activatePart =
+    selection.enabled &&
+    typeof options.actorPartActivatesSelection === "function"
+      ? (part) => options.actorPartActivatesSelection(actor.id, part)
+      : null;
   const group = svgElement("g", {
     class: "la-actor",
     transform: `translate(${actor.x} ${actor.y})`,
@@ -777,7 +815,43 @@ function renderActor(
 
   const hasIcon = Boolean(actor.icon);
   if (hasIcon) {
+    const iconParent = activatePart
+      ? svgElement("g", {
+          class: "la-actor-icon-trigger",
+          tabindex: 0,
+          role: "button",
+          "aria-label": "Edit actor icon",
+        })
+      : group;
+    if (activatePart) {
+      iconParent.append(
+        svgElement("rect", {
+          x: actor.width / 2 - 10,
+          y: 3,
+          width: 20,
+          height: 20,
+          rx: 10,
+          fill: "transparent",
+        }),
+      );
+      iconParent.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+      });
+      iconParent.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        activatePart("actor-icon");
+      });
+      iconParent.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          activatePart("actor-icon");
+        }
+      });
+    }
     const fallback = svgElement("text", {
+      class: "la-actor-icon-fallback",
       x: actor.width / 2,
       y: 19,
       "text-anchor": "middle",
@@ -788,11 +862,12 @@ function renderActor(
       "pointer-events": "none",
     });
     fallback.textContent = actor.name.slice(0, 1).toUpperCase();
-    group.append(fallback);
+    iconParent.append(fallback);
 
     const iconUrl = options.iconResolver?.(actor.icon, tokens.name);
     if (iconUrl) {
       const image = svgElement("image", {
+        class: "la-actor-icon",
         href: iconUrl,
         x: actor.width / 2 - 9,
         y: 4,
@@ -806,11 +881,15 @@ function renderActor(
       image.addEventListener("load", () => {
         fallback.setAttribute("opacity", "0");
       });
-      group.append(image);
+      iconParent.append(image);
+    }
+    if (activatePart) {
+      group.append(iconParent);
     }
   }
 
   const label = svgElement("text", {
+    class: "la-actor-label",
     x: actor.width / 2,
     y: hasIcon ? 39 : 29.5,
     "text-anchor": "middle",
@@ -836,6 +915,14 @@ function renderActor(
       tooltipLayer,
       iconResolver: options.iconResolver,
       tooltipIconFilter: options.tooltipIconFilter,
+      onTagActivate: activatePart
+        ? () => activatePart("actor-tag")
+        : null,
+      tagActivateLabel: "Edit actor tag",
+      onTooltipActivate: activatePart
+        ? () => activatePart("actor-tooltip-text")
+        : null,
+      tooltipActivateLabel: "Edit actor tooltip",
     },
   );
 
@@ -1380,6 +1467,7 @@ function renderGap(parent, row, layout, tokens, selection) {
   );
 
   const label = svgElement("text", {
+    class: "la-gap-label",
     x: centerX,
     "text-anchor": "middle",
     "font-size": 10,
