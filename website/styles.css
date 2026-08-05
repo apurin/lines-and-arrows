@@ -833,11 +833,15 @@ lines-and-arrows {
   color: #eaf0ff;
 }
 
-.theme-preview-aubergine-signal {
+.theme-preview-phosphor-terminal {
   background:
-    radial-gradient(circle at 15% 25%, #41234b 0%, transparent 36%),
-    linear-gradient(145deg, #211326, #130e1b);
-  color: #f6eaf7;
+    radial-gradient(circle at center, #102419, #07110b 68%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 3px,
+      rgb(185 255 201 / 0.025) 3px 4px
+    );
+  color: #b9ffc9;
 }
 
 .theme-preview-newsprint-monochrome {

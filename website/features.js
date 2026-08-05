@@ -54,13 +54,13 @@ const themePreviewPalettes = {
       danger: "#FF6B7A",
     },
   },
-  "aubergine-signal": {
+  "phosphor-terminal": {
     scheme: "dark",
     palette: {
-      background: "#211326",
-      foreground: "#F6EAF7",
-      accent: "#E59BFF",
-      danger: "#FF6F91",
+      background: "#07110B",
+      foreground: "#B9FFC9",
+      accent: "#33E277",
+      danger: "#FF6577",
     },
   },
   "newsprint-monochrome": {
