@@ -42,9 +42,9 @@ tooltips.
 
 @API
   icon cloud
-  tag comment
-  tooltip Public entry point
-  tooltip-icon chat-circle
+  tag internet-facing
+  tooltip Accepts requests outside the trust boundary
+  tooltip-icon shield-check
 
 @Worker
   icon gear
@@ -53,9 +53,9 @@ tooltips.
   icon tray
 
 Customer -> API: Start job
-  tag critical
-  tooltip Must be acknowledged\nbefore processing continues
-  tooltip-icon warning
+  tag idempotent
+  tooltip Safe to retry with the same request identifier
+  tooltip-icon key
 
 critical Job execution
   API -> Worker: Start job
@@ -100,8 +100,8 @@ An actor declaration begins with `@`:
 ```lines-and-arrows
 @API
   icon cloud
-  tag comment
-  tooltip Public entry point
+  tag internet-facing
+  tooltip Accepts requests outside the trust boundary
 ```
 
 Actor properties are optional:
@@ -109,7 +109,7 @@ Actor properties are optional:
 | Property | Meaning |
 | --- | --- |
 | `icon IDENTIFIER` | A stable icon-catalog identifier. |
-| `tag TEXT` | A short, visible, single-line label. |
+| `tag TEXT` | A short, visible, single-line qualifier for a stable constraint or property. |
 | `tooltip TEXT` | Additional detail exposed on hover, focus, or an equivalent interaction. May contain `\n`. |
 | `tooltip-icon IDENTIFIER` | An optional icon-catalog identifier for the tooltip control. |
 
@@ -160,14 +160,16 @@ A message may have one `tag`, one `tooltip`, and one `tooltip-icon`:
 
 ```lines-and-arrows
 API -> Worker: Start job
-  tag critical
-  tooltip This operation must be idempotent
-  tooltip-icon warning
+  tag idempotent
+  tooltip Safe to retry with the same request identifier
+  tooltip-icon key
 ```
 
-The properties have the same meaning as actor tags and tooltips. A tag remains
-short and visible; a tooltip carries the detail. A tooltip may exist without a
-tag. Renderers show its information control in the message metadata row.
+Use actor tags for stable constraints or properties that remain true throughout
+the diagram. Use message tags for contracts or outcomes of that interaction.
+Tags stay short and visible; tooltips carry supporting detail. A tooltip may
+exist without a tag. Renderers show its information control in the message
+metadata row.
 
 ### Arrow forms
 

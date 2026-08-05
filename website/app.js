@@ -8,74 +8,43 @@ import { initializeSiteTheme } from "./site.js?v=20260803-2";
 
 defineLinesAndArrows();
 
-const heroSource = `@Developer
-  icon terminal
-  tag human
+const heroSource = `@Client
+  icon browser
 
-@Review Agent
-  icon robot
-  tag skeptical
-  tooltip Reads the diff, not the confidence\\nin the commit message
-  tooltip-icon magnifying-glass
+@API Gateway
+  icon network
 
-@CI
-  icon check-circle
-  tag gate
+@Primary DB
+  icon database
 
-@Canary
-  icon bird
-  tag small slice
-  tooltip Carries a small slice of real traffic
-  tooltip-icon gauge
+@Replica DB
+  icon hard-drives
 
-@Production
-  icon cloud
-  tag live
-  tooltip The only actor allowed to wake someone up
-  tooltip-icon bell
+@Failover Controller
+  icon heartbeat
+  tooltip Promotes a replica only after quorum confirms the outage
+  tooltip-icon shield-check
 
-Developer -> Review Agent: Open a suspiciously small\\nFriday PR
-  tag small diff
-  tooltip The adjective is doing most of the risk assessment
-  tooltip-icon warning
-Review Agent -> CI: Prove "small" means safe
-critical Earn the green button
-  CI -> CI: Test, lint,\\nand scan
-  CI --> Review Agent: Checks pass
-Review Agent --> Developer: Approved, with supervision
-Developer -> Canary: Deploy to a slice of traffic
-  tag canary
-  tooltip Real users, deliberately few of them
-  tooltip-icon bird
-gap One suspiciously quiet observation window
-// The cross means this build never reaches Production.
-Canary ->x Production: Stop rollout on a slow query
-  tag blocked
-  tooltip Production never receives this build
-  tooltip-icon warning
-Canary --> Developer: Add the missing index
-Developer -> CI: Patch and rebuild
-CI --> Canary: Signed artifact ready
-Canary -> Production: Promote the healthy build
-Production --> Developer: Release is healthy
-  tag no page
-  tooltip The nicest alert is the one that never fires
-  tooltip-icon bell-slash`;
-
-const heroLayout = {
-  actorHeight: 46,
-  actorGap: 96,
-  marginX: 38,
-  marginTop: 20,
-  timelineTopGap: 28,
-  messageHeight: 42,
-  gapHeight: 48,
-  groupHeaderHeight: 26,
-  sectionHeaderHeight: 25,
-  groupPaddingBottom: 8,
-  groupGap: 8,
-  bottomPadding: 20,
-};
+Client -> API Gateway: Submit transaction
+API Gateway -> Primary DB: Write transaction
+  tag idempotent
+  tooltip The retry keeps the transaction key\\nThe database recognizes the write\\ninstead of applying it twice
+  tooltip-icon key
+Primary DB -> Primary DB: Append WAL record
+gap Primary region stops acknowledging traffic
+Failover Controller ->x Primary DB: Health probe expires
+  tag timeout
+choice Recovery path
+  | quorum confirms the outage
+    Failover Controller -> Replica DB: Promote replica
+    Replica DB -> Replica DB: Replay replicated WAL
+    Replica DB --> Failover Controller: Ready for writes
+    API Gateway -> Replica DB: Retry transaction
+  | primary reconnects
+    Failover Controller -> Primary DB: Verify commit status
+    Primary DB --> Failover Controller: WAL entry found
+    API Gateway -> Primary DB: Retry transaction safely
+API Gateway --> Client: Transaction confirmed`;
 
 const diagram = document.querySelector("#hero-diagram");
 const stage = diagram.closest(".diagram-stage");
@@ -90,7 +59,6 @@ const modeStatus = document.querySelector("#hero-mode-status");
 
 diagram.iconResolver = phosphorIconResolver;
 diagram.iconCatalog = phosphorIconCatalog;
-diagram.layout = heroLayout;
 
 const theme = initializeSiteTheme();
 diagram.theme = theme.theme;

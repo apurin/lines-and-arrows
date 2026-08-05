@@ -9,7 +9,7 @@
     />
     <title>Showcase - Lines &amp; Arrows</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20260803-6" />
+    <link rel="stylesheet" href="./styles.css?v=20260805-2" />
   </head>
   <body class="showcase-page is-loading">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -54,15 +54,6 @@
     </header>
 
     <main id="main">
-      <section class="page-intro showcase-intro section-shell" id="top">
-        <p class="eyebrow"><span></span> Eleven editable stories</p>
-        <h1>Sequences happen<br />everywhere.</h1>
-        <p class="page-intro-lede">
-          Code, agents, markets, cells, cities, oceans, and the systems between
-          them. Every example is live.
-        </p>
-      </section>
-
       <nav
         class="showcase-contents section-shell"
         aria-labelledby="showcase-contents-title"
@@ -235,12 +226,10 @@
               aria-describedby="molecular-address-error"
             >@Guide RNA
   icon crosshair
-  tag locator
   tooltip RNA sequence that steers Cas9 toward a matching DNA site
   tooltip-icon target
 @Cas9
   icon scissors
-  tag editor
 @Target DNA
   icon dna
 @Cell Repair
@@ -346,7 +335,6 @@ repeat Search the genome
               aria-describedby="immune-rehearsal-error"
             >@Vaccine
   icon syringe
-  tag rehearsal
   tooltip A simplified model of training immunity without reproducing the full disease
   tooltip-icon shield-check
 @Antigen-Presenting Cell
@@ -459,7 +447,6 @@ B Cell --> Pathogen: Mount a faster response</textarea>
               aria-describedby="coral-recovery-error"
             >@Warm Ocean
   icon thermometer-hot
-  tag stressor
 @Coral
   icon waves
   tooltip Bleached coral is stressed and can still recover if conditions improve
@@ -571,12 +558,12 @@ choice Temperature trend
   icon globe
 @Relay Orbiter
   icon radio
-  tag window
+  tag intermittent
   tooltip Communicates with the rover only during a relay pass
   tooltip-icon broadcast
 @Rover
   icon robot
-  tag local pilot
+  tag autonomous
 @Navigation Camera
   icon camera
 @Rock Outcrop
@@ -688,7 +675,6 @@ Relay Orbiter --> Mission Control: Downlink the science</textarea>
               aria-describedby="campaign-budget-error"
             >@Strategist
   icon target
-  tag experiment
   tooltip Starts small enough to learn before spending at scale
   tooltip-icon chart-line-up
 @Ad Platform
@@ -710,7 +696,6 @@ Visitor -> Landing Page: Follow the ad
 choice Visit outcome
   | interested
     Landing Page -> CRM: Record qualified lead
-      tag signal
       tooltip Conversion wins on fit, not clicks
       tooltip-icon chart-line-up
     CRM --> Strategist: Report conversion
@@ -826,8 +811,7 @@ choice Machine reading
     Ballot Scanner -> Public Count: Add anonymous vote
   | mark is ambiguous
     Ballot Scanner --> Poll Worker: Flag for review
-      tag needs eyes
-      tooltip The ballot stays anonymous while intent is reviewed
+      tooltip Reviewers see the ballot marks\nnot the voter's identity\nPublished rules decide the outcome\nbefore the vote enters the count
       tooltip-icon eye
     gap After polls close
     Poll Worker -> Review Panel: Deliver sealed ballot
@@ -887,6 +871,6 @@ Poll Worker --> Voter: Ballot deposited</textarea>
       </div>
     </footer>
 
-    <script async type="module" src="./showcase.js?v=20260803-6"></script>
+    <script async type="module" src="./showcase.js?v=20260805-1"></script>
   </body>
 </html>

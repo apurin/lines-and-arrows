@@ -18,7 +18,7 @@ The jsDelivr entry registers the web component automatically:
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.3"
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.4"
 ></script>
 
 <lines-and-arrows mode="view" theme="auto">
@@ -30,8 +30,8 @@ The jsDelivr entry registers the web component automatically:
 </lines-and-arrows>
 ```
 
-The `@0.3` compatibility alias receives patch releases without crossing into a
-potentially breaking `0.4`. Use an exact version when a deployment must remain
+The `@0.4` compatibility alias receives patch releases without crossing into a
+potentially breaking `0.5`. Use an exact version when a deployment must remain
 fully pinned.
 
 For direct CDN access to the JavaScript API without automatic registration:
@@ -39,13 +39,15 @@ For direct CDN access to the JavaScript API without automatic registration:
 ```js
 import {
   renderDiagram,
-} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.3/dist/lines-and-arrows.min.js";
+} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.4/dist/lines-and-arrows.min.js";
 ```
 
 Set `mode="edit"` to enable the visual editor, including canvas undo and redo
 controls. Use `selectable="false"` when a view should have no selectable diagram
 elements. A quiet “Powered by Lines & Arrows” website link appears by default;
 set `branding="false"` to hide it.
+Undo and redo have no separate enablement attribute: edit mode provides the
+controls and the element's `undo()`, `redo()`, `canUndo`, and `canRedo` API.
 Source nested naturally inside the element may share the page's indentation;
 the component removes that common indentation while preserving the diagram's
 relative indentation.
@@ -58,8 +60,8 @@ relative indentation.
 
 @API
   icon cloud
-  tag public
-  tooltip Public entry point
+  tag internet-facing
+  tooltip Accepts requests outside the trust boundary
 
 @Worker
   icon gear
@@ -276,9 +278,9 @@ Stable releases use semantic versions. Before `1.0`, patch releases preserve
 the current minor-version contract, while a new minor version may introduce
 breaking changes. Consumers can choose between:
 
-- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.3` for compatible patch
-  updates within the `0.3` line.
-- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.3.0` for an immutable,
+- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.4` for compatible patch
+  updates within the `0.4` line.
+- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.4.0` for an immutable,
   exactly pinned release.
 
 Publishing runs exclusively through the

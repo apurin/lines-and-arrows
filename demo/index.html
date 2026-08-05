@@ -263,12 +263,10 @@
 
       const source = `@Customer
   icon user
-  tag review
   tooltip Reviews the result before it is accepted
 
 @API
   icon cloud
-  tag comment
   tooltip Public entry point
 
 @Worker
@@ -278,7 +276,7 @@
   icon tray
 
 Customer -> API: Submit report
-  tag critical
+  tag evidence required
   tooltip The report must retain its original evidence
   tooltip-icon warning
 

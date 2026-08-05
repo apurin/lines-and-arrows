@@ -18,12 +18,10 @@ const technicalShowcases = [
       "An application evolves a shared database column without breaking mixed versions",
     source: `@Release
   icon rocket-launch
-  tag rollout
   tooltip Orchestrates flags and migration steps across releases
   tooltip-icon git-branch
 @Application
   icon app-window
-  tag mixed versions
 @Database
   icon database
   tag shared schema
@@ -31,7 +29,6 @@ const technicalShowcases = [
   icon arrows-clockwise
 @Telemetry
   icon pulse
-  tag error budget
 
 Release -> Database: Add nullable display_name
   tooltip Expanding first keeps the old application compatible
@@ -52,7 +49,7 @@ choice Canary reads
     Release -> Application: Prefer display_name
   | mismatches appear
     Telemetry -> Release: Hold the rollout
-      tag protect the SLO
+      tag SLO guardrail
       tooltip Keeps the compatible path while engineers inspect the cohort
       tooltip-icon warning
     Release -> Application: Keep reading name
@@ -71,10 +68,9 @@ Release -> Database: Drop name`,
       "An order saga compensates a payment hold when inventory cannot commit",
     source: `@Storefront
   icon storefront
-  tag client
 @Order Service
   icon receipt
-  tag orchestrator
+  tag saga owner
   tooltip Owns the saga state without sharing a database
   tooltip-icon flow-arrow
 @Payment Service
@@ -85,7 +81,6 @@ Release -> Database: Drop name`,
   icon truck
 
 Storefront -> Order Service: Place order
-  tag command
 Order Service -> Payment Service: Authorize payment
 choice Payment result
   | authorized
@@ -118,21 +113,19 @@ choice Payment result
       "A streaming risk pipeline handles watermarks and late payment events",
     source: `@Payment Edge
   icon credit-card
-  tag source
 @Event Stream
   icon queue
   tooltip Partitioned by account to preserve local ordering
   tooltip-icon info
 @Window Processor
   icon funnel
-  tag stateful
+  tag event-time
 @Risk Model
   icon gauge
 @Risk Desk
   icon shield-warning
 
 Payment Edge -> Event Stream: Publish payment
-  tag event
 repeat For each account partition
   Event Stream -> Window Processor: Deliver payment event
   Window Processor -> Window Processor: Update five-minute features
@@ -169,7 +162,7 @@ choice Arrival timing
   icon terminal
 @Research Agent
   icon robot
-  tag drafts only
+  tag advisory only
   tooltip Builds claims from retrieved evidence but cannot approve action
   tooltip-icon shield-check
 @Search Index
@@ -178,7 +171,7 @@ choice Arrival timing
   icon books
 @Human Reviewer
   icon user-check
-  tag accountable
+  tag approval gate
 
 Engineer -> Research Agent: Investigate the failed deployment
 Research Agent -> Search Index: Query errors and change history
@@ -188,7 +181,7 @@ parallel Gather grounded context
   Source Documents --> Research Agent: Return versioned evidence
 Research Agent -> Research Agent: Draft a diagnosis with citations
 Research Agent -> Human Reviewer: Propose cause and rollback
-  tag evidence packet
+  tag cited evidence
   tooltip Every claim points to a retrieved passage
   tooltip-icon file-text
 Human Reviewer -> Source Documents: Verify cited passages
@@ -214,7 +207,6 @@ choice Review outcome
   icon buildings
 @Opening Auction
   icon arrows-left-right
-  tag price discovery
   tooltip Collects eligible orders before continuous trading begins
   tooltip-icon chart-line-up
 @Market Data
@@ -233,7 +225,6 @@ Opening Auction -> Opening Auction: Choose the price that matches the most share
 choice Executable cross
   | enough opposing volume
     Opening Auction --> Broker: Fill at one opening price
-      tag single print
       tooltip All matched auction orders execute at the same opening price
       tooltip-icon scales
     Broker --> Investor: Confirm shares filled
@@ -399,6 +390,7 @@ for (const showcase of document.querySelectorAll("[data-showcase]")) {
   ];
   const initialSource = sourceInput.value.trim();
 
+  diagram.branding = false;
   diagram.layout = showcaseLayout;
   diagram.theme = theme.theme;
 

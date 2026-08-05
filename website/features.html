@@ -9,7 +9,7 @@
     />
     <title>Features - Lines &amp; Arrows</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20260803-6" />
+    <link rel="stylesheet" href="./styles.css?v=20260805-2" />
   </head>
   <body class="features-page">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -54,15 +54,6 @@
     </header>
 
     <main id="main">
-      <section class="page-intro features-intro section-shell" id="top">
-        <p class="eyebrow"><span></span> Nine capabilities</p>
-        <h1>A small language.<br />Useful depth.</h1>
-        <p class="page-intro-lede">
-          Read the compact source. See the same sequence. Switch to Edit and
-          change it without leaving the page.
-        </p>
-      </section>
-
       <section class="feature-row section-shell" id="actors" data-feature>
         <div class="feature-copy">
           <h2>Actors stay recognizable.</h2>
@@ -97,23 +88,26 @@ API -> Worker: Dispatch work</code></pre>
 
       <section class="feature-row section-shell" id="metadata" data-feature>
         <div class="feature-copy">
-          <h2>Context stays available.</h2>
+          <h2>Important constraints stay visible.</h2>
           <p>
-            Tags keep status visible. Tooltips hold supporting detail without
-            turning the main sequence into a wall of text.
+            Tags surface contracts and constraints worth keeping in view.
+            Tooltips explain why they matter without crowding the sequence.
           </p>
-          <pre class="feature-source"><code>@Agent
-  icon robot
-  tag assistant
-@Reviewer
-  icon user
-  tag human
-  tooltip Checks the result
+          <pre class="feature-source"><code>@Payments API
+  icon cloud
+  tag PCI boundary
+  tooltip Handles cardholder data
+  tooltip-icon shield-check
+@Ledger
+  icon database
+  tag single writer
+  tooltip Serializes balance changes
+  tooltip-icon lock-key
 
-Agent -> Reviewer: Present result
-  tag review
-  tooltip Include the evidence
-  tooltip-icon warning</code></pre>
+Payments API -> Ledger: Apply settlement
+  tag idempotent
+  tooltip Safe to retry\nusing the same settlement ID
+  tooltip-icon key</code></pre>
         </div>
         <figure class="feature-figure">
           <div class="feature-diagram">
@@ -123,7 +117,7 @@ Agent -> Reviewer: Present result
               theme="light"
               mode="view"
               selectable="false"
-              label="Tags and tooltips attached to actors and a message"
+              label="Stable actor constraints and an idempotent message contract"
             ></lines-and-arrows>
           </div>
           <p class="feature-error" role="alert" aria-live="polite"></p>
@@ -406,6 +400,6 @@ Planner --> Agent: Final result</code></pre>
       </div>
     </footer>
 
-    <script async type="module" src="./features.js?v=20260803-3"></script>
+    <script async type="module" src="./features.js?v=20260805-1"></script>
   </body>
 </html>

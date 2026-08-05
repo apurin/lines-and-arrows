@@ -18,7 +18,7 @@ framework is required.
     <title>Sequence diagram</title>
     <script
       type="module"
-      src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.3"
+      src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.4"
     ></script>
   </head>
   <body>
@@ -36,7 +36,7 @@ framework is required.
 </html>
 ```
 
-The `@0.3` CDN URL accepts compatible patch releases; use `@0.3.0` to pin the
+The `@0.4` CDN URL accepts compatible patch releases; use `@0.4.0` to pin the
 exact release.
 
 ## Configure the web component
@@ -161,16 +161,25 @@ Core rules:
 - Use `\n` for a visible line break and `\\` for a literal backslash.
 - Keep coordinates, colors, dimensions, and themes out of diagram source.
 
+## Tags and tooltips
+
+Use tags sparingly for short qualifiers that readers should see without
+hovering. An actor tag names a stable constraint or property that remains true
+throughout the diagram, such as `PCI boundary` or `single writer`. A message
+tag names a contract or outcome of that interaction, such as `idempotent` or
+`timeout`. Put supporting explanation in a tooltip.
+
 ## Complete example
 
 ```lines-and-arrows
 @Agent
   icon robot
-  tag author
-  tooltip Produces the initial sequence
 
 @API
   icon cloud
+  tag internet-facing
+  tooltip Accepts requests outside the trust boundary
+  tooltip-icon shield-check
 
 @Worker
   icon gear-six
@@ -179,8 +188,9 @@ Core rules:
   icon tray
 
 Agent -> API: Start job
-  tag critical
-  tooltip Preserve the original evidence
+  tag idempotent
+  tooltip Safe to retry with the same request identifier
+  tooltip-icon key
 
 critical Process job
   API -> Worker: Run

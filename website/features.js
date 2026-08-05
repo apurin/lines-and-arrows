@@ -77,6 +77,7 @@ for (const feature of document.querySelectorAll("[data-feature]")) {
   figure.prepend(toolbar);
   figure.append(status);
 
+  diagram.branding = false;
   diagram.layout = featureLayout;
   diagram.theme = theme.theme;
 
@@ -121,6 +122,7 @@ try {
   parse(themePreviewSource);
 
   for (const diagram of document.querySelectorAll("[data-theme-preview]")) {
+    diagram.branding = false;
     diagram.layout = themePreviewLayout;
     diagram.source = themePreviewSource;
   }
