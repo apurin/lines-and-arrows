@@ -82,10 +82,7 @@ export const EDIT_STYLES = `
     .la-focus-ring,
   .la-frame[data-selection-active="true"]
     .la-message:not([data-selected="true"])
-    .la-message-focus,
-  .la-frame[data-selection-active="true"]
-    .la-message:not([data-selected="true"])
-    .la-message-endpoint-highlight {
+    .la-message-selection-highlight {
     opacity: 0;
   }
 
@@ -157,7 +154,7 @@ export const EDIT_STYLES = `
     overflow: hidden;
     border: 0;
     outline: none;
-    background: var(--la-canvas);
+    background: var(--la-surface);
     color: var(--la-text);
     font: 650 10px/12px var(
       --la-font-family,
@@ -187,7 +184,7 @@ export const EDIT_STYLES = `
     border-radius: 50%;
     outline: none;
     background: var(--la-danger);
-    color: white;
+    color: var(--la-danger-text);
   }
 
   .la-inline-delete-control::before,
@@ -198,7 +195,7 @@ export const EDIT_STYLES = `
     width: 48%;
     height: var(--la-inline-delete-cross-thickness, 1.5px);
     border-radius: 999px;
-    background: white;
+    background: currentColor;
     content: "";
   }
 
@@ -313,32 +310,10 @@ export const EDIT_STYLES = `
     box-shadow: none;
   }
 
-  .la-frame[data-theme="light"]
-    .la-inline-actor-icon-picker:not([data-empty="true"])
+  .la-inline-actor-icon-picker
     > .la-icon-picker-trigger
     .la-icon-visual {
-    filter: invert(1) brightness(1.15);
-  }
-
-  .la-frame[data-theme="light"]
-    .la-inline-actor-icon-picker[data-empty="true"]
-    > .la-icon-picker-trigger
-    .la-icon-visual {
-    filter: invert(1) brightness(1.15);
-  }
-
-  .la-frame[data-theme="dark"]
-    .la-inline-actor-icon-picker:not([data-empty="true"])
-    > .la-icon-picker-trigger
-    .la-icon-visual {
-    filter: none;
-  }
-
-  .la-frame[data-theme="dark"]
-    .la-inline-actor-icon-picker[data-empty="true"]
-    > .la-icon-picker-trigger
-    .la-icon-visual {
-    filter: none;
+    filter: var(--la-actor-icon-filter);
   }
 
   .la-inline-actor-icon-picker[data-empty="true"]
@@ -499,7 +474,7 @@ export const EDIT_STYLES = `
     overflow: visible;
     border: 1px solid var(--la-section-line);
     border-radius: 11px;
-    background: var(--la-canvas);
+    background: var(--la-surface);
     box-shadow: 0 3px 10px
       color-mix(in srgb, var(--la-text) 10%, transparent);
     transform: translateX(
@@ -532,7 +507,7 @@ export const EDIT_STYLES = `
 
   .la-inline-actor-tooltip-dialog::after {
     top: -5.5px;
-    border-bottom: 6px solid var(--la-canvas);
+    border-bottom: 6px solid var(--la-surface);
     border-right: 6px solid transparent;
     border-left: 6px solid transparent;
   }
@@ -550,7 +525,7 @@ export const EDIT_STYLES = `
     resize: none;
     background: color-mix(
       in srgb,
-      var(--la-canvas) 82%,
+      var(--la-surface) 82%,
       var(--la-group-fill)
     );
     color: var(--la-text);
@@ -589,7 +564,7 @@ export const EDIT_STYLES = `
     outline: none;
     background: color-mix(
       in srgb,
-      var(--la-canvas) 82%,
+      var(--la-surface) 82%,
       var(--la-group-fill)
     );
     color: var(--la-text);
@@ -610,7 +585,7 @@ export const EDIT_STYLES = `
     margin: 0;
     padding: 3px 6px;
     border-radius: 6px;
-    background: var(--la-canvas);
+    background: var(--la-surface);
     text-align: center;
     transform: translateX(-50%);
   }
@@ -686,7 +661,7 @@ export const EDIT_STYLES = `
     border-radius: var(--la-inline-group-pill-radius, 10px);
     background: color-mix(
       in srgb,
-      var(--la-canvas) 76%,
+      var(--la-surface) 76%,
       var(--la-group-fill)
     );
     color: var(--la-text);
@@ -711,7 +686,7 @@ export const EDIT_STYLES = `
     resize: none;
     background: color-mix(
       in srgb,
-      var(--la-canvas) 76%,
+      var(--la-surface) 76%,
       var(--la-group-fill)
     );
     text-align: left;
@@ -738,7 +713,7 @@ export const EDIT_STYLES = `
     background: color-mix(
       in srgb,
       var(--la-accent-soft) 58%,
-      var(--la-canvas)
+      var(--la-surface)
     );
     color: var(--la-text);
   }
@@ -769,7 +744,7 @@ export const EDIT_STYLES = `
     margin: 0;
     padding: 3px 6px;
     border-radius: 6px;
-    background: var(--la-canvas);
+    background: var(--la-surface);
     text-align: center;
     transform: translateX(-50%);
   }
@@ -841,7 +816,7 @@ export const EDIT_STYLES = `
     margin: 0;
     padding: 3px 6px;
     border-radius: 6px;
-    background: var(--la-canvas);
+    background: var(--la-surface);
     text-align: center;
     transform: translateX(-50%);
   }
@@ -935,7 +910,7 @@ export const EDIT_STYLES = `
     border: 1px solid var(--la-section-line);
     border-radius: 50%;
     outline: none;
-    background: var(--la-canvas);
+    background: var(--la-surface);
     color: var(--la-muted-text);
   }
 
@@ -966,7 +941,7 @@ export const EDIT_STYLES = `
     outline: none;
     background: color-mix(
       in srgb,
-      var(--la-canvas) 82%,
+      var(--la-surface) 82%,
       var(--la-group-fill)
     );
     color: var(--la-text);
@@ -987,7 +962,7 @@ export const EDIT_STYLES = `
     margin: 0;
     padding: 3px 6px;
     border-radius: 6px;
-    background: var(--la-canvas);
+    background: var(--la-surface);
     text-align: center;
     transform: translateX(-50%);
   }
@@ -1160,7 +1135,7 @@ export const EDIT_STYLES = `
     padding: 12px;
     border: 1px solid var(--la-section-line);
     border-radius: 14px;
-    background: var(--la-canvas);
+    background: var(--la-surface);
     color: var(--la-text);
     box-shadow: 0 3px 12px
       color-mix(in srgb, var(--la-text) 8%, transparent);
@@ -1277,7 +1252,7 @@ export const EDIT_STYLES = `
     border: 1px solid var(--la-section-line);
     border-radius: 8px;
     outline: none;
-    background: color-mix(in srgb, var(--la-canvas) 82%, var(--la-group-fill));
+    background: color-mix(in srgb, var(--la-surface) 82%, var(--la-group-fill));
     color: var(--la-text);
     font: inherit;
   }
@@ -1314,7 +1289,7 @@ export const EDIT_STYLES = `
     outline: none;
     background: color-mix(
       in srgb,
-      var(--la-canvas) 82%,
+      var(--la-surface) 82%,
       var(--la-group-fill)
     );
     color: var(--la-text);
@@ -1356,7 +1331,7 @@ export const EDIT_STYLES = `
     padding: 8px;
     border: 1px solid var(--la-section-line);
     border-radius: 11px;
-    background: var(--la-canvas);
+    background: var(--la-surface);
     box-shadow: 0 3px 10px
       color-mix(in srgb, var(--la-text) 10%, transparent);
   }
@@ -2991,7 +2966,7 @@ function messageEndpoint(
       cx: x,
       cy: y,
       r: 3.5,
-      fill: "var(--la-canvas)",
+      fill: "var(--la-surface)",
       stroke: "var(--la-selection)",
       "stroke-width": 1.75,
       "pointer-events": "none",
@@ -4320,7 +4295,7 @@ export function renderEditor(target, input, options = {}) {
       inlineEditor.style.setProperty(
         "--la-inline-section-surface",
         section.depth <= 0
-          ? "var(--la-canvas)"
+          ? "var(--la-surface)"
           : (section.depth - 1) % 2 === 0
             ? "var(--la-group-fill)"
             : "var(--la-group-nested-fill)",
@@ -5648,7 +5623,7 @@ export function renderEditor(target, input, options = {}) {
         cx: target.centerX,
         cy: selfMessage ? bottom : y,
         r: 6,
-        fill: "var(--la-canvas)",
+        fill: "var(--la-surface)",
         stroke: "var(--la-selection)",
         "stroke-width": 1.5,
       }),
@@ -5667,11 +5642,9 @@ export function renderEditor(target, input, options = {}) {
     target.insertBefore(editStyle, frame);
     frame.dataset.mode = "edit";
     frame.tabIndex = 0;
-    frame.style.setProperty(
-      "--la-danger",
-      options.dangerColor ??
-        (frame.dataset.theme === "dark" ? "#FF8FA0" : "#B4384A"),
-    );
+    if (options.dangerColor) {
+      frame.style.setProperty("--la-danger", options.dangerColor);
+    }
 
     for (const group of layout.groups) {
       const element = svg.querySelector(`[data-la-id="${CSS.escape(group.id)}"]`);

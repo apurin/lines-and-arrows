@@ -17,6 +17,7 @@ export class LinesAndArrowsElement extends HTMLElementBase {
       "mode",
       "selectable",
       "branding",
+      "canvas-background",
     ];
   }
 
@@ -24,6 +25,7 @@ export class LinesAndArrowsElement extends HTMLElementBase {
   #iconResolver = phosphorIconResolver;
   #iconCatalog = phosphorIconCatalog;
   #layout = null;
+  #palette = null;
   #controller = null;
   #editor = null;
   #mediaQuery = null;
@@ -108,6 +110,38 @@ export class LinesAndArrowsElement extends HTMLElementBase {
       this.setAttribute("branding", "false");
     } else {
       this.removeAttribute("branding");
+    }
+  }
+
+  get canvasBackground() {
+    return this.getAttribute("canvas-background") === "transparent"
+      ? "transparent"
+      : "solid";
+  }
+
+  set canvasBackground(value) {
+    if (value !== "solid" && value !== "transparent") {
+      throw new TypeError(
+        'canvasBackground must be either "solid" or "transparent".',
+      );
+    }
+    this.setAttribute("canvas-background", value);
+  }
+
+  get palette() {
+    return this.#palette ? { ...this.#palette } : null;
+  }
+
+  set palette(value) {
+    if (
+      value !== null &&
+      (typeof value !== "object" || Array.isArray(value))
+    ) {
+      throw new TypeError("palette must be an object or null.");
+    }
+    this.#palette = value ? { ...value } : null;
+    if (this.isConnected) {
+      this.#render();
     }
   }
 
@@ -246,6 +280,8 @@ export class LinesAndArrowsElement extends HTMLElementBase {
         label: this.getAttribute("label") || "Sequence diagram",
         selectable: this.mode === "edit" ? true : this.selectable,
         branding: this.branding,
+        canvasBackground: this.canvasBackground,
+        palette: this.#palette,
         iconResolver: this.#iconResolver,
         iconCatalog: this.#iconCatalog,
         layout: this.#layout,

@@ -12,7 +12,7 @@ import {
 import { parse } from "./parser.js";
 import { serialize } from "./serialize.js";
 import { textLines } from "./text.js";
-import { resolveTheme } from "./theme.js";
+import { resolvePaletteTheme, resolveTheme } from "./theme.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const BRANDING_HREF = "https://lines-and-arrows.dev/";
@@ -125,20 +125,11 @@ const VIEW_STYLES = `
 
   .la-frame[data-selectable="true"]
     .la-message:focus-visible
-    .la-message-focus,
+    .la-message-selection-highlight,
   .la-frame[data-selectable="true"]
     .la-message[data-selected="true"]
-    .la-message-focus {
-    opacity: 0.24;
-  }
-
-  .la-frame[data-selectable="true"]
-    .la-message:focus-visible
-    .la-message-endpoint-highlight,
-  .la-frame[data-selectable="true"]
-    .la-message[data-selected="true"]
-    .la-message-endpoint-highlight {
-    opacity: 0.3;
+    .la-message-selection-highlight {
+    opacity: 0.26;
   }
 
   .la-tooltip-trigger {
@@ -171,7 +162,7 @@ const VIEW_STYLES = `
     border: 0;
     border-radius: 7px;
     background: var(--la-tooltip);
-    color: var(--la-canvas);
+    color: var(--la-tooltip-text);
     box-shadow: 0 3px 12px
       color-mix(in srgb, var(--la-text) 10%, transparent);
     white-space: pre-wrap;
@@ -320,13 +311,52 @@ function appendTextLines(
   }
 }
 
-function surfaceForDepth(depth, tokens) {
-  if (depth <= 0) {
-    return tokens.canvas;
-  }
-  return (depth - 1) % 2 === 0
-    ? tokens.groupFill
-    : tokens.groupNestedFill;
+function groupHeaderGeometry(group) {
+  const left = group.left + 16;
+  const right = group.right - 16;
+  const y = group.top + 19;
+  const typeWidth = textWidth(group.groupType, 11);
+  const headerTextGap = 8;
+  const labelX = left + typeWidth + headerTextGap;
+  const availableLabelWidth = Math.max(36, right - labelX);
+  const labelCharacters = Math.max(
+    6,
+    Math.floor(availableLabelWidth / (11 * 0.56)),
+  );
+  const visibleLines = textLines(group.label).map((line) =>
+    truncate(line, labelCharacters),
+  );
+  const labelWidth = Math.max(
+    0,
+    ...visibleLines.map((line) => textWidth(line, 11)),
+  );
+  return {
+    left,
+    y,
+    typeWidth,
+    labelX,
+    visibleLines,
+    labelWidth,
+    backplatePadding: 6,
+  };
+}
+
+function sectionLabelGeometry(section) {
+  const visibleLines = textLines(section.label).map((line) =>
+    truncate(line, 28),
+  );
+  const labelWidth =
+    Math.max(
+      36,
+      ...visibleLines.map((line) => textWidth(line, 10)),
+    ) + 16;
+  return {
+    visibleLines,
+    labelWidth,
+    x: section.left + 10,
+    y: section.top + 3,
+    height: visibleLines.length * 12 + 8,
+  };
 }
 
 function rippedEdgePoints(
@@ -368,6 +398,25 @@ function markerId(prefix, kind) {
   return `${prefix}-${kind}`;
 }
 
+function appendColorFilter(defs, id, color) {
+  const filter = svgElement("filter", {
+    id,
+    "color-interpolation-filters": "sRGB",
+  });
+  filter.append(
+    svgElement("feFlood", {
+      "flood-color": color,
+      result: `${id}-color`,
+    }),
+    svgElement("feComposite", {
+      in: `${id}-color`,
+      in2: "SourceAlpha",
+      operator: "in",
+    }),
+  );
+  defs.append(filter);
+}
+
 function appendDefinitions(svg, tokens, prefix) {
   const defs = svgElement("defs");
 
@@ -379,7 +428,7 @@ function appendDefinitions(svg, tokens, prefix) {
       id: markerId(prefix, kind),
       markerWidth: 8,
       markerHeight: 8,
-      refX: 7,
+      refX: 6,
       refY: 4,
       orient: "auto",
       markerUnits: "strokeWidth",
@@ -393,29 +442,80 @@ function appendDefinitions(svg, tokens, prefix) {
     defs.append(marker);
   }
 
-  const tooltipIconFilter = svgElement("filter", {
-    id: markerId(prefix, "tooltip-icon-color"),
-    "color-interpolation-filters": "sRGB",
-  });
-  tooltipIconFilter.append(
-    svgElement("feFlood", {
-      "flood-color": tokens.tagText,
-      result: "tooltip-icon-color",
-    }),
-    svgElement("feComposite", {
-      in: "tooltip-icon-color",
-      in2: "SourceAlpha",
-      operator: "in",
-    }),
+  appendColorFilter(
+    defs,
+    markerId(prefix, "tooltip-icon-color"),
+    tokens.tagText,
   );
-  defs.append(tooltipIconFilter);
+  appendColorFilter(
+    defs,
+    markerId(prefix, "actor-icon-color"),
+    tokens.actorText,
+  );
 
   svg.append(defs);
+}
+
+function appendCutoutMask(svg, id, layout, cutouts) {
+  const defs = svg.querySelector("defs");
+  if (!defs || cutouts.length === 0) {
+    return null;
+  }
+  const mask = svgElement("mask", {
+    id,
+    maskUnits: "userSpaceOnUse",
+    x: 0,
+    y: 0,
+    width: layout.width,
+    height: layout.height,
+  });
+  mask.append(
+    svgElement("rect", {
+      x: 0,
+      y: 0,
+      width: layout.width,
+      height: layout.height,
+      fill: "white",
+    }),
+  );
+  for (const cutout of cutouts) {
+    mask.append(
+      svgElement(cutout.type, {
+        ...cutout.attributes,
+        fill: "black",
+      }),
+    );
+  }
+  defs.append(mask);
+  return `url(#${id})`;
+}
+
+function appendGapMask(svg, layout, prefix) {
+  const cutouts = layout.rows
+    .filter((row) => row.type === "gap")
+    .map((row) => ({
+      type: "path",
+      attributes: {
+        d: rippedBandPath(
+          layout.contentLeft,
+          layout.contentRight,
+          row.top + 8,
+          row.top + row.height - 8,
+        ),
+      },
+    }));
+  return appendCutoutMask(
+    svg,
+    markerId(prefix, "gap-cutouts"),
+    layout,
+    cutouts,
+  );
 }
 
 function applyTokens(frame, tokens) {
   const properties = {
     "--la-canvas": tokens.canvas,
+    "--la-surface": tokens.surface,
     "--la-text": tokens.text,
     "--la-muted-text": tokens.mutedText,
     "--la-faint-text": tokens.faintText,
@@ -433,7 +533,10 @@ function applyTokens(frame, tokens) {
     "--la-tag-fill": tokens.tagFill,
     "--la-tag-text": tokens.tagText,
     "--la-tooltip": tokens.tooltip,
+    "--la-tooltip-text": tokens.tooltipText,
     "--la-selection": tokens.selection,
+    "--la-danger": tokens.danger,
+    "--la-danger-text": tokens.dangerText,
   };
 
   for (const [name, value] of Object.entries(properties)) {
@@ -877,11 +980,9 @@ function renderActor(
         y: 4,
         width: 18,
         height: 18,
+        filter: options.actorIconFilter,
         "pointer-events": "none",
       });
-      if (tokens.name === "light") {
-        image.style.filter = "invert(1) brightness(1.15)";
-      }
       image.addEventListener("load", () => {
         fallback.setAttribute("opacity", "0");
       });
@@ -988,31 +1089,15 @@ function renderGroupHeader(
     typeof options.groupPartActivatesSelection === "function"
       ? (part) => options.groupPartActivatesSelection(group.id, part)
       : null;
-  const surface =
-    group.depth % 2 === 0
-      ? tokens.groupFill
-      : tokens.groupNestedFill;
-  const left = group.left + 16;
-  const right = group.right - 16;
-  const y = group.top + 19;
-  const typeWidth = textWidth(group.groupType, 11);
-  const headerTextGap = 8;
-  const labelX = left + typeWidth + headerTextGap;
-  const availableLabelWidth = Math.max(
-    36,
-    right - labelX,
-  );
-  const labelCharacters = Math.max(
-    6,
-    Math.floor(availableLabelWidth / (11 * 0.56)),
-  );
-  const visibleLines = textLines(group.label).map((line) =>
-    truncate(line, labelCharacters),
-  );
-  const labelWidth = Math.max(
-    0,
-    ...visibleLines.map((line) => textWidth(line, 11)),
-  );
+  const {
+    left,
+    y,
+    typeWidth,
+    labelX,
+    visibleLines,
+    labelWidth,
+    backplatePadding,
+  } = groupHeaderGeometry(group);
   const header = svgElement("g", {
     class: "la-group-header",
     "data-la-group-header-id": group.id,
@@ -1020,8 +1105,6 @@ function renderGroupHeader(
   if (!activatePart) {
     header.setAttribute("pointer-events", "none");
   }
-  const backplatePadding = 6;
-
   header.append(
     svgElement("rect", {
       class: "la-group-type-shape",
@@ -1030,7 +1113,7 @@ function renderGroupHeader(
       width: typeWidth + backplatePadding * 2,
       height: 20,
       rx: 5,
-      fill: surface,
+      fill: "transparent",
     }),
   );
 
@@ -1043,7 +1126,7 @@ function renderGroupHeader(
         width: labelWidth + backplatePadding * 2,
         height: visibleLines.length * 13 + 7,
         rx: 5,
-        fill: surface,
+        fill: "transparent",
       }),
     );
   }
@@ -1134,36 +1217,27 @@ function renderSection(parent, section, tokens, selection) {
   makeSelectable(group, section, selection, `Section ${section.label}`);
   const lineStart = section.left;
   const lineEnd = section.right;
-  const visibleLines = textLines(section.label).map((line) =>
-    truncate(line, 28),
-  );
-  const labelWidth =
-    Math.max(
-      36,
-      ...visibleLines.map((line) => textWidth(line, 10)),
-    ) + 16;
+  const { visibleLines, labelWidth } = sectionLabelGeometry(section);
 
-  group.append(
-    svgElement("line", {
-      class: "la-section-line",
-      x1: lineStart,
-      y1: section.y,
-      x2: lineEnd,
-      y2: section.y,
-      stroke: tokens.sectionLine,
-      "stroke-width": 1,
-    }),
-  );
-  group.append(
-    svgElement("rect", {
-      x: lineStart + 10,
-      y: section.top + 3,
-      width: labelWidth,
-      height: visibleLines.length * 12 + 8,
-      rx: 5,
-      fill: surfaceForDepth(section.depth, tokens),
-    }),
-  );
+  for (const [x1, x2] of [
+    [lineStart, lineStart + 6],
+    [lineStart + 10 + labelWidth + 4, lineEnd],
+  ]) {
+    if (x2 <= x1) {
+      continue;
+    }
+    group.append(
+      svgElement("line", {
+        class: "la-section-line",
+        x1,
+        y1: section.y,
+        x2,
+        y2: section.y,
+        stroke: tokens.sectionLine,
+        "stroke-width": 1,
+      }),
+    );
+  }
   const label = svgElement("text", {
     x: lineStart + 18,
     "font-size": 10,
@@ -1190,8 +1264,8 @@ function renderLifelines(parent, layout, tokens) {
         y1: layout.lifelineTop,
         x2: actor.centerX,
         y2: layout.lifelineBottom,
-        stroke: tokens.actor,
-        "stroke-width": 1.75,
+        stroke: tokens.lifeline,
+        "stroke-width": 2.5,
         "stroke-linecap": "square",
         "pointer-events": "none",
       }),
@@ -1329,19 +1403,22 @@ function renderMessage(
 
   const selfMessage = source.centerX === target.centerX;
   const sourceY = selfMessage ? row.y - 13 : row.y;
+  const selectionHighlight = svgElement("g", {
+    class: "la-message-selection-highlight",
+    opacity: 0,
+    "pointer-events": "none",
+  });
   for (const [x, y] of [
     [source.centerX, sourceY],
     [geometry.endX, geometry.endY],
   ]) {
-    group.append(
+    selectionHighlight.append(
       svgElement("circle", {
         class: "la-message-endpoint-highlight",
         cx: x,
         cy: y,
         r: 8,
         fill: tokens.selection,
-        opacity: 0,
-        "pointer-events": "none",
       }),
     );
   }
@@ -1352,11 +1429,10 @@ function renderMessage(
     fill: "none",
     stroke: tokens.selection,
     "stroke-width": 7,
-    opacity: 0,
     "stroke-linecap": "round",
-    "pointer-events": "none",
   });
-  group.append(focusPath);
+  selectionHighlight.append(focusPath);
+  group.append(selectionHighlight);
 
   group.append(
     svgElement("path", {
@@ -1423,32 +1499,12 @@ function renderMessage(
   if (row.label) {
     const {
       visibleLines,
-      textWidth: labelTextWidth,
       lineHeight,
-      height: labelHeight,
     } =
       messageLabelMetrics(
         row.label,
         layout.options.messageLabelMaxWidth,
       );
-    const labelPaddingX = 5;
-
-    group.append(
-      svgElement("rect", {
-        class: "la-message-label-shape",
-        x:
-          geometry.labelX -
-          labelTextWidth / 2 -
-          labelPaddingX,
-        y: geometry.labelY - labelHeight + 1,
-        width: labelTextWidth + labelPaddingX * 2,
-        height: labelHeight + 5,
-        rx: 4,
-        fill: surfaceForDepth(row.depth, tokens),
-        "pointer-events": "none",
-      }),
-    );
-
     const label = svgElement("text", {
       class: "la-message-label",
       x: geometry.labelX,
@@ -1506,11 +1562,6 @@ function renderGap(parent, row, layout, tokens, selection) {
   const visibleLines = textLines(row.label).map((line) =>
     truncate(line, 46),
   );
-  const labelWidth =
-    Math.max(
-      48,
-      ...visibleLines.map((line) => textWidth(line, 10)),
-    ) + 22;
   const labelHeight = visibleLines.length * 12 + 12;
   const centerX = layout.width / 2;
   const topEdge = row.top + 8;
@@ -1539,20 +1590,6 @@ function renderGap(parent, row, layout, tokens, selection) {
     }),
   );
 
-  group.append(
-    svgElement("path", {
-      d: rippedBandPath(
-        layout.contentLeft,
-        layout.contentRight,
-        topEdge,
-        bottomEdge,
-      ),
-      fill: tokens.canvas,
-      "fill-opacity": 0.96,
-      "pointer-events": "none",
-    }),
-  );
-
   for (const edge of [topRip, bottomRip]) {
     group.append(
       svgElement("path", {
@@ -1566,17 +1603,6 @@ function renderGap(parent, row, layout, tokens, selection) {
       }),
     );
   }
-
-  group.append(
-    svgElement("rect", {
-      x: centerX - labelWidth / 2,
-      y: row.y - labelHeight / 2,
-      width: labelWidth,
-      height: labelHeight,
-      rx: 7,
-      fill: tokens.canvas,
-    }),
-  );
 
   const label = svgElement("text", {
     class: "la-gap-label",
@@ -1770,7 +1796,23 @@ export function renderDiagram(target, input, options = {}) {
   if (typeof input !== "string") {
     serialize(documentModel);
   }
-  const tokens = resolveTheme(options.theme, globalThis);
+  const baseTheme = resolveTheme(options.theme, globalThis);
+  const usesPalette =
+    options.palette !== null && options.palette !== undefined;
+  const canvasBackground = options.canvasBackground ?? "solid";
+  if (canvasBackground !== "solid" && canvasBackground !== "transparent") {
+    throw new TypeError(
+      'canvasBackground must be either "solid" or "transparent".',
+    );
+  }
+  const tokens =
+    usesPalette || canvasBackground === "transparent"
+      ? resolvePaletteTheme(
+          baseTheme,
+          options.palette ?? {},
+          canvasBackground,
+        )
+      : baseTheme;
   const branding = options.branding !== false;
   const layout = layoutDiagram(documentModel, options.layout);
   const prefix = `la-${rendererSequence}`;
@@ -1798,11 +1840,19 @@ export function renderDiagram(target, input, options = {}) {
   appendDefinitions(svg, tokens, prefix);
   const renderOptions = {
     ...options,
+    actorIconFilter: `url(#${markerId(
+      prefix,
+      "actor-icon-color",
+    )})`,
     tooltipIconFilter: `url(#${markerId(
       prefix,
       "tooltip-icon-color",
     )})`,
   };
+  frame.style.setProperty(
+    "--la-actor-icon-filter",
+    renderOptions.actorIconFilter,
+  );
   const tooltipLayer = document.createElement("div");
   tooltipLayer.className = "la-tooltip-layer";
   tooltipLayer.cleanups = [];
@@ -1814,15 +1864,21 @@ export function renderDiagram(target, input, options = {}) {
     models: indexSelectableModels(documentModel),
   });
 
-  for (const group of layout.groups) {
-    renderGroupBackground(svg, group, tokens, selection);
+  const gapMask = appendGapMask(svg, layout, prefix);
+  const groupLayer = svgElement("g", { class: "la-group-layer" });
+  const lifelineLayer = svgElement("g", { class: "la-lifeline-layer" });
+  const headerLayer = svgElement("g", { class: "la-header-layer" });
+  if (gapMask) {
+    groupLayer.setAttribute("mask", gapMask);
+    lifelineLayer.setAttribute("mask", gapMask);
   }
-
-  renderLifelines(svg, layout, tokens);
-
+  for (const group of layout.groups) {
+    renderGroupBackground(groupLayer, group, tokens, selection);
+  }
+  renderLifelines(lifelineLayer, layout, tokens);
   for (const group of layout.groups) {
     renderGroupHeader(
-      svg,
+      headerLayer,
       group,
       tokens,
       renderOptions,
@@ -1830,8 +1886,9 @@ export function renderDiagram(target, input, options = {}) {
     );
   }
   for (const section of layout.sections) {
-    renderSection(svg, section, tokens, selection);
+    renderSection(headerLayer, section, tokens, selection);
   }
+  svg.append(lifelineLayer, groupLayer, headerLayer);
   for (const row of layout.rows) {
     if (row.type === "message") {
       renderMessage(

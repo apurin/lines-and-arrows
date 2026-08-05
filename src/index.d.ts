@@ -39,10 +39,21 @@ export {
 
 export type ThemeName = "light" | "dark" | "auto";
 export type EditorMode = "view" | "edit";
+export type CanvasBackground = "solid" | "transparent";
+
+export interface ThemePalette {
+  background?: string;
+  foreground?: string;
+  accent?: string;
+  accentForeground?: string;
+  danger?: string;
+  dangerForeground?: string;
+}
 
 export interface Theme {
   name: "light" | "dark";
   canvas: string;
+  surface: string;
   text: string;
   mutedText: string;
   faintText: string;
@@ -61,6 +72,9 @@ export interface Theme {
   tagText: string;
   selection: string;
   tooltip: string;
+  tooltipText: string;
+  danger: string;
+  dangerText: string;
 }
 
 export interface SelectionDetail {
@@ -117,6 +131,8 @@ export function phosphorIconResolver(
 
 export interface RenderOptions {
   theme?: ThemeName;
+  palette?: ThemePalette | null;
+  canvasBackground?: CanvasBackground;
   label?: string;
   selectable?: boolean;
   branding?: boolean;
@@ -352,6 +368,8 @@ export class LinesAndArrowsElement extends HTMLElement {
   mode: EditorMode;
   selectable: boolean;
   branding: boolean;
+  canvasBackground: CanvasBackground;
+  palette: ThemePalette | null;
   get iconResolver(): IconResolver | null;
   set iconResolver(value: IconResolver | null);
   get iconCatalog(): IconCatalogEntry[];

@@ -171,11 +171,12 @@ Snapshots are replaced atomically for edits, undo, and redo. `serialize()`
 also validates programmatically constructed documents and rejects ambiguous
 structures, such as a group containing both direct items and sections.
 
-The `<lines-and-arrows>` element exposes `source`, `mode`, `theme`,
-`selectable`, `branding`, `layout`, `iconResolver`, and `iconCatalog`, plus
-selection, history, and source-replacement methods. The JavaScript renderers
-accept the same `branding` boolean and default it to `true`. `select(id)` and
-user selection both emit `la-select` with the selected immutable model item.
+The `<lines-and-arrows>` element exposes `source`, `mode`, `theme`, `palette`,
+`canvasBackground`, `selectable`, `branding`, `layout`, `iconResolver`, and
+`iconCatalog`, plus selection, history, and source-replacement methods. The
+JavaScript renderers accept the same `branding` boolean and default it to
+`true`. `select(id)` and user selection both emit `la-select` with the selected
+immutable model item.
 `la-change` is emitted only after a command commits a different source; its
 detail contains the new source, immutable AST snapshot, command name, and
 history state.
@@ -203,8 +204,30 @@ declarations, validation CLI, syntax reference, licenses, and notices.
 
 ## Themes and icons
 
-Use `theme: "light"`, `"dark"`, or `"auto"`. Actor and tooltip icons work
-without configuration through the default Phosphor resolver. Set
+Use `theme: "light"`, `"dark"`, or `"auto"`. Supply a small per-diagram
+palette when the diagram should follow a host surface:
+
+```js
+diagram.palette = {
+  background: "var(--page)",
+  foreground: "var(--text)",
+  accent: "var(--accent)",
+  danger: "var(--danger)",
+};
+diagram.canvasBackground = "transparent";
+```
+
+The renderer derives muted text, lines, nested group fills, tags, selection,
+and editor surfaces from these colors. `accentForeground` and
+`dangerForeground` are optional contrast overrides. `renderDiagram()` and
+`renderEditor()` accept the same `palette` and `canvasBackground` options.
+Lifelines use a low-opacity version of the actor accent and sit behind every
+other diagram layer, except where a gap cuts through them and group fills
+completely. Metadata pills use opaque derived surfaces. This keeps the host
+background visible without painted backplates or label-specific line segments.
+
+Actor and tooltip icons work without configuration through the default
+Phosphor resolver. Set
 `iconResolver(name, theme)` and `iconCatalog` to provide another icon set. On
 the custom element, set either property to `null` to disable the resolver or
 clear the catalog.

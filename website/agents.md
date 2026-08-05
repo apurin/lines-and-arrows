@@ -36,10 +36,45 @@ framework is required.
 </html>
 ```
 
-Use `mode="edit"` for the visual editor. Use `selectable="false"` for a
-non-interactive view and `branding="false"` to hide the attribution. The
-`@0.3` CDN URL accepts compatible patch releases; use `@0.3.0` to pin the exact
-release.
+The `@0.3` CDN URL accepts compatible patch releases; use `@0.3.0` to pin the
+exact release.
+
+## Configure the web component
+
+Set configuration through attributes on `<lines-and-arrows>`:
+
+| Attribute | Values and behavior |
+| --- | --- |
+| `mode` | `view` by default. Use `edit` to enable the visual editor, its undo and redo controls, and editing keyboard shortcuts. |
+| `selectable` | Diagram elements are selectable in view mode by default. Use `false` for a non-interactive view. Edit mode remains selectable because selection is required for editing. |
+| `branding` | The “Powered by Lines & Arrows” attribution is shown by default. Use `false` to hide it. |
+| `theme` | `auto`, `light`, or `dark`. The default is `auto`. |
+| `canvas-background` | `solid` by default. Use `transparent` when the host supplies a matching palette through the element's `palette` property. |
+| `label` | An accessible name describing the diagram. |
+
+Undo and redo do not use a separate enablement attribute. They are available
+in edit mode through the rendered controls, standard keyboard shortcuts, and
+the element's `undo()` and `redo()` methods. The `canUndo` and `canRedo`
+properties report whether each action is currently available.
+
+For example, this creates a selectable view without the attribution:
+
+```html
+<lines-and-arrows
+  mode="view"
+  selectable="true"
+  branding="false"
+  theme="auto"
+>
+  Client -> API: Request
+  API --> Client: Response
+</lines-and-arrows>
+```
+
+For host-specific colors, assign `palette` as a JavaScript property with
+`background`, `foreground`, `accent`, and `danger` CSS colors. The renderer
+derives its remaining colors; optional `accentForeground` and
+`dangerForeground` values can override automatic contrast choices.
 
 ## Use the npm package
 

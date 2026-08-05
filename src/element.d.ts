@@ -4,6 +4,7 @@ export {
 } from "./index.js";
 export type {
   ChangeDetail,
+  CanvasBackground,
   EditorMode,
   ErrorDetail,
   IconCatalogEntry,
@@ -11,5 +12,6 @@ export type {
   LinesAndArrowsEventMap,
   RenderOptions,
   SelectionDetail,
+  ThemePalette,
   ThemeName,
 } from "./index.js";
