@@ -265,6 +265,37 @@ test("creates, edits, reorders, and removes group sections", () => {
   assert.doesNotThrow(() => parse(editor.source));
 });
 
+test("preserves timeline order when removing a non-final section", () => {
+  const createEditor = () =>
+    new DiagramEditor(`@A
+@B
+
+choice Result
+  | first
+    A -> B: First
+  | second
+    B -> A: Second
+  | third
+    A -> B: Third
+`);
+  const labels = (editor) =>
+    editor.document.items[0].sections.flatMap((section) =>
+      section.items.map((item) => item.label),
+    );
+
+  const firstEditor = createEditor();
+  firstEditor.removeSection(
+    firstEditor.document.items[0].sections[0].id,
+  );
+  assert.deepEqual(labels(firstEditor), ["First", "Second", "Third"]);
+
+  const middleEditor = createEditor();
+  middleEditor.removeSection(
+    middleEditor.document.items[0].sections[1].id,
+  );
+  assert.deepEqual(labels(middleEditor), ["First", "Second", "Third"]);
+});
+
 test("source replacement participates in undo history", () => {
   const editor = new DiagramEditor(SOURCE);
   editor.replaceSource(`@A

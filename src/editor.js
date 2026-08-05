@@ -879,10 +879,13 @@ export class DiagramEditor {
         return group.id;
       }
 
-      const destination =
-        location.sections[
-          Math.min(location.index, location.sections.length - 1)
-        ];
+      const followingSection = location.sections[location.index];
+      if (followingSection) {
+        followingSection.items.unshift(...section.items);
+        return followingSection.id;
+      }
+
+      const destination = location.sections[location.index - 1];
       destination.items.push(...section.items);
       return destination.id;
     });
