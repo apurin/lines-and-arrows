@@ -637,7 +637,7 @@ export class DiagramEditor {
           item.groupType = requiredGroupType(patch.groupType);
         }
         if (Object.hasOwn(patch, "label")) {
-          item.label = requiredText(patch.label, "Group label");
+          item.label = optionalText(patch.label);
         }
       }
       return item.id;
@@ -747,7 +747,7 @@ export class DiagramEditor {
         type: "group",
         id: this.#ids.next("item"),
         groupType: requiredGroupType(groupType),
-        label: requiredText(label, "Group label"),
+        label: optionalText(label),
         items: grouped,
         sections: [],
         leadingComments: [],

@@ -13,6 +13,7 @@ import {
 import {
   SELF_MESSAGE_MIN_WIDTH,
   messageLabelMetrics,
+  metadataMetrics,
   selfMessageWidth,
 } from "./metadata.js";
 import { renderDiagram } from "./render.js";
@@ -37,6 +38,95 @@ export const EDIT_STYLES = `
 
   .la-frame[data-mode="edit"] .la-selectable[data-selected="true"] {
     cursor: grab;
+  }
+
+  .la-frame[data-selection-active="true"] .la-insertion-layer,
+  .la-frame[data-selection-active="true"] .la-connection-layer,
+  .la-frame[data-selection-active="true"] .la-history-controls,
+  .la-frame[data-selection-active="true"] .la-tooltip-layer {
+    display: none;
+  }
+
+  .la-frame[data-selection-active="true"]
+    .la-selectable:not([data-selected="true"]),
+  .la-frame[data-selection-active="true"]
+    .la-selectable:not([data-selected="true"])
+    *,
+  .la-frame[data-selection-active="true"] .la-group-part-hit,
+  .la-frame[data-selection-active="true"]
+    .la-message-endpoint:not([data-visible="true"]) {
+    pointer-events: none;
+  }
+
+  .la-frame[data-selection-active="true"]
+    .la-selectable:not([data-selected="true"]),
+  .la-frame[data-selection-active="true"]
+    .la-selectable:not([data-selected="true"])
+    * {
+    cursor: default;
+  }
+
+  .la-frame[data-selection-active="true"]
+    .la-message-endpoint:not([data-visible="true"]) {
+    display: none;
+  }
+
+  .la-frame[data-selection-active="true"]
+    .la-actor:not([data-selected="true"])
+    .la-actor-shape {
+    fill: var(--la-actor);
+  }
+
+  .la-frame[data-selection-active="true"]
+    .la-actor:not([data-selected="true"])
+    .la-focus-ring,
+  .la-frame[data-selection-active="true"]
+    .la-message:not([data-selected="true"])
+    .la-message-focus,
+  .la-frame[data-selection-active="true"]
+    .la-message:not([data-selected="true"])
+    .la-message-endpoint-highlight {
+    opacity: 0;
+  }
+
+  .la-frame[data-selection-active="true"]
+    .la-message:not([data-selected="true"])
+    .la-message-line,
+  .la-frame[data-selection-active="true"]
+    .la-message:not([data-selected="true"])
+    .la-lost-cross {
+    stroke: var(--la-line);
+  }
+
+  .la-frame[data-selection-active="true"]
+    .la-message:not([data-selected="true"])
+    .la-message-label {
+    fill: var(--la-text);
+  }
+
+  .la-frame[data-selection-active="true"]
+    .la-group-hit:not([data-selected="true"])
+    + .la-group-shape {
+    stroke-opacity: 0;
+  }
+
+  .la-frame[data-selection-active="true"]
+    .la-section:not([data-selected="true"])
+    .la-section-line {
+    stroke: var(--la-section-line);
+  }
+
+  .la-frame[data-selection-active="true"]
+    .la-gap:not([data-selected="true"])
+    .la-gap-rule {
+    stroke: var(--la-lifeline);
+  }
+
+  .la-frame[data-selection-active="true"]
+    .la-tooltip-trigger
+    .la-tooltip-trigger-shape {
+    fill: var(--la-tag-fill);
+    stroke: transparent;
   }
 
   .la-inline-gap-editor {
@@ -124,6 +214,10 @@ export const EDIT_STYLES = `
   .la-inline-gap-delete:focus-visible,
   .la-inline-actor-delete:hover,
   .la-inline-actor-delete:focus-visible,
+  .la-inline-group-delete:hover,
+  .la-inline-group-delete:focus-visible,
+  .la-inline-section-delete:hover,
+  .la-inline-section-delete:focus-visible,
   .la-inline-message-delete:hover,
   .la-inline-message-delete:focus-visible {
     box-shadow: 0 0 0 2px
@@ -304,8 +398,9 @@ export const EDIT_STYLES = `
     min-width: var(--la-inline-actor-pill-min-width, 38px);
     height: var(--la-inline-actor-pill-height, 20px);
     margin: 0;
-    padding: 0 var(--la-inline-actor-pill-padding, 10px);
-    border: 1px solid var(--la-section-line);
+    padding: 0
+      calc(var(--la-inline-actor-pill-padding, 10px) - 2px);
+    border: 1px solid transparent;
     border-radius: var(--la-inline-actor-pill-radius, 10px);
     outline: none;
     background: var(--la-tag-fill);
@@ -325,6 +420,7 @@ export const EDIT_STYLES = `
   }
 
   .la-inline-actor-pill:placeholder-shown {
+    border-color: var(--la-section-line);
     border-style: dashed;
     background: transparent;
   }
@@ -337,15 +433,10 @@ export const EDIT_STYLES = `
   .la-inline-actor-delete {
     position: absolute;
     z-index: 9;
-    top: calc(
-      var(--la-inline-delete-inset, 2px) -
-        var(--la-inline-delete-size, 20px) / 2
-    );
-    right: calc(
-      var(--la-inline-delete-inset, 2px) -
-        var(--la-inline-delete-size, 20px) / 2
-    );
+    top: 50%;
+    right: calc(0px - var(--la-inline-delete-size, 20px) / 2);
     pointer-events: auto;
+    transform: translateY(-50%);
   }
 
   .la-inline-actor-tooltip-control {
@@ -513,6 +604,237 @@ export const EDIT_STYLES = `
   .la-inline-actor-editor .la-edit-error {
     position: absolute;
     top: calc(100% + var(--la-inline-actor-metadata-gap, 6px) + 24px);
+    left: 50%;
+    width: max-content;
+    max-width: 220px;
+    margin: 0;
+    padding: 3px 6px;
+    border-radius: 6px;
+    background: var(--la-canvas);
+    text-align: center;
+    transform: translateX(-50%);
+  }
+
+  .la-inline-group-editor {
+    position: fixed;
+    z-index: 5;
+    overflow: visible;
+    pointer-events: none;
+    font-family: var(
+      --la-font-family,
+      ui-sans-serif,
+      system-ui,
+      sans-serif
+    );
+  }
+
+  .la-inline-group-editor *,
+  .la-inline-group-editor *::before,
+  .la-inline-group-editor *::after {
+    box-sizing: border-box;
+  }
+
+  .la-inline-group-row {
+    position: absolute;
+    display: flex;
+    gap: var(--la-inline-group-gap, 5px);
+    align-items: center;
+    pointer-events: auto;
+  }
+
+  .la-inline-group-field {
+    display: flex;
+    min-width: 0;
+    height: var(--la-inline-group-control-height, 20px);
+    gap: var(--la-inline-group-field-gap, 4px);
+    align-items: center;
+    flex: none;
+  }
+
+  .la-inline-group-label-field {
+    flex: 1 1 auto;
+  }
+
+  .la-inline-group-field-name {
+    color: var(--la-muted-text);
+    font-size: var(--la-inline-group-caption-font-size, 9px);
+    font-weight: 650;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .la-inline-group-type,
+  .la-inline-group-label,
+  .la-inline-group-action {
+    height: var(--la-inline-group-control-height, 20px);
+    margin: 0;
+    outline: none;
+    color: var(--la-text);
+    font: 650 var(--la-inline-group-font-size, 11px)/1 var(
+      --la-font-family,
+      ui-sans-serif,
+      system-ui,
+      sans-serif
+    );
+  }
+
+  .la-inline-group-type {
+    flex: none;
+    padding: 0 var(--la-inline-group-pill-padding, 8px);
+    appearance: none;
+    border: 0;
+    border-radius: var(--la-inline-group-pill-radius, 10px);
+    background: color-mix(
+      in srgb,
+      var(--la-canvas) 76%,
+      var(--la-group-fill)
+    );
+    color: var(--la-text);
+    text-align: center;
+  }
+
+  .la-inline-group-label {
+    min-width: 0;
+    padding: calc(
+        (
+            var(--la-inline-group-control-height, 20px) -
+              var(--la-inline-group-font-size, 11px)
+          ) /
+          2
+      )
+      var(--la-inline-group-pill-padding, 8px);
+    overflow: hidden;
+    flex: 1 1 auto;
+    appearance: none;
+    border: 0;
+    border-radius: var(--la-inline-group-pill-radius, 10px);
+    resize: none;
+    background: color-mix(
+      in srgb,
+      var(--la-canvas) 76%,
+      var(--la-group-fill)
+    );
+    text-align: left;
+    white-space: pre;
+  }
+
+  .la-inline-group-actions {
+    display: flex;
+    gap: var(--la-inline-group-action-gap, 4px);
+    align-items: center;
+    margin-left: auto;
+    flex: none;
+  }
+
+  .la-inline-group-action {
+    padding: 0 var(--la-inline-group-action-padding, 9px);
+    cursor: pointer;
+    border: 1px solid color-mix(
+      in srgb,
+      var(--la-selection) 34%,
+      var(--la-section-line)
+    );
+    border-radius: var(--la-inline-group-pill-radius, 10px);
+    background: color-mix(
+      in srgb,
+      var(--la-accent-soft) 58%,
+      var(--la-canvas)
+    );
+    color: var(--la-text);
+  }
+
+  .la-inline-group-action:hover,
+  .la-inline-group-action:focus-visible {
+    border-color: var(--la-selection);
+    color: var(--la-text);
+  }
+
+  .la-inline-group-action:hover,
+  .la-inline-group-action:focus-visible {
+    background: var(--la-accent-soft);
+  }
+
+  .la-inline-group-delete {
+    position: relative;
+    flex: none;
+    pointer-events: auto;
+  }
+
+  .la-inline-group-editor .la-edit-error {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 50%;
+    width: max-content;
+    max-width: 220px;
+    margin: 0;
+    padding: 3px 6px;
+    border-radius: 6px;
+    background: var(--la-canvas);
+    text-align: center;
+    transform: translateX(-50%);
+  }
+
+  .la-inline-section-editor {
+    position: fixed;
+    z-index: 5;
+    display: flex;
+    gap: var(--la-inline-section-gap, 4px);
+    align-items: center;
+    overflow: visible;
+    pointer-events: none;
+    font-family: var(
+      --la-font-family,
+      ui-sans-serif,
+      system-ui,
+      sans-serif
+    );
+  }
+
+  .la-inline-section-editor *,
+  .la-inline-section-editor *::before,
+  .la-inline-section-editor *::after {
+    box-sizing: border-box;
+  }
+
+  .la-inline-section-label {
+    min-width: 0;
+    height: 100%;
+    margin: 0;
+    padding: var(--la-inline-section-padding-y, 4px)
+      var(--la-inline-section-padding-x, 8px);
+    overflow: hidden;
+    flex: none;
+    pointer-events: auto;
+    appearance: none;
+    border: 0;
+    border-radius: var(--la-inline-section-radius, 5px);
+    outline: none;
+    resize: none;
+    background: var(--la-inline-section-surface, var(--la-group-fill));
+    color: var(--la-muted-text);
+    font: 650 var(--la-inline-section-font-size, 10px)/var(
+        --la-inline-section-line-height,
+        12px
+      ) var(
+        --la-font-family,
+        ui-sans-serif,
+        system-ui,
+        sans-serif
+      );
+    text-align: left;
+    white-space: pre;
+  }
+
+  .la-inline-section-delete {
+    position: relative;
+    margin-left: auto;
+    flex: none;
+    pointer-events: auto;
+  }
+
+  .la-inline-section-editor .la-edit-error {
+    position: absolute;
+    top: calc(100% + 5px);
     left: 50%;
     width: max-content;
     max-width: 220px;
@@ -1587,6 +1909,22 @@ function removeInlineGapEditor(frame) {
 function removeInlineActorEditor(frame) {
   const inlineEditor = frame?.querySelector(
     ".la-inline-actor-editor",
+  );
+  inlineEditor?.cleanup?.();
+  inlineEditor?.remove();
+}
+
+function removeInlineGroupEditor(frame) {
+  const inlineEditor = frame?.querySelector(
+    ".la-inline-group-editor",
+  );
+  inlineEditor?.cleanup?.();
+  inlineEditor?.remove();
+}
+
+function removeInlineSectionEditor(frame) {
+  const inlineEditor = frame?.querySelector(
+    ".la-inline-section-editor",
   );
   inlineEditor?.cleanup?.();
   inlineEditor?.remove();
@@ -2670,11 +3008,17 @@ function messageEndpoint(
 
 function applySelectedVisuals(svg, ids) {
   const selected = new Set(ids);
+  const hasSelection = selected.size > 0;
+  const frame = svg.closest(".la-frame");
+  if (frame) {
+    frame.dataset.selectionActive = String(hasSelection);
+  }
   svg.querySelectorAll("[data-la-id]").forEach((element) => {
     const isSelected = selected.has(element.dataset.laId);
     const isHighlighted =
       isSelected ||
-      element.matches(":hover, :focus, :focus-visible");
+      (!hasSelection &&
+        element.matches(":hover, :focus, :focus-visible"));
     element.dataset.selected = String(isSelected);
     element.setAttribute("aria-pressed", String(isSelected));
     element.querySelectorAll("[data-marker-normal]").forEach((line) => {
@@ -2685,6 +3029,19 @@ function applySelectedVisuals(svg, ids) {
           : line.dataset.markerNormal,
       );
     });
+    element.setAttribute(
+      "tabindex",
+      hasSelection && !isSelected ? "-1" : "0",
+    );
+    element.querySelectorAll("[tabindex]").forEach((control) => {
+      control.setAttribute(
+        "tabindex",
+        hasSelection && !isSelected ? "-1" : "0",
+      );
+    });
+  });
+  svg.querySelectorAll(".la-group-part-hit").forEach((control) => {
+    control.setAttribute("tabindex", hasSelection ? "-1" : "0");
   });
   svg.querySelectorAll(".la-reorder-handle").forEach((handle) => {
     handle.dataset.visible = String(
@@ -2715,6 +3072,7 @@ export function renderEditor(target, input, options = {}) {
   let transient = null;
   let pendingFocus = null;
   let pendingActorPart = null;
+  let pendingGroupPart = null;
   let pendingMessagePart = null;
   let pendingInlineDraw = null;
 
@@ -2801,11 +3159,18 @@ export function renderEditor(target, input, options = {}) {
       if (!field.isConnected) {
         return;
       }
-      field.focus();
-      if (
-        field.classList.contains("la-inline-gap-label") ||
+      field.focus({ preventScroll: true });
+      const placeCaretAtEnd =
         field.classList.contains("la-inline-actor-name") ||
-        field.classList.contains("la-inline-message-label")
+        field.classList.contains("la-inline-group-label") ||
+        field.classList.contains("la-inline-message-label");
+      if (placeCaretAtEnd && field.setSelectionRange) {
+        const end = field.value.length;
+        field.setSelectionRange(end, end);
+      } else if (
+        field.classList.contains("la-inline-gap-label") ||
+        field.classList.contains("la-inline-group-type") ||
+        field.classList.contains("la-inline-section-label")
       ) {
         field.select();
       }
@@ -2953,19 +3318,11 @@ export function renderEditor(target, input, options = {}) {
     const dirtyFields = new Set();
 
     let metadataScale = 1;
-    const sizePill = (control, minimumWidth, maximumWidth) => {
-      const content = control.value || control.placeholder;
-      const baseWidth = Math.min(
-        maximumWidth,
-        Math.max(
-          minimumWidth,
-          Array.from(content).length * 5.6 + 20,
-        ),
-      );
-      control.style.width = `${baseWidth * metadataScale}px`;
-    };
     const sizeMetadataPills = () => {
-      sizePill(tagControl, 50, 104);
+      const width = tagControl.value
+        ? metadataMetrics(tagControl.value, false).tagWidth
+        : 50;
+      tagControl.style.width = `${width * metadataScale}px`;
     };
     sizeMetadataPills();
     nameControl.addEventListener("input", () => {
@@ -3265,10 +3622,6 @@ export function renderEditor(target, input, options = {}) {
         `${20 * scale}px`,
       );
       inlineEditor.style.setProperty(
-        "--la-inline-delete-inset",
-        `${2 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
         "--la-inline-delete-cross-thickness",
         `${1.5 * scale}px`,
       );
@@ -3437,6 +3790,597 @@ export function renderEditor(target, input, options = {}) {
     positionEditor();
   }
 
+  function addInlineGroupEditor(frame, layout, model) {
+    const group = layout.groups.find(
+      (candidate) => candidate.id === model.id,
+    );
+    const header = frame.querySelector(
+      `[data-la-group-header-id="${CSS.escape(model.id)}"]`,
+    );
+    const svg = header?.ownerSVGElement;
+    if (!group || !header || !svg) {
+      return;
+    }
+
+    const previousVisibility = header.style.visibility;
+    header.style.visibility = "hidden";
+
+    const inlineEditor = document.createElement("div");
+    inlineEditor.className = "la-inline-group-editor";
+    inlineEditor.setAttribute("role", "group");
+    inlineEditor.setAttribute(
+      "aria-label",
+      `Edit ${model.groupType} group${model.label ? `, ${model.label}` : ""}`,
+    );
+
+    const row = document.createElement("div");
+    row.className = "la-inline-group-row";
+
+    const typeControl = document.createElement("input");
+    typeControl.type = "text";
+    typeControl.className = "la-inline-group-type";
+    typeControl.dataset.field = "group-type";
+    typeControl.placeholder = "Type";
+    typeControl.pattern = "[a-z][a-z0-9-]*";
+    typeControl.setAttribute("aria-label", "Group type");
+    typeControl.value = model.groupType;
+
+    const typeField = document.createElement("div");
+    typeField.className = "la-inline-group-field";
+    const typeFieldName = document.createElement("span");
+    typeFieldName.className = "la-inline-group-field-name";
+    typeFieldName.textContent = "Type";
+    typeFieldName.setAttribute("aria-hidden", "true");
+    typeField.append(typeFieldName, typeControl);
+
+    const labelControl = document.createElement("textarea");
+    labelControl.className = "la-inline-group-label";
+    labelControl.dataset.field = "group-label";
+    labelControl.rows = 1;
+    labelControl.placeholder = "Label";
+    labelControl.setAttribute("aria-label", "Group label");
+    labelControl.value = model.label ?? "";
+
+    const labelField = document.createElement("div");
+    labelField.className =
+      "la-inline-group-field la-inline-group-label-field";
+    const labelFieldName = document.createElement("span");
+    labelFieldName.className = "la-inline-group-field-name";
+    labelFieldName.textContent = "Label";
+    labelFieldName.setAttribute("aria-hidden", "true");
+    labelField.append(labelFieldName, labelControl);
+
+    const actions = document.createElement("div");
+    actions.className = "la-inline-group-actions";
+
+    const addSectionControl = document.createElement("button");
+    addSectionControl.type = "button";
+    addSectionControl.className = "la-inline-group-action";
+    addSectionControl.textContent = "Add section";
+
+    const ungroupControl = document.createElement("button");
+    ungroupControl.type = "button";
+    ungroupControl.className = "la-inline-group-action";
+    ungroupControl.textContent = "Ungroup";
+
+    const deleteControl = document.createElement("button");
+    deleteControl.type = "button";
+    deleteControl.className =
+      "la-inline-delete-control la-inline-group-delete";
+    deleteControl.setAttribute("aria-label", "Delete group and contents");
+
+    actions.append(addSectionControl, ungroupControl, deleteControl);
+    row.append(typeField, labelField, actions);
+    inlineEditor.append(row);
+    frame.append(inlineEditor);
+
+    const dirtyFields = new Set();
+    let diagramScale = 1;
+    const sizeTypePill = () => {
+      const content = typeControl.value || typeControl.placeholder;
+      const width = Math.min(
+        120,
+        Math.max(52, Array.from(content).length * 6.2 + 18),
+      );
+      typeControl.style.width = `${width * diagramScale}px`;
+    };
+    sizeTypePill();
+
+    typeControl.addEventListener("input", () => {
+      const normalized = normalizeGroupTypeInput(typeControl.value);
+      if (typeControl.value !== normalized) {
+        typeControl.value = normalized;
+      }
+      dirtyFields.add("type");
+      sizeTypePill();
+    });
+    labelControl.addEventListener("input", () => {
+      dirtyFields.add("label");
+    });
+
+    let cancelled = false;
+    const commit = (
+      focusField = null,
+      deferDraw = false,
+    ) => {
+      const previousDocument = editor.document;
+      const patch = {};
+      if (dirtyFields.has("type")) {
+        patch.groupType = typeControl.value;
+      }
+      if (dirtyFields.has("label")) {
+        patch.label = labelControl.value;
+      }
+      if (Object.keys(patch).length === 0) {
+        return "unchanged";
+      }
+      try {
+        editor.updateItem(model.id, patch);
+        if (editor.document === previousDocument) {
+          const current = findItemLocation(
+            editor.document,
+            model.id,
+          )?.item;
+          typeControl.value = current?.groupType ?? typeControl.value;
+          labelControl.value = current?.label ?? labelControl.value;
+          dirtyFields.clear();
+          sizeTypePill();
+          return "unchanged";
+        }
+        dirtyFields.clear();
+        selectedIds = [model.id];
+        transient = null;
+        pendingFocus = focusField;
+        notifyChange();
+        if (deferDraw) {
+          scheduleInlineDraw(frame);
+        } else {
+          draw();
+        }
+        return "changed";
+      } catch (error) {
+        notifyError(error, inlineEditor);
+        return "error";
+      }
+    };
+
+    const flushBeforeAction = () => commit(null, true) !== "error";
+    addSectionControl.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!flushBeforeAction()) {
+        return;
+      }
+      const current = findItemLocation(editor.document, model.id)?.item;
+      run(
+        () =>
+          current?.sections.length > 0
+            ? editor.addSection(model.id)
+            : editor.convertGroupToSections(model.id),
+        [model.id],
+      );
+    });
+    ungroupControl.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!flushBeforeAction()) {
+        return;
+      }
+      run(() => editor.ungroup(model.id));
+    });
+    deleteControl.addEventListener("pointerdown", (event) => {
+      cancelled = true;
+      event.stopPropagation();
+    });
+    deleteControl.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      run(() => editor.removeItem(model.id), []);
+    });
+
+    const cancelInlineEdit = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      cancelled = true;
+      pendingFocus = null;
+      selectedIds = [];
+      removeInlineGroupEditor(frame);
+      applySelectedVisuals(baseController.svg, selectedIds);
+      contextualEditor(frame, layout);
+      frame.focus();
+    };
+    typeControl.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        cancelInlineEdit(event);
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        commit();
+        return;
+      }
+      event.stopPropagation();
+    });
+    labelControl.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        cancelInlineEdit(event);
+        return;
+      }
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        commit();
+        return;
+      }
+      event.stopPropagation();
+    });
+
+    const positionEditor = () => {
+      if (!inlineEditor.isConnected) {
+        return;
+      }
+      const svgRect = svg.getBoundingClientRect();
+      diagramScale = svgRect.width / layout.width;
+      sizeTypePill();
+      inlineEditor.style.left = `${
+        svgRect.left + (group.left + 10) * diagramScale
+      }px`;
+      inlineEditor.style.top = `${
+        svgRect.top + (group.top + 5) * diagramScale
+      }px`;
+      inlineEditor.style.width = `${
+        (group.right - group.left - 20) * diagramScale
+      }px`;
+      inlineEditor.style.height = `${20 * diagramScale}px`;
+      row.style.inset = "0";
+      inlineEditor.style.setProperty(
+        "--la-inline-group-gap",
+        `${5 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-group-action-gap",
+        `${4 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-group-field-gap",
+        `${4 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-group-control-height",
+        `${20 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-group-font-size",
+        `${11 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-group-caption-font-size",
+        `${9 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-group-pill-padding",
+        `${8 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-group-action-padding",
+        `${9 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-group-pill-radius",
+        `${10 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-delete-size",
+        `${20 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-delete-cross-thickness",
+        `${1.5 * diagramScale}px`,
+      );
+    };
+
+    let positionFrame = null;
+    const repositionEditor = () => {
+      if (positionFrame !== null) {
+        return;
+      }
+      if (typeof globalThis.requestAnimationFrame === "function") {
+        positionFrame = globalThis.requestAnimationFrame(() => {
+          positionFrame = null;
+          positionEditor();
+        });
+      } else {
+        positionEditor();
+      }
+    };
+    const resizeObserver = globalThis.ResizeObserver
+      ? new ResizeObserver(repositionEditor)
+      : null;
+    resizeObserver?.observe(svg);
+    globalThis.addEventListener?.("scroll", repositionEditor, true);
+    globalThis.addEventListener?.("resize", repositionEditor);
+
+    inlineEditor.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+    });
+    inlineEditor.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+    inlineEditor.addEventListener("focusout", (event) => {
+      if (
+        cancelled ||
+        inlineEditor.contains(event.relatedTarget)
+      ) {
+        return;
+      }
+      commit(null, true);
+    });
+
+    inlineEditor.cleanup = () => {
+      resizeObserver?.disconnect();
+      globalThis.removeEventListener?.(
+        "scroll",
+        repositionEditor,
+        true,
+      );
+      globalThis.removeEventListener?.(
+        "resize",
+        repositionEditor,
+      );
+      if (
+        positionFrame !== null &&
+        typeof globalThis.cancelAnimationFrame === "function"
+      ) {
+        globalThis.cancelAnimationFrame(positionFrame);
+      }
+      positionFrame = null;
+      header.style.visibility = previousVisibility;
+      delete inlineEditor.cleanup;
+    };
+    positionEditor();
+  }
+
+  function addInlineSectionEditor(frame, layout, model) {
+    const section = layout.sections.find(
+      (candidate) => candidate.id === model.id,
+    );
+    const sectionElement = frame.querySelector(
+      `[data-la-id="${CSS.escape(model.id)}"]`,
+    );
+    const svg = sectionElement?.ownerSVGElement;
+    if (!section || !sectionElement || !svg) {
+      return;
+    }
+
+    const inlineEditor = document.createElement("div");
+    inlineEditor.className = "la-inline-section-editor";
+    inlineEditor.setAttribute("role", "group");
+    inlineEditor.setAttribute("aria-label", `Edit section ${model.label}`);
+
+    const labelControl = document.createElement("textarea");
+    labelControl.className = "la-inline-section-label";
+    labelControl.dataset.field = "section-label";
+    labelControl.rows = Math.max(1, model.label.split("\n").length);
+    labelControl.wrap = "off";
+    labelControl.setAttribute("aria-label", "Section label");
+    labelControl.value = model.label;
+
+    const deleteControl = document.createElement("button");
+    deleteControl.type = "button";
+    deleteControl.className =
+      "la-inline-delete-control la-inline-section-delete";
+    deleteControl.setAttribute("aria-label", "Delete section");
+
+    inlineEditor.append(labelControl, deleteControl);
+    frame.append(inlineEditor);
+
+    let dirty = false;
+    let cancelled = false;
+    let diagramScale = 1;
+    const sizeLabel = () => {
+      const longestLine = Math.max(
+        1,
+        ...labelControl.value
+          .split("\n")
+          .map((line) => Array.from(line).length),
+      );
+      const availableWidth = Math.max(
+        20,
+        section.right - section.left - 44,
+      );
+      const labelWidth = Math.min(
+        availableWidth,
+        Math.max(52, longestLine * 5.6 + 16),
+      );
+      labelControl.style.width = `${labelWidth * diagramScale}px`;
+    };
+    labelControl.addEventListener("input", () => {
+      dirty = true;
+      sizeLabel();
+    });
+
+    const commit = (deferDraw = false) => {
+      if (!dirty) {
+        return "unchanged";
+      }
+      const previousDocument = editor.document;
+      try {
+        editor.updateSection(model.id, { label: labelControl.value });
+        if (editor.document === previousDocument) {
+          const current = findSectionLocation(
+            editor.document,
+            model.id,
+          )?.section;
+          labelControl.value = current?.label ?? labelControl.value;
+          dirty = false;
+          return "unchanged";
+        }
+        dirty = false;
+        selectedIds = [model.id];
+        transient = null;
+        notifyChange();
+        if (deferDraw) {
+          scheduleInlineDraw(frame);
+        } else {
+          draw();
+        }
+        return "changed";
+      } catch (error) {
+        notifyError(error, inlineEditor);
+        return "error";
+      }
+    };
+
+    const cancelInlineEdit = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      cancelled = true;
+      pendingFocus = null;
+      selectedIds = [];
+      removeInlineSectionEditor(frame);
+      applySelectedVisuals(baseController.svg, selectedIds);
+      contextualEditor(frame, layout);
+      frame.focus();
+    };
+    labelControl.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        cancelInlineEdit(event);
+        return;
+      }
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        commit();
+        return;
+      }
+      event.stopPropagation();
+    });
+
+    deleteControl.addEventListener("pointerdown", (event) => {
+      cancelled = true;
+      event.stopPropagation();
+    });
+    deleteControl.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      run(() => editor.removeSection(model.id), []);
+    });
+
+    const positionEditor = () => {
+      if (!inlineEditor.isConnected) {
+        return;
+      }
+      const svgRect = svg.getBoundingClientRect();
+      diagramScale = svgRect.width / layout.width;
+      const editorHeight = section.headerHeight - 7;
+      sizeLabel();
+      inlineEditor.style.left = `${
+        svgRect.left + (section.left + 10) * diagramScale
+      }px`;
+      inlineEditor.style.top = `${
+        svgRect.top + (section.top + 3) * diagramScale
+      }px`;
+      inlineEditor.style.width = `${
+        (section.right - section.left) * diagramScale
+      }px`;
+      inlineEditor.style.height = `${editorHeight * diagramScale}px`;
+      inlineEditor.style.setProperty(
+        "--la-inline-section-gap",
+        `${4 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-section-padding-y",
+        `${4 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-section-padding-x",
+        `${8 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-section-radius",
+        `${5 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-section-font-size",
+        `${10 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-section-line-height",
+        `${12 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-delete-size",
+        `${20 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-delete-cross-thickness",
+        `${1.5 * diagramScale}px`,
+      );
+      inlineEditor.style.setProperty(
+        "--la-inline-section-surface",
+        section.depth <= 0
+          ? "var(--la-canvas)"
+          : (section.depth - 1) % 2 === 0
+            ? "var(--la-group-fill)"
+            : "var(--la-group-nested-fill)",
+      );
+    };
+
+    let positionFrame = null;
+    const repositionEditor = () => {
+      if (positionFrame !== null) {
+        return;
+      }
+      if (typeof globalThis.requestAnimationFrame === "function") {
+        positionFrame = globalThis.requestAnimationFrame(() => {
+          positionFrame = null;
+          positionEditor();
+        });
+      } else {
+        positionEditor();
+      }
+    };
+    const resizeObserver = globalThis.ResizeObserver
+      ? new ResizeObserver(repositionEditor)
+      : null;
+    resizeObserver?.observe(svg);
+    globalThis.addEventListener?.("scroll", repositionEditor, true);
+    globalThis.addEventListener?.("resize", repositionEditor);
+
+    inlineEditor.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+    });
+    inlineEditor.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+    inlineEditor.addEventListener("focusout", (event) => {
+      if (cancelled || inlineEditor.contains(event.relatedTarget)) {
+        return;
+      }
+      commit(true);
+    });
+
+    inlineEditor.cleanup = () => {
+      resizeObserver?.disconnect();
+      globalThis.removeEventListener?.(
+        "scroll",
+        repositionEditor,
+        true,
+      );
+      globalThis.removeEventListener?.("resize", repositionEditor);
+      if (
+        positionFrame !== null &&
+        typeof globalThis.cancelAnimationFrame === "function"
+      ) {
+        globalThis.cancelAnimationFrame(positionFrame);
+      }
+      positionFrame = null;
+      delete inlineEditor.cleanup;
+    };
+    positionEditor();
+  }
+
   function addInlineMessageEditor(frame, layout, model) {
     const row = layout.rows.find(
       (candidate) => candidate.id === model.id,
@@ -3557,12 +4501,10 @@ export function renderEditor(target, input, options = {}) {
     const dirtyFields = new Set();
     let diagramScale = 1;
     const sizeTagPill = () => {
-      const content = tagControl.value || tagControl.placeholder;
-      const baseWidth = Math.min(
-        104,
-        Math.max(50, Array.from(content).length * 5.6 + 20),
-      );
-      tagControl.style.width = `${baseWidth * diagramScale}px`;
+      const width = tagControl.value
+        ? metadataMetrics(tagControl.value, false).tagWidth
+        : 50;
+      tagControl.style.width = `${width * diagramScale}px`;
     };
     sizeTagPill();
 
@@ -3916,11 +4858,15 @@ export function renderEditor(target, input, options = {}) {
         "--la-inline-delete-cross-thickness",
         `${1.25 * diagramScale}px`,
       );
-      const sourceY = selfMessage ? row.y - 13 : row.y;
+      const deleteSize = 16;
+      const deleteGap = 12;
+      const arrowRight = selfMessage
+        ? source.centerX + loopWidth
+        : Math.max(source.centerX, target.centerX);
       deleteControl.style.left = `${
-        source.centerX * diagramScale
+        (arrowRight + deleteGap + deleteSize / 2) * diagramScale
       }px`;
-      deleteControl.style.top = `${sourceY * diagramScale}px`;
+      deleteControl.style.top = `${row.y * diagramScale}px`;
 
       inlineEditor.style.setProperty(
         "--la-inline-message-pill-gap",
@@ -4207,7 +5153,6 @@ export function renderEditor(target, input, options = {}) {
     control.style.height = `${labelHeight}px`;
 
     const deleteSize = 20;
-    const deleteInset = 2;
     const deleteControl = document.createElement("button");
     deleteControl.type = "button";
     deleteControl.className =
@@ -4221,9 +5166,8 @@ export function renderEditor(target, input, options = {}) {
         return;
       }
       const point = svg.createSVGPoint();
-      point.x =
-        layout.contentRight - deleteSize / 2 - deleteInset;
-      point.y = row.top + 8 + deleteInset;
+      point.x = layout.contentRight;
+      point.y = row.y;
       const matrix = svg.getScreenCTM();
       if (!matrix) {
         return;
@@ -4396,6 +5340,8 @@ export function renderEditor(target, input, options = {}) {
     removePopover(frame);
     removeInlineGapEditor(frame);
     removeInlineActorEditor(frame);
+    removeInlineGroupEditor(frame);
+    removeInlineSectionEditor(frame);
     removeInlineMessageEditor(frame);
 
     if (transient?.type === "insert") {
@@ -4444,7 +5390,7 @@ export function renderEditor(target, input, options = {}) {
                 ),
               undefined,
               popover,
-              "Label",
+              "group-label",
             ),
         },
         {
@@ -4506,7 +5452,7 @@ export function renderEditor(target, input, options = {}) {
                 ),
               undefined,
               popover,
-              "Label",
+              "group-label",
             ),
         },
         {
@@ -4543,119 +5489,13 @@ export function renderEditor(target, input, options = {}) {
       addInlineMessageEditor(frame, layout, model);
       return;
     }
-    const popover = addPopover(
-      frame,
-      layout,
-      anchorFor(layout, id),
-      model.type === "section"
-        ? "Section"
-        : "Group",
-      {
-        closable: true,
-      },
-    );
-
     if (model.type === "group") {
-      addField(
-        popover,
-        "Type",
-        model.groupType,
-        (value) =>
-          run(
-            () => editor.updateItem(id, { groupType: value }),
-            undefined,
-            popover,
-          ),
-        {
-          pattern: "[a-z][a-z0-9-]*",
-          inputTransform: normalizeGroupTypeInput,
-        },
-      );
-      addField(
-        popover,
-        "Label",
-        model.label,
-        (value) =>
-          run(
-            () => editor.updateItem(id, { label: value }),
-            undefined,
-            popover,
-          ),
-        { multiline: true },
-      );
-      const actions = [];
-      if (model.sections.length === 0) {
-        actions.push({
-          label: "Add section",
-          run: () =>
-            run(
-              () => editor.convertGroupToSections(id),
-              undefined,
-              popover,
-            ),
-        });
-      } else {
-        actions.push({
-          label: "Add section",
-          run: () =>
-            run(
-              () => editor.addSection(id),
-              undefined,
-              popover,
-            ),
-        });
-      }
-      actions.push(
-        {
-          label: "Ungroup",
-          run: () =>
-            run(() => editor.ungroup(id), undefined, popover),
-        },
-        {
-          label: "Delete",
-          danger: true,
-          run: () =>
-            run(() => editor.removeItem(id), [], popover),
-        },
-      );
-      addActions(popover, actions, { nowrap: true });
+      addInlineGroupEditor(frame, layout, model);
       return;
     }
-
-    addField(
-      popover,
-      "Label",
-      model.label,
-      (value) =>
-        run(
-          () => editor.updateSection(id, { label: value }),
-          undefined,
-          popover,
-        ),
-      { multiline: true },
-    );
-    const sectionLocation = findSectionLocation(editor.document, id);
-    addActions(popover, [
-      {
-        label: "Add section",
-        run: () =>
-          run(
-            () =>
-              editor.addSection(
-                sectionLocation.groupId,
-                sectionLocation.index + 1,
-              ),
-            undefined,
-            popover,
-          ),
-      },
-      {
-        label: "Remove section",
-        danger: true,
-        run: () =>
-          run(() => editor.removeSection(id), undefined, popover),
-      },
-    ]);
+    if (model.type === "section") {
+      addInlineSectionEditor(frame, layout, model);
+    }
   }
 
   function startDrag(handle, event, move, drop) {
@@ -5228,6 +6068,43 @@ export function renderEditor(target, input, options = {}) {
       true,
     );
 
+    svg.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (event.button !== 0 || selectedIds.length === 0) {
+          return;
+        }
+        const owner = event.target.closest?.(
+          "[data-la-id], [data-owner-id]",
+        );
+        const ownerId = owner?.dataset.laId ?? owner?.dataset.ownerId;
+        if (ownerId && selectedIds.includes(ownerId)) {
+          return;
+        }
+
+        suppressClick = true;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        activeCancel?.();
+
+        const focusedControl = frame.querySelector(
+          ".la-inline-gap-editor :focus, " +
+            ".la-inline-actor-editor :focus, " +
+            ".la-inline-group-editor :focus, " +
+            ".la-inline-section-editor :focus, " +
+            ".la-inline-message-editor :focus",
+        );
+        focusedControl?.blur();
+        if (frame.querySelector(".la-edit-error")) {
+          return;
+        }
+
+        transient = null;
+        baseController.clearSelection();
+      },
+      true,
+    );
+
     svg.addEventListener("pointerdown", (event) => {
       if (
         event.button !== 0 ||
@@ -5453,6 +6330,8 @@ export function renderEditor(target, input, options = {}) {
     const previousFrame = baseController?.svg?.closest(".la-frame");
     removeInlineGapEditor(previousFrame);
     removeInlineActorEditor(previousFrame);
+    removeInlineGroupEditor(previousFrame);
+    removeInlineSectionEditor(previousFrame);
     removeInlineMessageEditor(previousFrame);
     removePopover(previousFrame);
     baseController = renderDiagram(target, editor.document, {
@@ -5461,6 +6340,10 @@ export function renderEditor(target, input, options = {}) {
       actorPartActivatesSelection(actorId, field) {
         pendingActorPart = field;
         baseController?.select(actorId);
+      },
+      groupPartActivatesSelection(groupId, field) {
+        pendingGroupPart = field;
+        baseController?.select(groupId);
       },
       messagePartActivatesSelection(messageId, field) {
         pendingMessagePart = field;
@@ -5476,10 +6359,15 @@ export function renderEditor(target, input, options = {}) {
             ? "gap-label"
             : detail.kind === "actor"
               ? pendingActorPart ?? "actor-name"
+              : detail.kind === "group"
+                ? pendingGroupPart ?? "group-label"
+              : detail.kind === "section"
+                ? "section-label"
               : detail.kind === "message"
                 ? pendingMessagePart ?? "message-label"
                 : null;
         pendingActorPart = null;
+        pendingGroupPart = null;
         pendingMessagePart = null;
         applySelectedVisuals(baseController.svg, selectedIds);
         const frame = baseController.svg.closest(".la-frame");
@@ -5559,6 +6447,12 @@ export function renderEditor(target, input, options = {}) {
         baseController?.svg?.closest(".la-frame"),
       );
       removeInlineActorEditor(
+        baseController?.svg?.closest(".la-frame"),
+      );
+      removeInlineGroupEditor(
+        baseController?.svg?.closest(".la-frame"),
+      );
+      removeInlineSectionEditor(
         baseController?.svg?.closest(".la-frame"),
       );
       removeInlineMessageEditor(

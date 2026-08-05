@@ -18,7 +18,7 @@ framework is required.
     <title>Sequence diagram</title>
     <script
       type="module"
-      src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.2"
+      src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.3"
     ></script>
   </head>
   <body>
@@ -38,7 +38,7 @@ framework is required.
 
 Use `mode="edit"` for the visual editor. Use `selectable="false"` for a
 non-interactive view and `branding="false"` to hide the attribution. The
-`@0.2` CDN URL accepts compatible patch releases; use `@0.2.0` to pin the exact
+`@0.3` CDN URL accepts compatible patch releases; use `@0.3.0` to pin the exact
 release.
 
 ## Use the npm package
@@ -117,8 +117,9 @@ Core rules:
 - Icon identifiers use Phosphor names such as `robot`, `user`, `cloud`,
   `database`, `gear-six`, and `tray`. An unknown name remains valid but may
   render without an icon.
-- Any lowercase group type is valid except the reserved word `gap`. Common
-  types include `choice`, `repeat`, `parallel`, `optional`, and `critical`.
+- Any lowercase group type is valid except the reserved word `gap`. Its visible
+  label is optional; a bare group type starts an unlabeled group. Common types
+  include `choice`, `repeat`, `parallel`, `optional`, and `critical`.
 - A group contains either direct items or `| section` blocks, not both at the
   same level. Every group and section must contain at least one item.
 - Use `gap TEXT` when time passes or part of the sequence is omitted.
@@ -148,7 +149,7 @@ Agent -> API: Start job
 
 critical Process job
   API -> Worker: Run
-  choice Worker result
+  choice
     | completed
       Worker --> API: Done
     | queue unavailable

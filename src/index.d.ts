@@ -283,11 +283,13 @@ export class DiagramEditor {
         | "source"
         | "target"
         | "arrow"
-        | "label"
         | "tag"
         | "tooltip"
         | "tooltipIcon"
-      > & Pick<Group, "groupType"> & Pick<Gap, "label">
+      > &
+        Pick<Group, "groupType"> & {
+          label: string | null;
+        }
     >,
   ): string;
   removeItem(id: string): null;
@@ -297,7 +299,7 @@ export class DiagramEditor {
     parentId: string,
     ids: string[],
     groupType?: string,
-    label?: string,
+    label?: string | null,
   ): string;
   ungroup(id: string): string | null;
   convertGroupToSections(id: string): string;

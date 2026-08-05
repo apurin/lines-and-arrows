@@ -29,7 +29,7 @@ Customer -> API: Submit report
 
 critical Process report
   API -> Worker: Start analysis
-  parallel Prepare result
+  parallel
     | validate input
       Worker -> Worker: Check evidence
     | persist event
@@ -58,12 +58,42 @@ test("parses the complete language sample", () => {
   assert.equal(document.items[1].type, "group");
   assert.equal(document.items[1].groupType, "critical");
   assert.equal(document.items[1].items[1].groupType, "parallel");
+  assert.equal(document.items[1].items[1].label, null);
   assert.equal(document.items[1].items[1].sections.length, 2);
   assert.equal(document.items[1].items[2].type, "gap");
   assert.equal(
     document.items[1].items[3].sections[1].items[0].arrow,
     "->x",
   );
+});
+
+test("round-trips labeled and unlabeled nested groups", () => {
+  const direct = parse(`review
+  A -> B`);
+  assert.equal(direct.items[0].groupType, "review");
+  assert.equal(direct.items[0].label, null);
+  assert.match(serialize(direct), /^review$/m);
+
+  const source = `critical Process report
+  API -> Worker: Start analysis
+  parallel
+    | validate input
+      Worker -> Worker: Check evidence
+    | persist event
+      Worker -> Queue: Store audit event`;
+
+  const document = parse(source);
+  const nested = document.items[0].items[1];
+
+  assert.equal(document.items[0].label, "Process report");
+  assert.equal(nested.groupType, "parallel");
+  assert.equal(nested.label, null);
+  assert.equal(nested.sections.length, 2);
+
+  const canonical = serialize(document);
+  assert.match(canonical, /^  parallel$/m);
+  assert.doesNotMatch(canonical, /^  parallel\s+$/m);
+  assert.deepEqual(parse(canonical), document);
 });
 
 test("accepts compact syntax variants", () => {
@@ -189,14 +219,8 @@ test("rejects malformed or ambiguous source with structured locations", () => {
       line: 1,
     },
     {
-      name: "empty group label",
-      source: "review\n  A -> B",
-      message: /Group label cannot be empty/,
-      line: 1,
-    },
-    {
-      name: "empty group body",
-      source: "review Work",
+      name: "empty unlabeled group body",
+      source: "review",
       message: /group must contain at least one timeline item/i,
       line: 1,
     },

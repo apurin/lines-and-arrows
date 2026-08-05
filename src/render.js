@@ -19,8 +19,6 @@ const BRANDING_HREF = "https://lines-and-arrows.dev/";
 const BRANDING_LABEL = "Powered by Lines & Arrows";
 const BRANDING_FONT_SIZE = 7;
 const BRANDING_HEIGHT = 15;
-const BRANDING_LIFELINE_OVERLAP = 3;
-const BRANDING_BOTTOM_MARGIN = 2;
 let tooltipSequence = 0;
 
 const VIEW_STYLES = `
@@ -88,9 +86,6 @@ const VIEW_STYLES = `
 
   .la-frame[data-selectable="true"]
     .la-actor:focus-visible
-    .la-focus-ring,
-  .la-frame[data-selectable="true"]
-    .la-actor[data-selected="true"]
     .la-focus-ring {
     opacity: 1;
   }
@@ -135,6 +130,15 @@ const VIEW_STYLES = `
     .la-message[data-selected="true"]
     .la-message-focus {
     opacity: 0.24;
+  }
+
+  .la-frame[data-selectable="true"]
+    .la-message:focus-visible
+    .la-message-endpoint-highlight,
+  .la-frame[data-selectable="true"]
+    .la-message[data-selected="true"]
+    .la-message-endpoint-highlight {
+    opacity: 0.3;
   }
 
   .la-tooltip-trigger {
@@ -937,7 +941,7 @@ function renderGroupBackground(parent, group, tokens, selection) {
     selectable,
     group,
     selection,
-    `${group.groupType} group, ${group.label}`,
+    `${group.groupType} group${group.label ? `, ${group.label}` : ""}`,
   );
   selectable.append(
     svgElement("rect", {
@@ -976,7 +980,14 @@ function renderGroupHeader(
   parent,
   group,
   tokens,
+  options,
+  selection,
 ) {
+  const activatePart =
+    selection.enabled &&
+    typeof options.groupPartActivatesSelection === "function"
+      ? (part) => options.groupPartActivatesSelection(group.id, part)
+      : null;
   const surface =
     group.depth % 2 === 0
       ? tokens.groupFill
@@ -1004,8 +1015,11 @@ function renderGroupHeader(
   );
   const header = svgElement("g", {
     class: "la-group-header",
-    "pointer-events": "none",
+    "data-la-group-header-id": group.id,
   });
+  if (!activatePart) {
+    header.setAttribute("pointer-events", "none");
+  }
   const backplatePadding = 6;
 
   header.append(
@@ -1052,6 +1066,64 @@ function renderGroupHeader(
   type.textContent = group.groupType;
 
   header.append(type, label);
+  if (activatePart) {
+    const addPartHitTarget = (
+      x,
+      targetY,
+      width,
+      height,
+      labelText,
+      part,
+    ) => {
+      const hit = svgElement("rect", {
+        class: "la-group-part-hit",
+        x,
+        y: targetY,
+        width,
+        height,
+        rx: 5,
+        fill: "transparent",
+        "pointer-events": "all",
+        tabindex: 0,
+        role: "button",
+        "aria-label": labelText,
+      });
+      const activate = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        activatePart(part);
+      };
+      hit.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      hit.addEventListener("click", activate);
+      hit.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          activate(event);
+        }
+      });
+      header.append(hit);
+    };
+    addPartHitTarget(
+      left - backplatePadding,
+      y - 14,
+      typeWidth + backplatePadding * 2,
+      20,
+      "Edit group type",
+      "group-type",
+    );
+    if (group.label) {
+      addPartHitTarget(
+        labelX - backplatePadding,
+        group.top + 5,
+        labelWidth + backplatePadding * 2,
+        Math.max(20, visibleLines.length * 13 + 7),
+        "Edit group label",
+        "group-label",
+      );
+    }
+  }
   parent.append(header);
 }
 
@@ -1255,18 +1327,36 @@ function renderMessage(
     pathData = `M ${source.centerX} ${row.y} L ${shortenedTarget} ${row.y}`;
   }
 
-  group.append(
-    svgElement("path", {
-      class: "la-message-focus",
-      d: pathData,
-      fill: "none",
-      stroke: tokens.selection,
-      "stroke-width": 7,
-      opacity: 0,
-      "stroke-linecap": "round",
-      "pointer-events": "none",
-    }),
-  );
+  const selfMessage = source.centerX === target.centerX;
+  const sourceY = selfMessage ? row.y - 13 : row.y;
+  for (const [x, y] of [
+    [source.centerX, sourceY],
+    [geometry.endX, geometry.endY],
+  ]) {
+    group.append(
+      svgElement("circle", {
+        class: "la-message-endpoint-highlight",
+        cx: x,
+        cy: y,
+        r: 8,
+        fill: tokens.selection,
+        opacity: 0,
+        "pointer-events": "none",
+      }),
+    );
+  }
+
+  const focusPath = svgElement("path", {
+    class: "la-message-focus",
+    d: pathData,
+    fill: "none",
+    stroke: tokens.selection,
+    "stroke-width": 7,
+    opacity: 0,
+    "stroke-linecap": "round",
+    "pointer-events": "none",
+  });
+  group.append(focusPath);
 
   group.append(
     svgElement("path", {
@@ -1300,8 +1390,16 @@ function renderMessage(
     visiblePath.dataset.markerNormal = normalMarker;
     visiblePath.dataset.markerSelected = selectedMarker;
 
-    const highlightMarker = () =>
+    const highlightMarker = () => {
+      const frame = group.closest(".la-frame");
+      if (
+        frame?.dataset.selectionActive === "true" &&
+        group.dataset.selected !== "true"
+      ) {
+        return;
+      }
       visiblePath.setAttribute("marker-end", selectedMarker);
+    };
     const restoreMarker = () =>
       visiblePath.setAttribute(
         "marker-end",
@@ -1506,9 +1604,9 @@ function renderBranding(parent, layout) {
     textWidth(BRANDING_LABEL, BRANDING_FONT_SIZE) + 12,
   );
   const left = (layout.width - width) / 2;
-  const top = Math.min(
-    layout.lifelineBottom - BRANDING_LIFELINE_OVERLAP,
-    layout.height - BRANDING_BOTTOM_MARGIN - BRANDING_HEIGHT,
+  const top = Math.max(
+    0,
+    (layout.options.marginTop - BRANDING_HEIGHT) / 2,
   );
   const link = svgElement("a", {
     class: "la-branding",
@@ -1723,7 +1821,13 @@ export function renderDiagram(target, input, options = {}) {
   renderLifelines(svg, layout, tokens);
 
   for (const group of layout.groups) {
-    renderGroupHeader(svg, group, tokens);
+    renderGroupHeader(
+      svg,
+      group,
+      tokens,
+      renderOptions,
+      selection,
+    );
   }
   for (const section of layout.sections) {
     renderSection(svg, section, tokens, selection);

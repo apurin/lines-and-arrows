@@ -2,7 +2,7 @@ import { decodeText } from "./text.js";
 
 const ARROW_PATTERN =
   /^(.*?)\s+(-->|->x|->)\s+([^:]+?)(?::\s*(.*))?$/;
-const GROUP_PATTERN = /^([a-z][a-z0-9-]*)\s+(.+)$/;
+const GROUP_PATTERN = /^([a-z][a-z0-9-]*)(?:\s+(.+))?$/;
 const ACTOR_FORBIDDEN_PATTERN = /:|-->|->x|->/;
 
 export class LinesAndArrowsSyntaxError extends SyntaxError {
@@ -58,6 +58,11 @@ function assertText(value, label, line, options = {}) {
     fail(`${label} must stay on one line.`, line);
   }
   return text;
+}
+
+function optionalText(value) {
+  const text = decodeText(value).trim();
+  return text || null;
 }
 
 function assertActorName(value, line) {
@@ -316,7 +321,7 @@ function parseSections(
 
 function parseGroup(cursor, line, match, path, leadingComments = []) {
   const groupType = match[1];
-  const label = assertText(match[2], "Group label", line.number);
+  const label = optionalText(match[2]);
   cursor.index += 1;
   const bodyIndent = line.indent + 1;
   const bodyComments = consumeTrivia(cursor, bodyIndent);
@@ -463,16 +468,13 @@ function parseItems(
       fail("Unsupported or malformed arrow expression.", line.number);
     }
 
-    const groupMatch = line.content.match(GROUP_PATTERN);
+    const groupMatch = line.content.trimEnd().match(GROUP_PATTERN);
     if (groupMatch) {
       items.push(
         parseGroup(cursor, line, groupMatch, path, pendingComments),
       );
       pendingComments = consumeTrivia(cursor, indent);
       continue;
-    }
-    if (/^[a-z][a-z0-9-]*\s*$/.test(line.content)) {
-      fail("Group label cannot be empty.", line.number);
     }
 
     fail("Expected a message, group, or gap.", line.number);

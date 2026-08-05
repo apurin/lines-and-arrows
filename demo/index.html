@@ -284,7 +284,7 @@ Customer -> API: Submit report
 
 critical Process report
   API -> Worker: Start analysis
-  parallel Prepare result
+  parallel
     | validate input
       Worker -> Worker: Check evidence
     | persist event
@@ -353,12 +353,12 @@ API --> Customer: Present result`;
 
         sourceEditor.hidden = true;
         diagram.hidden = false;
-        diagram.selectable = surface !== "view";
+        diagram.selectable = true;
         diagram.mode = surface;
         modeHelp.textContent =
           surface === "edit"
             ? "Edit mode. Select an object to change it, then drag to reorder."
-            : "View mode. Read-only diagram without selection controls.";
+            : "View mode. Select objects without editing them.";
       };
 
       for (const button of surfaceButtons) {

@@ -218,6 +218,37 @@ test("requires syntax-safe one-token group types", () => {
   assert.doesNotThrow(() => parse(editor.source));
 });
 
+test("clears group labels and wraps items without a label", () => {
+  const editor = new DiagramEditor(SOURCE);
+  const group = editor.document.items[1];
+
+  editor.updateItem(group.id, { label: "" });
+
+  assert.equal(editor.document.items[1].label, null);
+  assert.match(editor.source, /^critical$/m);
+  assert.doesNotMatch(editor.source, /^critical\s+$/m);
+  assert.doesNotThrow(() => parse(editor.source));
+
+  editor.undo();
+  assert.equal(editor.document.items[1].label, "Processing");
+  editor.redo();
+  assert.equal(editor.document.items[1].label, null);
+
+  const wrapperEditor = new DiagramEditor(SOURCE);
+  const first = wrapperEditor.document.items[0];
+  const wrapperId = wrapperEditor.wrapItems(
+    ROOT_CONTAINER_ID,
+    [first.id],
+    "review",
+    null,
+  );
+
+  assert.equal(wrapperEditor.document.items[0].id, wrapperId);
+  assert.equal(wrapperEditor.document.items[0].label, null);
+  assert.match(wrapperEditor.source, /^review$/m);
+  assert.doesNotThrow(() => parse(wrapperEditor.source));
+});
+
 test("creates, edits, reorders, and removes group sections", () => {
   const editor = new DiagramEditor(SOURCE);
   const group = editor.document.items[1];

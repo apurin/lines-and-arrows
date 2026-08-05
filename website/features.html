@@ -142,7 +142,7 @@ Agent -> Reviewer: Present result
 
 repeat Process each task
   Agent -> Worker: Start task
-  critical Keep the audit trail
+  critical
     Worker -> Worker: Save evidence
   Worker --> Agent: Task complete
 

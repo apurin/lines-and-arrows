@@ -59,7 +59,7 @@ Customer -> API: Start job
 
 critical Job execution
   API -> Worker: Start job
-  choice Worker result
+  choice
     | accepted
       Worker --> API: Accepted
     | queue unavailable
@@ -191,7 +191,7 @@ API --> Client: Rejected
 
 ## Groups
 
-A group is a type, a label, and an indented body:
+A group is a type, an optional label, and an indented body:
 
 ```lines-and-arrows
 repeat Each uploaded chunk
@@ -199,8 +199,9 @@ repeat Each uploaded chunk
   API --> Client: Next chunk
 ```
 
-The first word is the group type. Everything after it is the visible label.
-The label may contain `\n`; the group type stays on one line.
+The first word is the group type. When present, everything after it is the
+visible label. The label may be omitted or contain `\n`; the group type stays
+on one line.
 Group types use lowercase letters, numbers, and hyphens, beginning with a
 letter.
 
@@ -331,7 +332,7 @@ message          = single-line-text, space, arrow, space, single-line-text,
 message-property = indent, ( tag | tooltip | tooltip-icon ), newline ;
 arrow            = "->" | "-->" | "->x" ;
 
-group            = group-type, space, escaped-text, newline,
+group            = group-type, [ space, escaped-text ], newline,
                    ( group-body | sections ) ;
 group-body       = indent, timeline-item,
                    { indent, timeline-item | comment | blank } ;

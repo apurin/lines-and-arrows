@@ -89,7 +89,7 @@ function assertTimelineStructure(items, path) {
     }
 
     requireString(item.groupType, `${itemPath}.groupType`);
-    requireString(item.label, `${itemPath}.label`);
+    requireOptionalString(item.label, `${itemPath}.label`);
     commentList(item, "leadingComments", itemPath);
     commentList(item, "bodyTrailingComments", itemPath);
     requireArray(item.items, `${itemPath}.items`);
@@ -238,7 +238,10 @@ function timelineLines(items, indent) {
       continue;
     }
 
-    lines.push(`${prefix}${item.groupType} ${sourceText(item.label)}`);
+    const label = sourceText(item.label);
+    lines.push(
+      `${prefix}${item.groupType}${label ? ` ${label}` : ""}`,
+    );
     if (item.sections.length > 0) {
       for (const section of item.sections) {
         lines.push(

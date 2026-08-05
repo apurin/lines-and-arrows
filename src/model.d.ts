@@ -69,7 +69,7 @@ export interface Group {
   type: "group";
   id: string;
   groupType: string;
-  label: string;
+  label: string | null;
   items: TimelineItem[];
   sections: Section[];
   leadingComments: Comment[];
