@@ -1,8 +1,8 @@
 import {
   defineLinesAndArrows,
   parse,
-} from "./runtime.js?v=20260805-4";
-import { initializeSiteTheme } from "./site.js?v=20260805-3";
+} from "./runtime.js?v=20260805-5";
+import { initializeSiteTheme } from "./site.js?v=20260805-4";
 
 defineLinesAndArrows();
 
