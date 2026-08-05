@@ -18,7 +18,7 @@ framework is required.
     <title>Sequence diagram</title>
     <script
       type="module"
-      src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.4"
+      src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.5"
     ></script>
   </head>
   <body>
@@ -36,7 +36,7 @@ framework is required.
 </html>
 ```
 
-The `@0.4` CDN URL accepts compatible patch releases; use `@0.4.0` to pin the
+The `@0.5` CDN URL accepts compatible patch releases; use `@0.5.0` to pin the
 exact release.
 
 ## Configure the web component
@@ -71,10 +71,26 @@ For example, this creates a selectable view without the attribution:
 </lines-and-arrows>
 ```
 
-For host-specific colors, assign `palette` as a JavaScript property with
-`background`, `foreground`, `accent`, and `danger` CSS colors. The renderer
-derives its remaining colors; optional `accentForeground` and
-`dangerForeground` values can override automatic contrast choices.
+Prefer the built-in `theme="auto"` unless the diagram needs to blend into a
+specific host surface. Built-in themes use an opaque canvas and translucent
+group overlays, so no palette configuration is required.
+
+For host-specific colors, assign `palette` as a JavaScript property and make
+the canvas transparent only when the host supplies the visible background:
+
+```js
+const diagram = document.querySelector("lines-and-arrows");
+diagram.palette = {
+  background: "var(--page)",
+  foreground: "var(--text)",
+  accent: "var(--accent)",
+  danger: "var(--danger)",
+};
+diagram.canvasBackground = "transparent";
+```
+
+The renderer derives its remaining colors. Optional `accentForeground` and
+`dangerForeground` values override automatic contrast choices.
 
 ## Use the npm package
 
@@ -157,6 +173,7 @@ Core rules:
   include `choice`, `repeat`, `parallel`, `optional`, and `critical`.
 - A group contains either direct items or `| section` blocks, not both at the
   same level. Every group and section must contain at least one item.
+- Keep nesting within the format's 128-level safety limit.
 - Use `gap TEXT` when time passes or part of the sequence is omitted.
 - Use `\n` for a visible line break and `\\` for a literal backslash.
 - Keep coordinates, colors, dimensions, and themes out of diagram source.

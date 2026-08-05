@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://lines-and-arrows.dev/sitemap.xml

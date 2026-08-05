@@ -360,6 +360,31 @@ test("keeps source locations in errors rather than parsed documents", () => {
   );
 });
 
+test("returns a structured error before deeply nested input exhausts the stack", () => {
+  const source = [
+    ...Array.from(
+      { length: 129 },
+      (_, depth) => `${"  ".repeat(depth)}review`,
+    ),
+    `${"  ".repeat(129)}A -> B`,
+  ].join("\n");
+
+  assert.throws(
+    () => parse(source),
+    (error) =>
+      error instanceof LinesAndArrowsSyntaxError &&
+      error.line === 130 &&
+      /cannot exceed 128 indentation levels/.test(error.message),
+  );
+});
+
+test("exposes the documented syntax error constructor", () => {
+  const error = new LinesAndArrowsSyntaxError("Broken", 7);
+
+  assert.equal(error.line, 7);
+  assert.equal(error.message, "Line 7: Broken");
+});
+
 test("round-trips escaped multiline text and literal backslashes", () => {
   const source = String.raw`@Client
   tooltip First line\nSecond line at C:\\work

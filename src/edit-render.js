@@ -6307,6 +6307,7 @@ export function renderEditor(target, input, options = {}) {
     removeInlineSectionEditor(previousFrame);
     removeInlineMessageEditor(previousFrame);
     removePopover(previousFrame);
+    baseController?.destroy();
     baseController = renderDiagram(target, editor.document, {
       ...options,
       selectable: true,

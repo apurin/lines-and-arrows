@@ -214,6 +214,8 @@ may display the group with a neutral treatment. `gap` is the one reserved type:
 it introduces a timeline gap and cannot introduce a group body.
 
 Groups may be nested.
+Indentation is limited to 128 levels so malformed or hostile source produces a
+structured syntax error instead of exhausting the JavaScript call stack.
 
 ### Sections
 

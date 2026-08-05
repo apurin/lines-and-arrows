@@ -351,8 +351,14 @@ export function defineLinesAndArrows(
   if (!registry) {
     throw new Error("Custom elements are not available in this environment.");
   }
-  if (!registry.get(name)) {
+  const existing = registry.get(name);
+  if (existing && existing !== LinesAndArrowsElement) {
+    throw new Error(
+      `Custom element "${name}" is already registered with a different constructor.`,
+    );
+  }
+  if (!existing) {
     registry.define(name, LinesAndArrowsElement);
   }
-  return registry.get(name);
+  return LinesAndArrowsElement;
 }

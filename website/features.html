@@ -8,15 +8,16 @@
       content="Explore Lines &amp; Arrows features through concise syntax examples and their rendered sequence diagrams."
     />
     <title>Features - Lines &amp; Arrows</title>
+    <link rel="canonical" href="https://lines-and-arrows.dev/features" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20260805-2" />
+    <link rel="stylesheet" href="./styles.css?v=20260805-5" />
   </head>
   <body class="features-page">
     <a class="skip-link" href="#main">Skip to content</a>
 
     <header class="site-header">
       <nav class="nav-shell" aria-label="Primary navigation">
-        <a class="wordmark" href="./index.html" aria-label="Lines and Arrows home">
+        <a class="wordmark" href="./index.html">
           <span class="wordmark-name">Lines &amp; Arrows</span>
         </a>
 
@@ -39,21 +40,22 @@
             />
             <span>GitHub</span>
           </a>
-          <div class="theme-switcher" role="group" aria-label="Color theme">
-            <button type="button" data-site-theme="light" aria-pressed="true">
-              <span class="control-icon icon-sun" aria-hidden="true"></span>
-              <span class="visually-hidden">Light theme</span>
-            </button>
-            <button type="button" data-site-theme="dark" aria-pressed="false">
-              <span class="control-icon icon-moon" aria-hidden="true"></span>
-              <span class="visually-hidden">Dark theme</span>
-            </button>
-          </div>
+        </div>
+        <div class="theme-switcher" role="group" aria-label="Color theme">
+          <button type="button" data-site-theme="light" aria-pressed="true">
+            <span class="control-icon icon-sun" aria-hidden="true"></span>
+            <span class="visually-hidden">Light theme</span>
+          </button>
+          <button type="button" data-site-theme="dark" aria-pressed="false">
+            <span class="control-icon icon-moon" aria-hidden="true"></span>
+            <span class="visually-hidden">Dark theme</span>
+          </button>
         </div>
       </nav>
     </header>
 
     <main id="main">
+      <h1 class="visually-hidden">Lines &amp; Arrows features</h1>
       <section class="feature-row section-shell" id="actors" data-feature>
         <div class="feature-copy">
           <h2>Actors stay recognizable.</h2>
@@ -321,49 +323,55 @@ Planner --> Agent: Final result</code></pre>
         <div class="feature-copy">
           <h2>Every diagram fits its page.</h2>
           <p>
-            Choose light, dark, or automatic theming. The same source stays
-            readable in documentation, product interfaces, and editor
-            surfaces.
+            Give the renderer a few host colors and a transparent canvas. It
+            derives actors, lifelines, group overlays, metadata, and editor
+            controls while gradients and patterns remain part of the page.
           </p>
         </div>
         <figure
           class="theme-preview-grid"
-          aria-label="The same sequence diagram in light, dark, and automatic themes"
+          aria-label="The same sequence diagram in Midnight Cobalt, Aubergine Signal, and Newsprint Monochrome palettes"
         >
-          <div class="theme-preview theme-preview-light">
-            <p>Light</p>
+          <div class="theme-preview theme-preview-midnight-cobalt">
+            <p>Midnight Cobalt <span>Transparent</span></p>
             <lines-and-arrows
-              data-theme-preview="light"
-              data-fixed-theme="light"
-              theme="light"
-              mode="view"
-              selectable="false"
-              branding="false"
-              label="A request and response rendered in the light theme"
-            ></lines-and-arrows>
-          </div>
-          <div class="theme-preview theme-preview-dark">
-            <p>Dark</p>
-            <lines-and-arrows
-              data-theme-preview="dark"
+              data-theme-preview="midnight-cobalt"
+              data-custom-palette
               data-fixed-theme="dark"
               theme="dark"
               mode="view"
               selectable="false"
               branding="false"
-              label="A request and response rendered in the dark theme"
+              canvas-background="transparent"
+              label="A request sequence rendered in the Midnight Cobalt palette"
             ></lines-and-arrows>
           </div>
-          <div class="theme-preview theme-preview-auto">
-            <p>Auto</p>
+          <div class="theme-preview theme-preview-aubergine-signal">
+            <p>Aubergine Signal <span>Transparent</span></p>
             <lines-and-arrows
-              data-theme-preview="auto"
-              data-fixed-theme="auto"
-              theme="auto"
+              data-theme-preview="aubergine-signal"
+              data-custom-palette
+              data-fixed-theme="dark"
+              theme="dark"
               mode="view"
               selectable="false"
               branding="false"
-              label="A request and response following the system color theme"
+              canvas-background="transparent"
+              label="A request sequence rendered in the Aubergine Signal palette"
+            ></lines-and-arrows>
+          </div>
+          <div class="theme-preview theme-preview-newsprint-monochrome">
+            <p>Newsprint Monochrome <span>Pattern</span></p>
+            <lines-and-arrows
+              data-theme-preview="newsprint-monochrome"
+              data-custom-palette
+              data-fixed-theme="light"
+              theme="light"
+              mode="view"
+              selectable="false"
+              branding="false"
+              canvas-background="transparent"
+              label="A request sequence rendered in the patterned Newsprint Monochrome palette"
             ></lines-and-arrows>
           </div>
         </figure>
@@ -400,6 +408,6 @@ Planner --> Agent: Final result</code></pre>
       </div>
     </footer>
 
-    <script async type="module" src="./features.js?v=20260805-1"></script>
+    <script async type="module" src="./features.js?v=20260805-7"></script>
   </body>
 </html>

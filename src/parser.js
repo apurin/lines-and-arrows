@@ -1,8 +1,11 @@
 import { decodeText } from "./text.js";
+import {
+  GROUP_LINE_PATTERN,
+  MAX_NESTING_DEPTH,
+} from "./grammar.js";
 
 const ARROW_PATTERN =
   /^(.*?)\s+(-->|->x|->)\s+([^:]+?)(?::\s*(.*))?$/;
-const GROUP_PATTERN = /^([a-z][a-z0-9-]*)(?:\s+(.+))?$/;
 const ACTOR_FORBIDDEN_PATTERN = /:|-->|->x|->/;
 
 export class LinesAndArrowsSyntaxError extends SyntaxError {
@@ -36,6 +39,12 @@ function makeLine(raw, index) {
   const leading = raw.match(/^ */)[0].length;
   if (leading % 2 !== 0) {
     fail("Indentation must use exactly two spaces per level.", index + 1);
+  }
+  if (leading / 2 > MAX_NESTING_DEPTH) {
+    fail(
+      `Nesting cannot exceed ${MAX_NESTING_DEPTH} indentation levels.`,
+      index + 1,
+    );
   }
 
   const content = raw.slice(leading);
@@ -468,7 +477,7 @@ function parseItems(
       fail("Unsupported or malformed arrow expression.", line.number);
     }
 
-    const groupMatch = line.content.trimEnd().match(GROUP_PATTERN);
+    const groupMatch = line.content.trimEnd().match(GROUP_LINE_PATTERN);
     if (groupMatch) {
       items.push(
         parseGroup(cursor, line, groupMatch, path, pendingComments),

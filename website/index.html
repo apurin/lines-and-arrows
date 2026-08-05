@@ -8,15 +8,16 @@
       content="Open source sequence diagrams stored as readable text, with a visual editor for people and a simple format for AI agents."
     />
     <title>Lines &amp; Arrows | Sequence diagrams as text, with a visual editor</title>
+    <link rel="canonical" href="https://lines-and-arrows.dev/" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20260805-2" />
+    <link rel="stylesheet" href="./styles.css?v=20260805-5" />
   </head>
   <body class="home-page">
     <a class="skip-link" href="#main">Skip to content</a>
 
     <header class="site-header">
       <nav class="nav-shell" aria-label="Primary navigation">
-        <a class="wordmark" href="#top" aria-label="Lines and Arrows home">
+        <a class="wordmark" href="#top">
           <span class="wordmark-name">Lines &amp; Arrows</span>
         </a>
 
@@ -39,16 +40,16 @@
             />
             <span>GitHub</span>
           </a>
-          <div class="theme-switcher" role="group" aria-label="Color theme">
-            <button type="button" data-site-theme="light" aria-pressed="true">
-              <span class="control-icon icon-sun" aria-hidden="true"></span>
-              <span class="visually-hidden">Light theme</span>
-            </button>
-            <button type="button" data-site-theme="dark" aria-pressed="false">
-              <span class="control-icon icon-moon" aria-hidden="true"></span>
-              <span class="visually-hidden">Dark theme</span>
-            </button>
-          </div>
+        </div>
+        <div class="theme-switcher" role="group" aria-label="Color theme">
+          <button type="button" data-site-theme="light" aria-pressed="true">
+            <span class="control-icon icon-sun" aria-hidden="true"></span>
+            <span class="visually-hidden">Light theme</span>
+          </button>
+          <button type="button" data-site-theme="dark" aria-pressed="false">
+            <span class="control-icon icon-moon" aria-hidden="true"></span>
+            <span class="visually-hidden">Dark theme</span>
+          </button>
         </div>
       </nav>
     </header>
@@ -140,7 +141,6 @@
               <textarea
                 id="hero-source"
                 spellcheck="false"
-                wrap="off"
                 aria-describedby="hero-source-error"
               ></textarea>
               <div class="hero-source-actions">
@@ -157,13 +157,13 @@
             </div>
           </div>
 
+          <p class="visually-hidden" id="hero-mode-status" aria-live="polite">
+            View mode. Read-only diagram.
+          </p>
           <figcaption>
             Visual changes update the text. Text changes update the diagram.
             <a href="./agents.md">Read the agent guide&nbsp;↗</a>
           </figcaption>
-          <p class="visually-hidden" id="hero-mode-status" aria-live="polite">
-            View mode. Read-only diagram.
-          </p>
         </figure>
       </section>
 
@@ -223,6 +223,6 @@
       </div>
     </footer>
 
-    <script async type="module" src="./app.js?v=20260805-7"></script>
+    <script async type="module" src="./app.js?v=20260805-13"></script>
   </body>
 </html>

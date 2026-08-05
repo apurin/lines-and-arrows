@@ -1,6 +1,22 @@
 const root = document.documentElement;
 const storageKey = "lines-and-arrows-theme";
 
+if (location.hostname === "lines-and-arrows.dev") {
+  const cleanRoutes = new Map([
+    ["./index.html", "/"],
+    ["./features.html", "/features"],
+    ["./showcase.html", "/showcase"],
+  ]);
+  for (const link of document.querySelectorAll("a[href]")) {
+    const href = link.getAttribute("href");
+    const [path, hash = ""] = href.split("#", 2);
+    const cleanPath = cleanRoutes.get(path);
+    if (cleanPath) {
+      link.setAttribute("href", `${cleanPath}${hash ? `#${hash}` : ""}`);
+    }
+  }
+}
+
 const readSavedTheme = () => {
   try {
     const saved = localStorage.getItem(storageKey);

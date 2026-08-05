@@ -18,7 +18,7 @@ The jsDelivr entry registers the web component automatically:
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.4"
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.5"
 ></script>
 
 <lines-and-arrows mode="view" theme="auto">
@@ -30,8 +30,8 @@ The jsDelivr entry registers the web component automatically:
 </lines-and-arrows>
 ```
 
-The `@0.4` compatibility alias receives patch releases without crossing into a
-potentially breaking `0.5`. Use an exact version when a deployment must remain
+The `@0.5` compatibility alias receives patch releases without crossing into a
+potentially breaking `0.6`. Use an exact version when a deployment must remain
 fully pinned.
 
 For direct CDN access to the JavaScript API without automatic registration:
@@ -39,7 +39,7 @@ For direct CDN access to the JavaScript API without automatic registration:
 ```js
 import {
   renderDiagram,
-} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.4/dist/lines-and-arrows.min.js";
+} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.5/dist/lines-and-arrows.min.js";
 ```
 
 Set `mode="edit"` to enable the visual editor, including canvas undo and redo
@@ -78,7 +78,7 @@ gap A few moments later
 API --> Customer: Job complete
 ```
 
-Actor declarations and message labels are optional:
+Actor declarations, message labels, and group labels are optional:
 
 ```lines-and-arrows
 Client -> API
@@ -203,6 +203,9 @@ npm install lines-and-arrows
 
 The published package contains the JavaScript runtime, optional type
 declarations, validation CLI, syntax reference, licenses, and notices.
+The DOM-free syntax API and CLI support Node.js 22 and newer. The browser
+renderer targets modern browsers with native ES modules, custom elements, and
+ES2022 support; legacy browsers need host-provided transpilation and polyfills.
 
 ## Themes and icons
 
@@ -223,16 +226,22 @@ The renderer derives muted text, lines, nested group fills, tags, selection,
 and editor surfaces from these colors. `accentForeground` and
 `dangerForeground` are optional contrast overrides. `renderDiagram()` and
 `renderEditor()` accept the same `palette` and `canvasBackground` options.
-Lifelines use a low-opacity version of the actor accent and sit behind every
-other diagram layer, except where a gap cuts through them and group fills
-completely. Metadata pills use opaque derived surfaces. This keeps the host
-background visible without painted backplates or label-specific line segments.
+Built-in light and dark themes keep an opaque canvas while using translucent
+group overlays. Lifelines use a low-opacity version of the actor accent and sit
+behind every other diagram layer, remaining visible beneath groups but not
+through gaps. Metadata pills use opaque derived surfaces.
 
 Actor and tooltip icons work without configuration through the default
 Phosphor resolver. Set
 `iconResolver(name, theme)` and `iconCatalog` to provide another icon set. On
 the custom element, set either property to `null` to disable the resolver or
 clear the catalog.
+
+The default resolver fetches each used icon from the exactly pinned Phosphor
+package on jsDelivr. For offline, privacy-sensitive, or restrictive-CSP hosts,
+set `iconResolver` to `null` or return same-origin icon URLs from a custom
+resolver. Only `icon` and `tooltip-icon` identifiers are passed to the
+configured resolver; all other diagram fields render locally.
 
 Phosphor Icons is MIT licensed. See
 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
@@ -242,6 +251,7 @@ Phosphor Icons is MIT licensed. See
 - `src/` — parser, serializer, editor model, SVG renderer, and web component.
 - `bin/` — DOM-free syntax validation command.
 - `test/` — syntax, serialization, editor-model, and icon-provider checks.
+- `type-tests/` — strict consumer checks for every public TypeScript entry point.
 - `demo/` — local interactive development demo.
 - `website/` — public product website and showcases.
 
@@ -278,9 +288,9 @@ Stable releases use semantic versions. Before `1.0`, patch releases preserve
 the current minor-version contract, while a new minor version may introduce
 breaking changes. Consumers can choose between:
 
-- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.4` for compatible patch
-  updates within the `0.4` line.
-- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.4.0` for an immutable,
+- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.5` for compatible patch
+  updates within the `0.5` line.
+- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.5.0` for an immutable,
   exactly pinned release.
 
 Publishing runs exclusively through the

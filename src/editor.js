@@ -4,10 +4,9 @@ import {
 } from "./document.js";
 import { parse } from "./parser.js";
 import { serialize } from "./serialize.js";
+import { isGroupType } from "./grammar.js";
 
 export const ROOT_CONTAINER_ID = "root";
-
-const GROUP_TYPE_PATTERN = /^[a-z][a-z0-9-]*$/;
 
 class DocumentIdAllocator {
   #reserved = new Set([ROOT_CONTAINER_ID]);
@@ -82,9 +81,9 @@ function requiredGroupType(value) {
   const text = requiredText(value, "Group type", {
     multiline: false,
   });
-  if (!GROUP_TYPE_PATTERN.test(text)) {
+  if (!isGroupType(text)) {
     throw new Error(
-      "Group type must start with a lowercase letter and contain only lowercase letters, numbers, or hyphens.",
+      'Group type must start with a lowercase letter and contain only lowercase letters, numbers, or hyphens; "gap" is reserved.',
     );
   }
   return text;

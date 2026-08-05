@@ -8,8 +8,8 @@ export const themes = {
     faintText: "#8A919D",
     line: "#A9B0BC",
     lifeline: "rgb(52 89 200 / 0.17)",
-    groupFill: "#ECEFF5",
-    groupNestedFill: "#E5E9F1",
+    groupFill: overlay("#20242C", 5),
+    groupNestedFill: overlay("#20242C", 9),
     sectionLine: "#CDD2DC",
     actor: "#3459C8",
     actorHover: "#2F50B5",
@@ -34,8 +34,8 @@ export const themes = {
     faintText: "#7F8794",
     line: "#7C8594",
     lifeline: "rgb(157 181 255 / 0.17)",
-    groupFill: "#191D25",
-    groupNestedFill: "#1E232D",
+    groupFill: overlay("#E7EAF0", 5),
+    groupNestedFill: overlay("#E7EAF0", 9),
     sectionLine: "#373E4A",
     actor: "#9DB5FF",
     actorHover: "#ACC0FF",
@@ -78,7 +78,15 @@ function normalizePalette(palette) {
     if (typeof palette[key] !== "string" || !palette[key].trim()) {
       throw new TypeError(`palette.${key} must be a non-empty CSS color.`);
     }
-    normalized[key] = palette[key].trim();
+    const value = palette[key].trim();
+    const supportsColor = globalThis.CSS?.supports?.bind(globalThis.CSS);
+    if (
+      /\burl\s*\(/i.test(value) ||
+      (supportsColor && !supportsColor("color", value))
+    ) {
+      throw new TypeError(`palette.${key} must be a safe CSS color.`);
+    }
+    normalized[key] = value;
   }
   return normalized;
 }

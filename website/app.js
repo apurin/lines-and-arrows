@@ -3,8 +3,8 @@ import {
   parse,
   phosphorIconCatalog,
   phosphorIconResolver,
-} from "./runtime.js?v=20260803-2";
-import { initializeSiteTheme } from "./site.js?v=20260803-2";
+} from "./runtime.js?v=20260805-4";
+import { initializeSiteTheme } from "./site.js?v=20260805-3";
 
 defineLinesAndArrows();
 

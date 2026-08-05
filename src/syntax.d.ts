@@ -22,6 +22,7 @@ export type {
 } from "./model.js";
 
 export class LinesAndArrowsSyntaxError extends SyntaxError {
+  constructor(message: string, line: number);
   line: number;
 }
 

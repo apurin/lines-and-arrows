@@ -1,8 +1,8 @@
 import {
   defineLinesAndArrows,
   parse,
-} from "./runtime.js?v=20260803-2";
-import { initializeSiteTheme } from "./site.js?v=20260803-2";
+} from "./runtime.js?v=20260805-4";
+import { initializeSiteTheme } from "./site.js?v=20260805-3";
 
 defineLinesAndArrows();
 
@@ -22,20 +22,58 @@ const featureLayout = {
 };
 
 const themePreviewLayout = {
-  actorHeight: 40,
-  actorGap: 36,
-  marginX: 18,
+  actorHeight: 38,
+  actorGap: 30,
+  marginX: 16,
   marginTop: 12,
-  timelineTopGap: 22,
-  messageHeight: 42,
-  bottomPadding: 12,
+  timelineTopGap: 20,
+  messageHeight: 38,
+  groupHeaderHeight: 23,
+  groupPaddingBottom: 8,
+  groupGap: 7,
+  bottomPadding: 14,
 };
 
-const themePreviewSource = `@Browser
+const themePreviewSource = `@Client
 @API
+@Store
 
-Browser -> API: Ask
-API --> Browser: Answer`;
+Client -> API: Request
+critical Verify
+  API -> Store: Read
+  Store --> API: Result
+API --> Client: Response`;
+
+const themePreviewPalettes = {
+  "midnight-cobalt": {
+    scheme: "dark",
+    palette: {
+      background: "#0B1020",
+      foreground: "#EAF0FF",
+      accent: "#7AA2FF",
+      danger: "#FF6B7A",
+    },
+  },
+  "aubergine-signal": {
+    scheme: "dark",
+    palette: {
+      background: "#211326",
+      foreground: "#F6EAF7",
+      accent: "#E59BFF",
+      danger: "#FF6F91",
+    },
+  },
+  "newsprint-monochrome": {
+    scheme: "light",
+    palette: {
+      background: "#F4F0E8",
+      foreground: "#191919",
+      accent: "#191919",
+      accentForeground: "#F4F0E8",
+      danger: "#C43737",
+    },
+  },
+};
 
 const theme = initializeSiteTheme();
 
@@ -101,6 +139,7 @@ for (const feature of document.querySelectorAll("[data-feature]")) {
     setMode("view");
     frame.classList.add("is-ready");
   } catch (problem) {
+    frame.classList.add("is-failed");
     error.textContent =
       problem instanceof Error ? problem.message : "Unable to render example.";
   }
@@ -122,7 +161,14 @@ try {
   parse(themePreviewSource);
 
   for (const diagram of document.querySelectorAll("[data-theme-preview]")) {
+    const preview = themePreviewPalettes[diagram.dataset.themePreview];
+    if (!preview) {
+      throw new Error("Unknown theme preview.");
+    }
     diagram.branding = false;
+    diagram.theme = preview.scheme;
+    diagram.palette = preview.palette;
+    diagram.canvasBackground = "transparent";
     diagram.layout = themePreviewLayout;
     diagram.source = themePreviewSource;
   }

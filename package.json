@@ -1,6 +1,6 @@
 {
   "name": "lines-and-arrows",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "A lightweight sequence diagram language, SVG viewer, and visual editor.",
   "homepage": "https://lines-and-arrows.dev",
   "repository": {
@@ -16,6 +16,9 @@
   "unpkg": "./dist/lines-and-arrows.auto.min.js",
   "bin": {
     "lines-and-arrows": "bin/lines-and-arrows.js"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "exports": {
     ".": {
@@ -42,12 +45,14 @@
     "LICENSE",
     "README.md",
     "THIRD_PARTY_NOTICES.md",
+    "SECURITY.md",
     "syntax.md"
   ],
   "scripts": {
     "build": "node ./scripts/build.mjs",
     "test": "node --test",
-    "check": "npm test && npm run build",
+    "check": "npm test && npm run check:types && npm run build",
+    "check:types": "tsc --project type-tests/tsconfig.json",
     "prepack": "npm run build",
     "validate": "node ./bin/lines-and-arrows.js validate"
   },
@@ -62,7 +67,8 @@
     "access": "public"
   },
   "devDependencies": {
-    "esbuild": "0.25.12"
+    "esbuild": "0.25.12",
+    "typescript": "7.0.2"
   },
   "allowScripts": {
     "esbuild@0.25.12": true

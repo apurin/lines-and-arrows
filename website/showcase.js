@@ -1,8 +1,8 @@
 import {
   defineLinesAndArrows,
   parse,
-} from "./runtime.js?v=20260803-2";
-import { initializeSiteTheme } from "./site.js?v=20260803-2";
+} from "./runtime.js?v=20260805-4";
+import { initializeSiteTheme } from "./site.js?v=20260805-3";
 
 defineLinesAndArrows();
 
@@ -307,7 +307,6 @@ const renderShowcase = ({
               id="${id}-source"
               data-showcase-source
               spellcheck="false"
-              wrap="off"
               aria-describedby="${id}-error"
             >${escapeHtml(source)}</textarea>
             <div class="showcase-source-actions">
@@ -409,6 +408,7 @@ for (const showcase of document.querySelectorAll("[data-showcase]")) {
       showcaseObserver?.unobserve(showcase);
       return true;
     } catch (problem) {
+      diagramPane.classList.add("is-failed");
       error.textContent =
         problem instanceof Error
           ? problem.message

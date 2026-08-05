@@ -11,6 +11,24 @@ test("keeps the built-in themes unchanged when no palette is supplied", () => {
   assert.equal(resolveTheme("light"), themes.light);
   assert.equal(resolveTheme("dark"), themes.dark);
   assert.equal(resolvePaletteTheme(themes.light, null), themes.light);
+  assert.equal(themes.light.canvas, "#F6F7F9");
+  assert.equal(themes.dark.canvas, "#111319");
+  assert.equal(
+    themes.light.groupFill,
+    "color-mix(in oklab, #20242C 5%, transparent)",
+  );
+  assert.equal(
+    themes.light.groupNestedFill,
+    "color-mix(in oklab, #20242C 9%, transparent)",
+  );
+  assert.equal(
+    themes.dark.groupFill,
+    "color-mix(in oklab, #E7EAF0 5%, transparent)",
+  );
+  assert.equal(
+    themes.dark.groupNestedFill,
+    "color-mix(in oklab, #E7EAF0 9%, transparent)",
+  );
 });
 
 test("derives a transparent semantic theme from four palette colors", () => {
@@ -70,6 +88,13 @@ test("rejects invalid palette and canvas values", () => {
   assert.throws(
     () => resolvePaletteTheme(themes.light, { accent: "" }),
     /palette\.accent must be a non-empty CSS color/,
+  );
+  assert.throws(
+    () =>
+      resolvePaletteTheme(themes.light, {
+        accent: "url(https://example.com/paint.svg#color)",
+      }),
+    /palette\.accent must be a safe CSS color/,
   );
   assert.throws(
     () => resolvePaletteTheme(themes.light, {}, "glass"),

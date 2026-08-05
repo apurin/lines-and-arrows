@@ -1,5 +1,9 @@
 import { parse } from "./parser.js";
 import { encodeText } from "./text.js";
+import {
+  isGroupType,
+  MAX_NESTING_DEPTH,
+} from "./grammar.js";
 
 function requireArray(value, path) {
   if (!Array.isArray(value)) {
@@ -52,7 +56,7 @@ function commentList(owner, property, path, options = {}) {
   return value;
 }
 
-function assertTimelineStructure(items, path) {
+function assertTimelineStructure(items, path, depth = 0) {
   requireArray(items, path);
 
   items.forEach((item, index) => {
@@ -89,6 +93,16 @@ function assertTimelineStructure(items, path) {
     }
 
     requireString(item.groupType, `${itemPath}.groupType`);
+    if (!isGroupType(item.groupType)) {
+      throw new TypeError(
+        `${itemPath}.groupType must start with a lowercase letter, contain only lowercase letters, numbers, or hyphens, and cannot be the reserved "gap" keyword.`,
+      );
+    }
+    if (depth >= MAX_NESTING_DEPTH) {
+      throw new TypeError(
+        `${itemPath} exceeds the maximum group nesting depth of ${MAX_NESTING_DEPTH}.`,
+      );
+    }
     requireOptionalString(item.label, `${itemPath}.label`);
     commentList(item, "leadingComments", itemPath);
     commentList(item, "bodyTrailingComments", itemPath);
@@ -100,7 +114,7 @@ function assertTimelineStructure(items, path) {
       );
     }
 
-    assertTimelineStructure(item.items, `${itemPath}.items`);
+    assertTimelineStructure(item.items, `${itemPath}.items`, depth + 1);
     item.sections.forEach((section, sectionIndex) => {
       const sectionPath = `${itemPath}.sections[${sectionIndex}]`;
       if (
@@ -113,7 +127,11 @@ function assertTimelineStructure(items, path) {
       requireString(section.label, `${sectionPath}.label`);
       commentList(section, "leadingComments", sectionPath);
       commentList(section, "bodyTrailingComments", sectionPath);
-      assertTimelineStructure(section.items, `${sectionPath}.items`);
+      assertTimelineStructure(
+        section.items,
+        `${sectionPath}.items`,
+        depth + 1,
+      );
     });
   });
 }
@@ -128,6 +146,10 @@ function assertDocumentStructure(document) {
   }
 
   requireArray(document.actors, "document.actors");
+  if (typeof document.explicitActors !== "boolean") {
+    throw new TypeError("document.explicitActors must be a boolean.");
+  }
+  const actorNames = new Set();
   document.actors.forEach((actor, index) => {
     if (
       !actor ||
@@ -139,6 +161,10 @@ function assertDocumentStructure(document) {
       );
     }
     requireString(actor.name, `document.actors[${index}].name`);
+    if (actorNames.has(actor.name)) {
+      throw new TypeError(`Duplicate actor "${actor.name}".`);
+    }
+    actorNames.add(actor.name);
     requireOptionalString(actor.icon, `document.actors[${index}].icon`);
     requireOptionalString(actor.tag, `document.actors[${index}].tag`);
     requireOptionalString(
@@ -163,6 +189,73 @@ function assertDocumentStructure(document) {
   commentList(document, "leadingComments", "document");
   commentList(document, "trailingComments", "document");
   assertTimelineStructure(document.items, "document.items");
+
+  const inferredNames = [];
+  const seenNames = new Set();
+  const visitMessages = (items) => {
+    for (const item of items) {
+      if (item.type === "message") {
+        for (const name of [item.source, item.target]) {
+          if (!seenNames.has(name)) {
+            seenNames.add(name);
+            inferredNames.push(name);
+          }
+        }
+        continue;
+      }
+      if (item.type !== "group") {
+        continue;
+      }
+      if (item.sections.length > 0) {
+        for (const section of item.sections) {
+          visitMessages(section.items);
+        }
+      } else {
+        visitMessages(item.items);
+      }
+    }
+  };
+  visitMessages(document.items);
+
+  if (document.explicitActors) {
+    if (document.actors.length === 0) {
+      throw new TypeError(
+        "document.actors must contain at least one actor when document.explicitActors is true.",
+      );
+    }
+    for (const name of inferredNames) {
+      if (!actorNames.has(name)) {
+        throw new TypeError(
+          `Unknown actor "${name}" while document.explicitActors is true.`,
+        );
+      }
+    }
+    return;
+  }
+
+  const actualNames = document.actors.map((actor) => actor.name);
+  if (
+    actualNames.length !== inferredNames.length ||
+    actualNames.some((name, index) => name !== inferredNames[index])
+  ) {
+    throw new TypeError(
+      "document.actors must exactly match first-use actor order when document.explicitActors is false.",
+    );
+  }
+  document.actors.forEach((actor, index) => {
+    if (
+      actor.icon ||
+      actor.tag ||
+      actor.tooltip ||
+      actor.tooltipIcon ||
+      actor.leadingComments?.length > 0 ||
+      actor.propertyComments?.length > 0
+    ) {
+      throw new TypeError(
+        `document.actors[${index}] has declaration-only data; set document.explicitActors to true to preserve it.`,
+      );
+    }
+  });
 }
 
 function sourceText(value) {

@@ -216,6 +216,14 @@ test("requires syntax-safe one-token group types", () => {
   });
   assert.match(editor.source, /^critical-path2 Processing$/m);
   assert.doesNotThrow(() => parse(editor.source));
+
+  assert.throws(
+    () =>
+      editor.updateItem(group.id, {
+        groupType: "gap",
+      }),
+    /Group type must start with a lowercase letter/,
+  );
 });
 
 test("clears group labels and wraps items without a label", () => {
@@ -473,6 +481,66 @@ test("rejects ambiguous or invalid programmatic documents", () => {
   assert.throws(
     () => serialize(invalidReference),
     /Unknown actor "Missing actor"/,
+  );
+
+  const invalidGroupType = parse(SOURCE);
+  invalidGroupType.items[1].groupType = "critical path";
+  assert.throws(
+    () => serialize(invalidGroupType),
+    /groupType must start with a lowercase letter/,
+  );
+  invalidGroupType.items[1].groupType = "gap";
+  assert.throws(
+    () => serialize(invalidGroupType),
+    /reserved "gap" keyword/,
+  );
+
+  const implicit = parse("A -> B\nB --> A");
+  implicit.actors.reverse();
+  assert.throws(
+    () => serialize(implicit),
+    /must exactly match first-use actor order/,
+  );
+
+  const implicitWithMetadata = parse("A -> B");
+  implicitWithMetadata.actors[0].tag = "external";
+  assert.throws(
+    () => serialize(implicitWithMetadata),
+    /set document\.explicitActors to true/,
+  );
+
+  const emptyExplicit = parse("A -> B");
+  emptyExplicit.explicitActors = true;
+  emptyExplicit.actors = [];
+  assert.throws(
+    () => serialize(emptyExplicit),
+    /must contain at least one actor/,
+  );
+
+  const missingFlag = parse("A -> B");
+  delete missingFlag.explicitActors;
+  assert.throws(
+    () => serialize(missingFlag),
+    /explicitActors must be a boolean/,
+  );
+
+  const excessiveNesting = parse("A -> B");
+  let nested = excessiveNesting.items[0];
+  for (let depth = 0; depth < 129; depth += 1) {
+    nested = {
+      type: "group",
+      groupType: "review",
+      label: null,
+      items: [nested],
+      sections: [],
+      leadingComments: [],
+      bodyTrailingComments: [],
+    };
+  }
+  excessiveNesting.items = [nested];
+  assert.throws(
+    () => serialize(excessiveNesting),
+    /maximum group nesting depth of 128/,
   );
 });
 
