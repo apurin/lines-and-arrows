@@ -3,8 +3,8 @@ import {
   parse,
   phosphorIconCatalog,
   phosphorIconResolver,
-} from "./runtime.js?v=20260805-4";
-import { initializeSiteTheme } from "./site.js?v=20260805-3";
+} from "./runtime.js?v=20260805-5";
+import { initializeSiteTheme } from "./site.js?v=20260805-4";
 
 defineLinesAndArrows();
 
@@ -62,6 +62,13 @@ diagram.iconCatalog = phosphorIconCatalog;
 
 const theme = initializeSiteTheme();
 diagram.theme = theme.theme;
+diagram.palette = {
+  background: "var(--paper-raised)",
+  foreground: "var(--ink)",
+  accent: "var(--accent)",
+  danger: "var(--error)",
+};
+diagram.canvasBackground = "transparent";
 
 try {
   parse(heroSource);
