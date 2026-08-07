@@ -18,7 +18,7 @@ The jsDelivr entry registers the web component automatically:
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.5"
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.6"
 ></script>
 
 <lines-and-arrows mode="view" theme="auto">
@@ -30,8 +30,8 @@ The jsDelivr entry registers the web component automatically:
 </lines-and-arrows>
 ```
 
-The `@0.5` compatibility alias receives patch releases without crossing into a
-potentially breaking `0.6`. Use an exact version when a deployment must remain
+The `@0.6` compatibility alias receives patch releases without crossing into a
+potentially breaking `0.7`. Use an exact version when a deployment must remain
 fully pinned.
 
 For direct CDN access to the JavaScript API without automatic registration:
@@ -39,15 +39,16 @@ For direct CDN access to the JavaScript API without automatic registration:
 ```js
 import {
   renderDiagram,
-} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.5/dist/lines-and-arrows.min.js";
+} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.6/dist/lines-and-arrows.min.js";
 ```
 
 Set `mode="edit"` to enable the visual editor, including canvas undo and redo
-controls. Use `selectable="false"` when a view should have no selectable diagram
-elements. A quiet “Powered by Lines & Arrows” website link appears by default;
+controls. View mode is non-selectable by default; add the boolean
+`selectable-actors` attribute when actors should respond to pointer and keyboard
+selection. A quiet “Powered by Lines & Arrows” website link appears by default;
 set `branding="false"` to hide it.
-Undo and redo have no separate enablement attribute: edit mode provides the
-controls and the element's `undo()`, `redo()`, `canUndo`, and `canRedo` API.
+Set `history-controls="false"` to hide the canvas undo and redo buttons while
+keeping the element's `undo()`, `redo()`, `canUndo`, and `canRedo` API.
 Source nested naturally inside the element may share the page's indentation;
 the component removes that common indentation while preserving the diagram's
 relative indentation.
@@ -149,9 +150,13 @@ const canonicalSource = serialize(document);
 
 const viewer = renderDiagram(container, document, {
   theme: "auto",
-  selectable: false,
+  selectableActors: true,
   branding: true,
+  onActorSelect({ name, actor }) {
+    console.log(name, actor?.tooltip);
+  },
 });
+viewer.selectActor("Customer");
 
 const editor = new DiagramEditor(canonicalSource);
 const editable = renderEditor(container, editor.document, {
@@ -174,11 +179,22 @@ also validates programmatically constructed documents and rejects ambiguous
 structures, such as a group containing both direct items and sections.
 
 The `<lines-and-arrows>` element exposes `source`, `mode`, `theme`, `palette`,
-`canvasBackground`, `selectable`, `branding`, `layout`, `iconResolver`, and
-`iconCatalog`, plus selection, history, and source-replacement methods. The
+`canvasBackground`, `selectableActors`, `historyControls`, `branding`, `layout`,
+`iconResolver`, and `iconCatalog`. In view mode, `selectActor(name)`,
+`clearActorSelection()`, and `selectedActorName` control the optional actor
+selection. The
 JavaScript renderers accept the same `branding` boolean and default it to
-`true`. `select(id)` and user selection both emit `la-select` with the selected
-immutable model item.
+`true`; `renderEditor()` also accepts `historyControls: false` to hide its
+canvas buttons.
+
+Actor selection is opt-in through `selectableActors: true` or the
+`selectable-actors` element attribute. `initialSelectedActorName` preselects an
+actor during `renderDiagram()`. User and programmatic selection emit
+`la-actor-select` with the actor's unique `name` and an immutable snapshot
+containing its name, icon, tag, tooltip text, tooltip icon, and inferred state.
+Clearing selection emits `{ name: null, actor: null }`. Editor selection remains
+separate: its `select(id)` and user selection emit `la-select` with the selected
+immutable editor model item.
 `la-change` is emitted only after a command commits a different source; its
 detail contains the new source, immutable AST snapshot, command name, and
 history state.
@@ -190,10 +206,10 @@ Layout overrides are compacting preferences, not permission to overlap
 content. The renderer clamps unsafe spacing values and reserves room for actor
 metadata, message labels, group headers, and section dividers.
 
-Selectable actors and messages expose accessible names, enter the keyboard tab
-order, and respond to Enter or Space. Screen readers use the rendered SVG's
-standard roles and ARIA labels, so hosts do not need a separate accessibility
-helper API.
+When actor selection is enabled, actors expose accessible names, enter the
+keyboard tab order, and respond to Enter or Space. Escape or selecting the
+canvas clears the actor selection. Messages, groups, sections, and gaps remain
+static in view mode; their tooltip controls stay accessible independently.
 
 ## Install
 
@@ -288,9 +304,9 @@ Stable releases use semantic versions. Before `1.0`, patch releases preserve
 the current minor-version contract, while a new minor version may introduce
 breaking changes. Consumers can choose between:
 
-- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.5` for compatible patch
-  updates within the `0.5` line.
-- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.5.0` for an immutable,
+- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.6` for compatible patch
+  updates within the `0.6` line.
+- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.6.0` for an immutable,
   exactly pinned release.
 
 Publishing runs exclusively through the

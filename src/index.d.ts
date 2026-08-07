@@ -90,6 +90,21 @@ export interface SelectionDetail {
   readonly items?: readonly Immutable<TimelineItem>[];
 }
 
+export interface ActorSelectionSnapshot {
+  readonly type: "actor";
+  readonly name: string;
+  readonly icon: string | null;
+  readonly tag: string | null;
+  readonly tooltip: string | null;
+  readonly tooltipIcon: string | null;
+  readonly inferred: boolean;
+}
+
+export interface ActorSelectionDetail {
+  readonly name: string | null;
+  readonly actor: ActorSelectionSnapshot | null;
+}
+
 export interface ChangeDetail {
   readonly source: string;
   readonly ast: DiagramDocumentSnapshot;
@@ -103,6 +118,7 @@ export interface ErrorDetail {
 }
 
 export interface LinesAndArrowsEventMap {
+  "la-actor-select": CustomEvent<ActorSelectionDetail>;
   "la-select": CustomEvent<SelectionDetail>;
   "la-change": CustomEvent<ChangeDetail>;
   "la-error": CustomEvent<ErrorDetail>;
@@ -129,18 +145,21 @@ export function phosphorIconResolver(
   resolvedTheme?: "light" | "dark",
 ): string | null;
 
-export interface RenderOptions {
+export interface BaseRenderOptions {
   theme?: ThemeName;
   palette?: ThemePalette | null;
   canvasBackground?: CanvasBackground;
   label?: string;
-  selectable?: boolean;
   branding?: boolean;
-  initialSelectedId?: string | null;
   iconResolver?: IconResolver | null;
   iconCatalog?: readonly IconCatalogEntry[];
-  onSelect?: (detail: SelectionDetail) => void;
   layout?: Record<string, number>;
+}
+
+export interface RenderOptions extends BaseRenderOptions {
+  selectableActors?: boolean;
+  initialSelectedActorName?: string | null;
+  onActorSelect?: (detail: ActorSelectionDetail) => void;
 }
 
 export interface DiagramLayout {
@@ -200,30 +219,38 @@ export interface DiagramLayout {
   >;
 }
 
-export interface RenderController {
+export interface BaseRenderController {
   readonly ast: DiagramDocumentSnapshot;
   readonly layout: DiagramLayout;
   readonly svg: SVGSVGElement;
-  readonly selectedId: string | null;
-  select(id: string): void;
-  clearSelection(): void;
   destroy(): void;
 }
 
-export interface EditorController extends RenderController {
+export interface RenderController extends BaseRenderController {
+  readonly selectedActorName: string | null;
+  selectActor(name: string): void;
+  clearActorSelection(): void;
+}
+
+export interface EditorController extends BaseRenderController {
   readonly editor: DiagramEditor;
   readonly source: string;
+  readonly selectedId: string | null;
   readonly selectedIds: string[];
   readonly canUndo: boolean;
   readonly canRedo: boolean;
+  select(id: string): void;
+  clearSelection(): void;
   undo(): boolean;
   redo(): boolean;
   replaceSource(source: string): boolean;
 }
 
-export interface EditorRenderOptions extends RenderOptions {
+export interface EditorRenderOptions extends BaseRenderOptions {
   editor?: DiagramEditor;
   dangerColor?: string;
+  historyControls?: boolean;
+  onSelect?: (detail: SelectionDetail) => void;
   onChange?: (detail: ChangeDetail) => void;
   onError?: (error: unknown) => void;
 }
@@ -366,7 +393,8 @@ export class LinesAndArrowsElement extends HTMLElement {
   source: string;
   theme: ThemeName;
   mode: EditorMode;
-  selectable: boolean;
+  selectableActors: boolean;
+  historyControls: boolean;
   branding: boolean;
   canvasBackground: CanvasBackground;
   palette: ThemePalette | null;
@@ -375,10 +403,13 @@ export class LinesAndArrowsElement extends HTMLElement {
   get iconCatalog(): IconCatalogEntry[];
   set iconCatalog(value: readonly IconCatalogEntry[] | null);
   layout: RenderOptions["layout"] | null;
+  readonly selectedActorName: string | null;
   readonly selectedId: string | null;
   readonly selectedIds: string[];
   readonly canUndo: boolean;
   readonly canRedo: boolean;
+  selectActor(name: string): void;
+  clearActorSelection(): void;
   select(id: string): void;
   clearSelection(): void;
   undo(): boolean;

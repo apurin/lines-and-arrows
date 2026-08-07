@@ -4,7 +4,11 @@ import {
   DiagramEditor,
   defineLinesAndArrows,
   renderDiagram,
+  renderEditor,
+  type ActorSelectionDetail,
+  type ActorSelectionSnapshot,
   type ChangeDetail,
+  type EditorRenderOptions,
   type SelectionDetail,
   type ThemePalette,
 } from "lines-and-arrows";
@@ -36,17 +40,52 @@ const palette: ThemePalette = {
 };
 const controller = renderDiagram(document.body, editor.document, {
   palette,
+  selectableActors: true,
+  initialSelectedActorName: "Client",
+  onActorSelect(detail: ActorSelectionDetail) {
+    const actor: ActorSelectionSnapshot | null = detail.actor;
+    void actor?.tooltip;
+  },
+});
+controller.selectActor("Client");
+const selectedActorName: string | null = controller.selectedActorName;
+void selectedActorName;
+controller.clearActorSelection();
+controller.destroy();
+
+const editorOptions: EditorRenderOptions = {
+  historyControls: false,
   onSelect(detail: SelectionDetail) {
     void detail.kind;
   },
-});
-controller.destroy();
+};
+void editorOptions;
+const editorController = renderEditor(
+  document.body,
+  editor.document,
+  editorOptions,
+);
+editorController.select(editor.document.actors[0].id!);
+editorController.clearSelection();
+editorController.destroy();
 
 const element = document.body.appendChild(new LinesAndArrowsElement());
 element.palette = palette;
+element.selectableActors = true;
+element.selectActor("Client");
+const elementActorName: string | null = element.selectedActorName;
+void elementActorName;
+element.clearActorSelection();
+element.historyControls = false;
+const historyControls: boolean = element.historyControls;
+void historyControls;
 element.addEventListener("la-change", (event) => {
   const detail: ChangeDetail = event.detail;
   void detail.source;
+});
+element.addEventListener("la-actor-select", (event) => {
+  const detail: ActorSelectionDetail = event.detail;
+  void detail.actor?.tag;
 });
 
 const constructor: typeof LinesAndArrowsElement = defineLinesAndArrows();

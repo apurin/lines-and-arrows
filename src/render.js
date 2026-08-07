@@ -72,62 +72,48 @@ const VIEW_STYLES = `
       opacity 120ms ease;
   }
 
-  .la-frame[data-selectable="true"]
-    .la-actor:hover
+  .la-actor.la-selectable:hover
     .la-actor-shape {
     fill: var(--la-actor-hover);
   }
 
-  .la-frame[data-selectable="true"]
-    .la-actor[data-selected="true"]
+  .la-actor.la-selectable[data-selected="true"]
     .la-actor-shape {
     fill: var(--la-actor-selected);
   }
 
-  .la-frame[data-selectable="true"]
-    .la-actor:focus-visible
+  .la-actor.la-selectable:focus-visible
     .la-focus-ring {
     opacity: 1;
   }
 
-  .la-frame[data-selectable="true"]
-    .la-message:hover
+  .la-message.la-selectable:hover
     .la-message-line,
-  .la-frame[data-selectable="true"]
-    .la-message:focus-visible
+  .la-message.la-selectable:focus-visible
     .la-message-line,
-  .la-frame[data-selectable="true"]
-    .la-message[data-selected="true"]
+  .la-message.la-selectable[data-selected="true"]
     .la-message-line,
-  .la-frame[data-selectable="true"]
-    .la-message:hover
+  .la-message.la-selectable:hover
     .la-lost-cross,
-  .la-frame[data-selectable="true"]
-    .la-message:focus-visible
+  .la-message.la-selectable:focus-visible
     .la-lost-cross,
-  .la-frame[data-selectable="true"]
-    .la-message[data-selected="true"]
+  .la-message.la-selectable[data-selected="true"]
     .la-lost-cross {
     stroke: var(--la-selection);
   }
 
-  .la-frame[data-selectable="true"]
-    .la-message:hover
+  .la-message.la-selectable:hover
     .la-message-label,
-  .la-frame[data-selectable="true"]
-    .la-message:focus-visible
+  .la-message.la-selectable:focus-visible
     .la-message-label,
-  .la-frame[data-selectable="true"]
-    .la-message[data-selected="true"]
+  .la-message.la-selectable[data-selected="true"]
     .la-message-label {
     fill: var(--la-selection);
   }
 
-  .la-frame[data-selectable="true"]
-    .la-message:focus-visible
+  .la-message.la-selectable:focus-visible
     .la-message-selection-highlight,
-  .la-frame[data-selectable="true"]
-    .la-message[data-selected="true"]
+  .la-message.la-selectable[data-selected="true"]
     .la-message-selection-highlight {
     opacity: 0.26;
   }
@@ -226,36 +212,27 @@ const VIEW_STYLES = `
     stroke-opacity: 0.72;
   }
 
-  .la-frame[data-selectable="true"]
-    .la-group-hit:hover
+  .la-group-hit.la-selectable:hover
     + .la-group-shape,
-  .la-frame[data-selectable="true"]
-    .la-group-hit:focus-visible
+  .la-group-hit.la-selectable:focus-visible
     + .la-group-shape,
-  .la-frame[data-selectable="true"]
-    .la-group-hit[data-selected="true"]
+  .la-group-hit.la-selectable[data-selected="true"]
     + .la-group-shape {
     stroke: var(--la-selection);
     stroke-opacity: 0.72;
   }
 
-  .la-frame[data-selectable="true"]
-    .la-section:hover
+  .la-section.la-selectable:hover
     .la-section-line,
-  .la-frame[data-selectable="true"]
-    .la-section:focus-visible
+  .la-section.la-selectable:focus-visible
     .la-section-line,
-  .la-frame[data-selectable="true"]
-    .la-section[data-selected="true"]
+  .la-section.la-selectable[data-selected="true"]
     .la-section-line,
-  .la-frame[data-selectable="true"]
-    .la-gap:hover
+  .la-gap.la-selectable:hover
     .la-gap-rule,
-  .la-frame[data-selectable="true"]
-    .la-gap:focus-visible
+  .la-gap.la-selectable:focus-visible
     .la-gap-rule,
-  .la-frame[data-selectable="true"]
-    .la-gap[data-selected="true"]
+  .la-gap.la-selectable[data-selected="true"]
     .la-gap-rule {
     stroke: var(--la-selection);
   }
@@ -545,7 +522,7 @@ function applyTokens(frame, tokens) {
 }
 
 function makeSelectable(group, item, selection, label) {
-  if (!selection.enabled) {
+  if (!selection.canSelect(item)) {
     return false;
   }
 
@@ -568,6 +545,11 @@ function makeSelectable(group, item, selection, label) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       select(event);
+    } else if (event.key === "Escape" && selection.mode === "actors") {
+      event.preventDefault();
+      event.stopPropagation();
+      selection.clear();
+      group.blur();
     }
   });
   return true;
@@ -1699,11 +1681,31 @@ function indexSelectableModels(documentModel) {
   return models;
 }
 
+function actorSelectionSnapshot(actor) {
+  return Object.freeze({
+    type: "actor",
+    name: actor.name,
+    icon: actor.icon ?? null,
+    tag: actor.tag ?? null,
+    tooltip: actor.tooltip ?? null,
+    tooltipIcon: actor.tooltipIcon ?? null,
+    inferred: actor.inferred === true,
+  });
+}
+
 function createSelectionController(root, options) {
-  const enabled = options.selectable !== false;
+  const mode = options.selectionMode;
+  const enabled = mode !== "none";
   const models = options.models;
   let selectedId = null;
   let selectedItem = null;
+
+  function canSelect(item) {
+    return (
+      mode === "editor" ||
+      (mode === "actors" && item?.type === "actor")
+    );
+  }
 
   function apply() {
     root.querySelectorAll("[data-la-id]").forEach((element) => {
@@ -1733,7 +1735,7 @@ function createSelectionController(root, options) {
       }
       const nextId = id ?? null;
       const item = nextId === null ? null : models.get(nextId);
-      if (nextId !== null && !item) {
+      if (nextId !== null && (!item || !canSelect(item))) {
         throw new RangeError(
           `No selectable diagram element has ID "${nextId}".`,
         );
@@ -1746,14 +1748,32 @@ function createSelectionController(root, options) {
         return;
       }
 
+      const eventTarget = options.eventTarget;
+      if (mode === "actors") {
+        const actor = item ? actorSelectionSnapshot(item) : null;
+        const detail = Object.freeze({
+          name: actor?.name ?? null,
+          actor,
+        });
+        options.onActorSelect?.(detail);
+        if (eventTarget?.dispatchEvent && globalThis.CustomEvent) {
+          eventTarget.dispatchEvent(
+            new CustomEvent("la-actor-select", {
+              detail,
+              bubbles: true,
+              composed: true,
+            }),
+          );
+        }
+        return;
+      }
+
       const detail = Object.freeze({
         id: selectedId,
         kind: item?.type ?? null,
         item: item ?? null,
       });
       options.onSelect?.(detail);
-
-      const eventTarget = options.eventTarget;
       if (eventTarget?.dispatchEvent && globalThis.CustomEvent) {
         eventTarget.dispatchEvent(
           new CustomEvent("la-select", {
@@ -1764,6 +1784,21 @@ function createSelectionController(root, options) {
         );
       }
     },
+    selectActor(name, emit = true) {
+      if (typeof name !== "string" || !name.trim()) {
+        throw new TypeError("selectActor requires a non-empty actor name.");
+      }
+      if (mode !== "actors") {
+        return;
+      }
+      const match = [...models.entries()].find(
+        ([, item]) => item.type === "actor" && item.name === name,
+      );
+      if (!match) {
+        throw new RangeError(`No actor named "${name}" exists.`);
+      }
+      this.select(match[0], emit);
+    },
     clear(emit = true) {
       this.select(null, emit);
     },
@@ -1773,8 +1808,17 @@ function createSelectionController(root, options) {
     get item() {
       return selectedItem;
     },
+    get actorName() {
+      return selectedItem?.type === "actor"
+        ? selectedItem.name
+        : null;
+    },
+    canSelect,
     get enabled() {
       return enabled;
+    },
+    get mode() {
+      return mode;
     },
   };
 
@@ -1783,7 +1827,12 @@ function createSelectionController(root, options) {
 
 let rendererSequence = 0;
 
-export function renderDiagram(target, input, options = {}) {
+function renderDiagramSurface(
+  target,
+  input,
+  options,
+  selectionMode,
+) {
   if (!target?.replaceChildren) {
     throw new TypeError("renderDiagram requires a DOM container.");
   }
@@ -1825,7 +1874,6 @@ export function renderDiagram(target, input, options = {}) {
   frame.className = "la-frame";
   frame.part = "frame";
   frame.dataset.theme = tokens.name;
-  frame.dataset.selectable = String(options.selectable !== false);
   applyTokens(frame, tokens);
 
   const svg = svgElement("svg", {
@@ -1862,6 +1910,7 @@ export function renderDiagram(target, input, options = {}) {
     ...renderOptions,
     eventTarget,
     models: indexSelectableModels(documentModel),
+    selectionMode,
   });
 
   const gapMask = appendGapMask(svg, layout, prefix);
@@ -1919,13 +1968,25 @@ export function renderDiagram(target, input, options = {}) {
   if (branding) {
     renderBranding(svg, layout);
   }
-  if (selection.enabled && options.initialSelectedId) {
+  if (selectionMode === "editor" && options.initialSelectedId) {
     selection.select(options.initialSelectedId, false);
+  } else if (
+    selectionMode === "actors" &&
+    options.initialSelectedActorName
+  ) {
+    selection.selectActor(options.initialSelectedActorName, false);
   }
 
   if (selection.enabled) {
     svg.addEventListener("click", (event) => {
-      if (event.target === svg) {
+      if (
+        selectionMode === "actors" &&
+        !event.target.closest?.(
+          ".la-actor, .la-tooltip-trigger, .la-branding",
+        )
+      ) {
+        selection.clear();
+      } else if (selectionMode === "editor" && event.target === svg) {
         selection.clear();
       }
     });
@@ -1934,21 +1995,12 @@ export function renderDiagram(target, input, options = {}) {
   frame.append(svg, tooltipLayer);
   target.replaceChildren(style, frame);
 
-  return {
+  const commonController = {
     get ast() {
       return documentModel;
     },
     layout,
     svg,
-    select(id) {
-      selection.select(id);
-    },
-    clearSelection() {
-      selection.clear();
-    },
-    get selectedId() {
-      return selection.id;
-    },
     destroy() {
       for (const cleanup of tooltipLayer.cleanups) {
         cleanup();
@@ -1957,4 +2009,45 @@ export function renderDiagram(target, input, options = {}) {
       frame.remove();
     },
   };
+
+  if (selectionMode === "editor") {
+    return {
+      ...commonController,
+      select(id, emit = true) {
+        selection.select(id, emit);
+      },
+      clearSelection(emit = true) {
+        selection.clear(emit);
+      },
+      get selectedId() {
+        return selection.id;
+      },
+    };
+  }
+
+  return {
+    ...commonController,
+    selectActor(name, emit = true) {
+      selection.selectActor(name, emit);
+    },
+    clearActorSelection(emit = true) {
+      selection.clear(emit);
+    },
+    get selectedActorName() {
+      return selection.actorName;
+    },
+  };
+}
+
+export function renderDiagram(target, input, options = {}) {
+  return renderDiagramSurface(
+    target,
+    input,
+    options,
+    options.selectableActors === true ? "actors" : "none",
+  );
+}
+
+export function renderDiagramForEditor(target, input, options = {}) {
+  return renderDiagramSurface(target, input, options, "editor");
 }

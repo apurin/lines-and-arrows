@@ -3,6 +3,8 @@ export {
   defineLinesAndArrows,
 } from "./index.js";
 export type {
+  ActorSelectionDetail,
+  ActorSelectionSnapshot,
   ChangeDetail,
   CanvasBackground,
   EditorMode,

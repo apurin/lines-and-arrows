@@ -16,7 +16,7 @@ import {
   metadataMetrics,
   selfMessageWidth,
 } from "./metadata.js";
-import { renderDiagram } from "./render.js";
+import { renderDiagramForEditor } from "./render.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const TIMELINE_INSERTION_CONTROL_OFFSET = 12;
@@ -6026,7 +6026,9 @@ export function renderEditor(target, input, options = {}) {
     if (tooltipLayer) {
       svg.append(tooltipLayer);
     }
-    svg.append(historyControls(layout, editor, run));
+    if (options.historyControls !== false) {
+      svg.append(historyControls(layout, editor, run));
+    }
 
     let suppressClick = false;
     svg.addEventListener(
@@ -6308,9 +6310,8 @@ export function renderEditor(target, input, options = {}) {
     removeInlineMessageEditor(previousFrame);
     removePopover(previousFrame);
     baseController?.destroy();
-    baseController = renderDiagram(target, editor.document, {
+    baseController = renderDiagramForEditor(target, editor.document, {
       ...options,
-      selectable: true,
       actorPartActivatesSelection(actorId, field) {
         pendingActorPart = field;
         baseController?.select(actorId);
