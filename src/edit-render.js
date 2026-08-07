@@ -782,11 +782,15 @@ export const EDIT_STYLES = `
     pointer-events: auto;
     appearance: none;
     border: 0;
-    border-radius: var(--la-inline-section-radius, 5px);
+    border-radius: var(--la-inline-section-radius, 10px);
     outline: none;
     resize: none;
-    background: var(--la-inline-section-surface, var(--la-group-fill));
-    color: var(--la-muted-text);
+    background: color-mix(
+      in srgb,
+      var(--la-surface) 76%,
+      var(--la-group-fill)
+    );
+    color: var(--la-text);
     font: 650 var(--la-inline-section-font-size, 10px)/var(
         --la-inline-section-line-height,
         12px
@@ -4124,9 +4128,19 @@ export function renderEditor(target, input, options = {}) {
       `[data-la-id="${CSS.escape(model.id)}"]`,
     );
     const svg = sectionElement?.ownerSVGElement;
-    if (!section || !sectionElement || !svg) {
+    const label = sectionElement?.querySelector(".la-section-label");
+    if (!section || !sectionElement || !svg || !label) {
       return;
     }
+    const rightRule = Array.from(
+      sectionElement.querySelectorAll(".la-section-line"),
+    ).find(
+      (line) => Number(line.getAttribute("x1")) > section.left,
+    );
+
+    const previousVisibility = label.style.visibility;
+    const previousRightRuleStart = rightRule?.getAttribute("x1");
+    label.style.visibility = "hidden";
 
     const inlineEditor = document.createElement("div");
     inlineEditor.className = "la-inline-section-editor";
@@ -4153,6 +4167,8 @@ export function renderEditor(target, input, options = {}) {
     let dirty = false;
     let cancelled = false;
     let diagramScale = 1;
+    const labelLeft = section.left + 10;
+    const ruleGap = 4;
     const sizeLabel = () => {
       const longestLine = Math.max(
         1,
@@ -4169,6 +4185,10 @@ export function renderEditor(target, input, options = {}) {
         Math.max(52, longestLine * 5.6 + 16),
       );
       labelControl.style.width = `${labelWidth * diagramScale}px`;
+      rightRule?.setAttribute(
+        "x1",
+        String(labelLeft + labelWidth + ruleGap),
+      );
     };
     labelControl.addEventListener("input", () => {
       dirty = true;
@@ -4274,7 +4294,7 @@ export function renderEditor(target, input, options = {}) {
       );
       inlineEditor.style.setProperty(
         "--la-inline-section-radius",
-        `${5 * diagramScale}px`,
+        `${10 * diagramScale}px`,
       );
       inlineEditor.style.setProperty(
         "--la-inline-section-font-size",
@@ -4291,14 +4311,6 @@ export function renderEditor(target, input, options = {}) {
       inlineEditor.style.setProperty(
         "--la-inline-delete-cross-thickness",
         `${1.5 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-section-surface",
-        section.depth <= 0
-          ? "var(--la-surface)"
-          : (section.depth - 1) % 2 === 0
-            ? "var(--la-group-fill)"
-            : "var(--la-group-nested-fill)",
       );
     };
 
@@ -4351,6 +4363,10 @@ export function renderEditor(target, input, options = {}) {
         globalThis.cancelAnimationFrame(positionFrame);
       }
       positionFrame = null;
+      label.style.visibility = previousVisibility;
+      if (rightRule && previousRightRuleStart !== null) {
+        rightRule.setAttribute("x1", previousRightRuleStart);
+      }
       delete inlineEditor.cleanup;
     };
     positionEditor();

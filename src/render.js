@@ -271,6 +271,40 @@ function textWidth(text, fontSize = 12, minimum = 0) {
   return Math.max(minimum, text.length * fontSize * 0.56);
 }
 
+function textMeasurer(fontSize, fontWeight) {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext?.("2d");
+  if (!context) {
+    return (text) => textWidth(text, fontSize);
+  }
+  context.font = [
+    `${fontWeight} ${fontSize}px system-ui`,
+    "-apple-system",
+    "BlinkMacSystemFont",
+    '"Segoe UI"',
+    "sans-serif",
+  ].join(", ");
+  return (text) => context.measureText(text).width;
+}
+
+function truncateToWidth(text, maximumWidth, measure) {
+  if (measure(text) <= maximumWidth) {
+    return text;
+  }
+
+  let lower = 0;
+  let upper = text.length;
+  while (lower < upper) {
+    const middle = Math.ceil((lower + upper) / 2);
+    if (measure(`${text.slice(0, middle)}…`) <= maximumWidth) {
+      lower = middle;
+    } else {
+      upper = middle - 1;
+    }
+  }
+  return `${text.slice(0, lower)}…`;
+}
+
 function appendTextLines(
   text,
   lines,
@@ -319,20 +353,29 @@ function groupHeaderGeometry(group) {
 }
 
 function sectionLabelGeometry(section) {
-  const visibleLines = textLines(section.label).map((line) =>
-    truncate(line, 28),
+  const fontSize = 10;
+  const measure = textMeasurer(fontSize, 650);
+  const lineGap = 4;
+  const leftLineWidth = 6;
+  const rightLineMinimum = 8;
+  const labelX = section.left + leftLineWidth + lineGap;
+  const availableLabelWidth = Math.max(
+    fontSize * 0.56,
+    section.right - rightLineMinimum - lineGap - labelX,
   );
-  const labelWidth =
-    Math.max(
-      36,
-      ...visibleLines.map((line) => textWidth(line, 10)),
-    ) + 16;
+  const visibleLines = textLines(section.label).map((line) =>
+    truncateToWidth(line, availableLabelWidth, measure),
+  );
+  const labelWidth = Math.max(
+    0,
+    ...visibleLines.map((line) => measure(line)),
+  );
   return {
     visibleLines,
     labelWidth,
-    x: section.left + 10,
-    y: section.top + 3,
-    height: visibleLines.length * 12 + 8,
+    labelX,
+    leftLineEnd: labelX - lineGap,
+    rightLineStart: labelX + labelWidth + lineGap,
   };
 }
 
@@ -862,7 +905,7 @@ function renderActor(
   tooltipLayer,
 ) {
   const activatePart =
-    selection.enabled &&
+    selection.mode === "editor" &&
     typeof options.actorPartActivatesSelection === "function"
       ? (part) => options.actorPartActivatesSelection(actor.id, part)
       : null;
@@ -1067,7 +1110,7 @@ function renderGroupHeader(
   selection,
 ) {
   const activatePart =
-    selection.enabled &&
+    selection.mode === "editor" &&
     typeof options.groupPartActivatesSelection === "function"
       ? (part) => options.groupPartActivatesSelection(group.id, part)
       : null;
@@ -1199,11 +1242,16 @@ function renderSection(parent, section, tokens, selection) {
   makeSelectable(group, section, selection, `Section ${section.label}`);
   const lineStart = section.left;
   const lineEnd = section.right;
-  const { visibleLines, labelWidth } = sectionLabelGeometry(section);
+  const {
+    visibleLines,
+    labelX,
+    leftLineEnd,
+    rightLineStart,
+  } = sectionLabelGeometry(section);
 
   for (const [x1, x2] of [
-    [lineStart, lineStart + 6],
-    [lineStart + 10 + labelWidth + 4, lineEnd],
+    [lineStart, leftLineEnd],
+    [rightLineStart, lineEnd],
   ]) {
     if (x2 <= x1) {
       continue;
@@ -1221,7 +1269,8 @@ function renderSection(parent, section, tokens, selection) {
     );
   }
   const label = svgElement("text", {
-    x: lineStart + 18,
+    class: "la-section-label",
+    x: labelX,
     "font-size": 10,
     "font-weight": 650,
     fill: tokens.mutedText,
@@ -1229,7 +1278,7 @@ function renderSection(parent, section, tokens, selection) {
   appendTextLines(
     label,
     visibleLines,
-    lineStart + 18,
+    labelX,
     section.top + 16,
     12,
   );
@@ -1333,7 +1382,7 @@ function renderMessage(
   }
 
   const activatePart =
-    selection.enabled &&
+    selection.mode === "editor" &&
     typeof options.messagePartActivatesSelection === "function"
       ? (part) => options.messagePartActivatesSelection(row.id, part)
       : null;
@@ -1341,7 +1390,7 @@ function renderMessage(
   const group = svgElement("g", {
     class: "la-message",
   });
-  makeSelectable(
+  const selectable = makeSelectable(
     group,
     row,
     selection,
@@ -1374,7 +1423,7 @@ function renderMessage(
       width: hitWidth,
       height: 50,
       fill: "transparent",
-      "pointer-events": "all",
+      "pointer-events": selectable ? "all" : "none",
     }),
   );
 
@@ -1383,38 +1432,41 @@ function renderMessage(
     pathData = `M ${source.centerX} ${row.y} L ${shortenedTarget} ${row.y}`;
   }
 
-  const selfMessage = source.centerX === target.centerX;
-  const sourceY = selfMessage ? row.y - 13 : row.y;
-  const selectionHighlight = svgElement("g", {
-    class: "la-message-selection-highlight",
-    opacity: 0,
-    "pointer-events": "none",
-  });
-  for (const [x, y] of [
-    [source.centerX, sourceY],
-    [geometry.endX, geometry.endY],
-  ]) {
+  if (selectable) {
+    const selfMessage = source.centerX === target.centerX;
+    const sourceY = selfMessage ? row.y - 13 : row.y;
+    const selectionHighlight = svgElement("g", {
+      class: "la-message-selection-highlight",
+      opacity: 0,
+      "pointer-events": "none",
+    });
+    for (const [x, y] of [
+      [source.centerX, sourceY],
+      [geometry.endX, geometry.endY],
+    ]) {
+      selectionHighlight.append(
+        svgElement("circle", {
+          class: "la-message-endpoint-highlight",
+          cx: x,
+          cy: y,
+          r: 8,
+          fill: tokens.selection,
+        }),
+      );
+    }
+
     selectionHighlight.append(
-      svgElement("circle", {
-        class: "la-message-endpoint-highlight",
-        cx: x,
-        cy: y,
-        r: 8,
-        fill: tokens.selection,
+      svgElement("path", {
+        class: "la-message-focus",
+        d: pathData,
+        fill: "none",
+        stroke: tokens.selection,
+        "stroke-width": 7,
+        "stroke-linecap": "round",
       }),
     );
+    group.append(selectionHighlight);
   }
-
-  const focusPath = svgElement("path", {
-    class: "la-message-focus",
-    d: pathData,
-    fill: "none",
-    stroke: tokens.selection,
-    "stroke-width": 7,
-    "stroke-linecap": "round",
-  });
-  selectionHighlight.append(focusPath);
-  group.append(selectionHighlight);
 
   group.append(
     svgElement("path", {
@@ -1423,7 +1475,7 @@ function renderMessage(
       stroke: "transparent",
       "stroke-width": 18,
       "stroke-linecap": "round",
-      "pointer-events": "stroke",
+      "pointer-events": selectable ? "stroke" : "none",
     }),
   );
 
@@ -1443,29 +1495,32 @@ function renderMessage(
   }
   if (row.arrow !== "->x") {
     const normalMarker = `url(#${markerId(prefix, "arrow")})`;
-    const selectedMarker = `url(#${markerId(prefix, "arrow-selected")})`;
     visiblePath.setAttribute("marker-end", normalMarker);
-    visiblePath.dataset.markerNormal = normalMarker;
-    visiblePath.dataset.markerSelected = selectedMarker;
+    if (selectable) {
+      const selectedMarker = `url(#${markerId(
+        prefix,
+        "arrow-selected",
+      )})`;
+      visiblePath.dataset.markerNormal = normalMarker;
+      visiblePath.dataset.markerSelected = selectedMarker;
 
-    const highlightMarker = () => {
-      const frame = group.closest(".la-frame");
-      if (
-        frame?.dataset.selectionActive === "true" &&
-        group.dataset.selected !== "true"
-      ) {
-        return;
-      }
-      visiblePath.setAttribute("marker-end", selectedMarker);
-    };
-    const restoreMarker = () =>
-      visiblePath.setAttribute(
-        "marker-end",
-        group.dataset.selected === "true"
-          ? selectedMarker
-          : normalMarker,
-      );
-    if (selection.enabled) {
+      const highlightMarker = () => {
+        const frame = group.closest(".la-frame");
+        if (
+          frame?.dataset.selectionActive === "true" &&
+          group.dataset.selected !== "true"
+        ) {
+          return;
+        }
+        visiblePath.setAttribute("marker-end", selectedMarker);
+      };
+      const restoreMarker = () =>
+        visiblePath.setAttribute(
+          "marker-end",
+          group.dataset.selected === "true"
+            ? selectedMarker
+            : normalMarker,
+        );
       group.addEventListener("pointerenter", highlightMarker);
       group.addEventListener("pointerleave", restoreMarker);
       group.addEventListener("focus", highlightMarker);
@@ -1540,7 +1595,12 @@ function renderGap(parent, row, layout, tokens, selection) {
   const group = svgElement("g", {
     class: "la-gap",
   });
-  makeSelectable(group, row, selection, `Gap: ${row.label}`);
+  const selectable = makeSelectable(
+    group,
+    row,
+    selection,
+    `Gap: ${row.label}`,
+  );
   const visibleLines = textLines(row.label).map((line) =>
     truncate(line, 46),
   );
@@ -1568,7 +1628,7 @@ function renderGap(parent, row, layout, tokens, selection) {
       width: layout.contentRight - layout.contentLeft,
       height: row.height,
       fill: "transparent",
-      "pointer-events": "all",
+      "pointer-events": selectable ? "all" : "none",
     }),
   );
 

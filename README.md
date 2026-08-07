@@ -18,7 +18,7 @@ The jsDelivr entry registers the web component automatically:
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.6"
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.7"
 ></script>
 
 <lines-and-arrows mode="view" theme="auto">
@@ -30,8 +30,8 @@ The jsDelivr entry registers the web component automatically:
 </lines-and-arrows>
 ```
 
-The `@0.6` compatibility alias receives patch releases without crossing into a
-potentially breaking `0.7`. Use an exact version when a deployment must remain
+The `@0.7` compatibility alias receives patch releases without crossing into a
+potentially breaking `0.8`. Use an exact version when a deployment must remain
 fully pinned.
 
 For direct CDN access to the JavaScript API without automatic registration:
@@ -39,7 +39,7 @@ For direct CDN access to the JavaScript API without automatic registration:
 ```js
 import {
   renderDiagram,
-} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.6/dist/lines-and-arrows.min.js";
+} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.7/dist/lines-and-arrows.min.js";
 ```
 
 Set `mode="edit"` to enable the visual editor, including canvas undo and redo
@@ -304,9 +304,9 @@ Stable releases use semantic versions. Before `1.0`, patch releases preserve
 the current minor-version contract, while a new minor version may introduce
 breaking changes. Consumers can choose between:
 
-- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.6` for compatible patch
-  updates within the `0.6` line.
-- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.6.0` for an immutable,
+- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.7` for compatible patch
+  updates within the `0.7` line.
+- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.7.0` for an immutable,
   exactly pinned release.
 
 Publishing runs exclusively through the
@@ -314,14 +314,20 @@ Publishing runs exclusively through the
 using npm trusted publishing and GitHub Actions OIDC. A stable release follows
 this flow:
 
-1. Update the matching version in `package.json` and `package-lock.json`.
-2. Run `npm ci`, `npm run check`, and `npm pack --dry-run`.
-3. Commit the release and create an annotated `vX.Y.Z` tag.
-4. Push the commit and tag to GitHub.
-5. The release workflow confirms that the tag and package version match,
+1. Fetch `origin` and inspect both the worktree and commits ahead of
+   `origin/main`. If unrelated work is present, prepare the release in a clean
+   checkout based on `origin/main`; do not tag a mixed local history.
+2. Update the matching version in `package.json` and `package-lock.json`.
+3. Run `npm ci`, `npm run check`, and `npm pack --dry-run`.
+4. Commit only the intended release changes on `main` and push that commit to
+   `origin/main`.
+5. Verify that the exact release commit is reachable from remote `main`. Only
+   then create and push its annotated `vX.Y.Z` tag. A tag-only push is not a
+   completed release.
+6. The release workflow confirms that the tag and package version match,
    repeats the checks in a clean environment, builds the CDN bundles, publishes
    the package with npm provenance, and creates the GitHub Release.
-6. Verify the npm `latest` tag, a fresh npm installation, and both the exact
+7. Verify the npm `latest` tag, a fresh npm installation, and both the exact
    and minor-version jsDelivr URLs.
 
 ## License
