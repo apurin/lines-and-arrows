@@ -28,7 +28,7 @@ on authoring or validating a diagram, read the canonical
 - `src/editor.js` owns immutable editor snapshots, commands, undo, and redo.
 - `src/document.js` contains document cloning and freezing helpers.
 - `src/layout.js` computes geometry without drawing or attaching interactions.
-- `src/render.js` renders selectable or static view-mode SVG.
+- `src/render.js` renders static or actor-selectable view-mode SVG.
 - `src/edit-render.js` adds editor controls, drag interactions, and dialogs.
 - `src/element.js` implements the `<lines-and-arrows>` web component.
 - `src/auto.js` is the side-effectful CDN entry that registers the component.

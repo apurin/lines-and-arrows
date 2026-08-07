@@ -276,7 +276,7 @@ This structural attachment avoids source line bookkeeping. Moving or grouping
 a construct moves its attached comments. Deleting a construct deletes its
 attached comments. Removing a group or section wrapper discards comments owned
 by that wrapper while retaining comments owned by the children that remain.
-Comments never become visible or selectable diagram controls.
+Comments never become visible diagram controls.
 
 ## Names and text
 

@@ -15,7 +15,8 @@ export class LinesAndArrowsElement extends HTMLElementBase {
       "theme",
       "label",
       "mode",
-      "selectable",
+      "selectable-actors",
+      "history-controls",
       "branding",
       "canvas-background",
     ];
@@ -28,6 +29,7 @@ export class LinesAndArrowsElement extends HTMLElementBase {
   #palette = null;
   #controller = null;
   #editor = null;
+  #selectedActorName = null;
   #mediaQuery = null;
   #handleThemeChange = () => this.#render();
 
@@ -54,7 +56,10 @@ export class LinesAndArrowsElement extends HTMLElementBase {
     this.#destroyController();
   }
 
-  attributeChangedCallback() {
+  attributeChangedCallback(name) {
+    if (name === "selectable-actors" && !this.selectableActors) {
+      this.#selectedActorName = null;
+    }
     if (this.isConnected) {
       this.#syncThemeListener();
       this.#render();
@@ -89,15 +94,27 @@ export class LinesAndArrowsElement extends HTMLElementBase {
     this.setAttribute("mode", value === "edit" ? "edit" : "view");
   }
 
-  get selectable() {
-    return this.getAttribute("selectable") !== "false";
+  get selectableActors() {
+    return this.getAttribute("selectable-actors") !== null;
   }
 
-  set selectable(value) {
-    if (value === false) {
-      this.setAttribute("selectable", "false");
+  set selectableActors(value) {
+    if (value) {
+      this.setAttribute("selectable-actors", "");
     } else {
-      this.removeAttribute("selectable");
+      this.removeAttribute("selectable-actors");
+    }
+  }
+
+  get historyControls() {
+    return this.getAttribute("history-controls") !== "false";
+  }
+
+  set historyControls(value) {
+    if (value === false) {
+      this.setAttribute("history-controls", "false");
+    } else {
+      this.removeAttribute("history-controls");
     }
   }
 
@@ -198,7 +215,9 @@ export class LinesAndArrowsElement extends HTMLElementBase {
   }
 
   get selectedId() {
-    return this.#controller?.selectedId ?? null;
+    return this.mode === "edit"
+      ? this.#controller?.selectedId ?? null
+      : null;
   }
 
   get selectedIds() {
@@ -216,11 +235,43 @@ export class LinesAndArrowsElement extends HTMLElementBase {
   }
 
   select(id) {
-    this.#controller?.select(id);
+    if (this.mode === "edit") {
+      this.#controller?.select(id);
+    }
   }
 
   clearSelection() {
-    this.#controller?.clearSelection();
+    if (this.mode === "edit") {
+      this.#controller?.clearSelection();
+    }
+  }
+
+  get selectedActorName() {
+    return this.mode === "view" && this.selectableActors
+      ? this.#selectedActorName
+      : null;
+  }
+
+  selectActor(name) {
+    if (typeof name !== "string" || !name.trim()) {
+      throw new TypeError("selectActor requires a non-empty actor name.");
+    }
+    if (
+      this.mode === "view" &&
+      this.selectableActors &&
+      this.#controller?.selectActor
+    ) {
+      this.#controller.selectActor(name);
+      return;
+    }
+    this.#selectedActorName = name;
+  }
+
+  clearActorSelection() {
+    this.#selectedActorName = null;
+    if (this.mode === "view") {
+      this.#controller?.clearActorSelection?.();
+    }
   }
 
   undo() {
@@ -278,7 +329,7 @@ export class LinesAndArrowsElement extends HTMLElementBase {
       const renderOptions = {
         theme: this.theme,
         label: this.getAttribute("label") || "Sequence diagram",
-        selectable: this.mode === "edit" ? true : this.selectable,
+        historyControls: this.historyControls,
         branding: this.branding,
         canvasBackground: this.canvasBackground,
         palette: this.#palette,
@@ -305,8 +356,27 @@ export class LinesAndArrowsElement extends HTMLElementBase {
         this.#controller = renderDiagram(
           this.shadowRoot,
           input,
-          renderOptions,
+          {
+            ...renderOptions,
+            selectableActors: this.selectableActors,
+            onActorSelect: (detail) => {
+              this.#selectedActorName = detail.name;
+            },
+          },
         );
+        if (this.#selectedActorName && this.selectableActors) {
+          const actorExists = this.#controller.ast.actors.some(
+            (actor) => actor.name === this.#selectedActorName,
+          );
+          if (actorExists) {
+            this.#controller.selectActor(
+              this.#selectedActorName,
+              false,
+            );
+          } else {
+            this.#selectedActorName = null;
+          }
+        }
       }
     } catch (error) {
       const style = document.createElement("style");

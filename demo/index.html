@@ -351,12 +351,12 @@ API --> Customer: Present result`;
 
         sourceEditor.hidden = true;
         diagram.hidden = false;
-        diagram.selectable = true;
+        diagram.selectableActors = surface === "view";
         diagram.mode = surface;
         modeHelp.textContent =
           surface === "edit"
             ? "Edit mode. Select an object to change it, then drag to reorder."
-            : "View mode. Select objects without editing them.";
+            : "View mode. Select actors without editing them.";
       };
 
       for (const button of surfaceButtons) {
@@ -364,6 +364,17 @@ API --> Customer: Present result`;
           setSurface(button.dataset.surface),
         );
       }
+
+      diagram.addEventListener("la-actor-select", ({ detail }) => {
+        if (diagram.mode !== "view") {
+          return;
+        }
+        modeHelp.textContent = detail.actor
+          ? `View mode. Selected ${detail.name}${
+              detail.actor.tooltip ? ` — ${detail.actor.tooltip}` : ""
+            }.`
+          : "View mode. Select actors without editing them.";
+      });
 
       const applySourceEdit = () => {
         sourceError.textContent = "";

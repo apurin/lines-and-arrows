@@ -608,7 +608,7 @@ Coordinator --> Operator: Settlement safely reversed`;
                 <lines-and-arrows
                   theme="${theme.scheme}"
                   mode="view"
-                  selectable="true"
+                  selectable-actors
                   branding="false"
                   canvas-background="transparent"
                   label="Settlement workflow in the ${escapeHtml(theme.name)} palette"
@@ -650,7 +650,6 @@ Coordinator --> Operator: Settlement safely reversed`;
       const setMode = (mode) => {
         for (const diagram of diagrams) {
           diagram.mode = mode;
-          diagram.selectable = true;
         }
         for (const button of modeButtons) {
           button.setAttribute(
