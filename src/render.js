@@ -862,7 +862,7 @@ function renderActor(
   tooltipLayer,
 ) {
   const activatePart =
-    selection.enabled &&
+    selection.mode === "editor" &&
     typeof options.actorPartActivatesSelection === "function"
       ? (part) => options.actorPartActivatesSelection(actor.id, part)
       : null;
@@ -1067,7 +1067,7 @@ function renderGroupHeader(
   selection,
 ) {
   const activatePart =
-    selection.enabled &&
+    selection.mode === "editor" &&
     typeof options.groupPartActivatesSelection === "function"
       ? (part) => options.groupPartActivatesSelection(group.id, part)
       : null;
@@ -1333,7 +1333,7 @@ function renderMessage(
   }
 
   const activatePart =
-    selection.enabled &&
+    selection.mode === "editor" &&
     typeof options.messagePartActivatesSelection === "function"
       ? (part) => options.messagePartActivatesSelection(row.id, part)
       : null;
@@ -1341,7 +1341,7 @@ function renderMessage(
   const group = svgElement("g", {
     class: "la-message",
   });
-  makeSelectable(
+  const selectable = makeSelectable(
     group,
     row,
     selection,
@@ -1374,7 +1374,7 @@ function renderMessage(
       width: hitWidth,
       height: 50,
       fill: "transparent",
-      "pointer-events": "all",
+      "pointer-events": selectable ? "all" : "none",
     }),
   );
 
@@ -1383,38 +1383,41 @@ function renderMessage(
     pathData = `M ${source.centerX} ${row.y} L ${shortenedTarget} ${row.y}`;
   }
 
-  const selfMessage = source.centerX === target.centerX;
-  const sourceY = selfMessage ? row.y - 13 : row.y;
-  const selectionHighlight = svgElement("g", {
-    class: "la-message-selection-highlight",
-    opacity: 0,
-    "pointer-events": "none",
-  });
-  for (const [x, y] of [
-    [source.centerX, sourceY],
-    [geometry.endX, geometry.endY],
-  ]) {
+  if (selectable) {
+    const selfMessage = source.centerX === target.centerX;
+    const sourceY = selfMessage ? row.y - 13 : row.y;
+    const selectionHighlight = svgElement("g", {
+      class: "la-message-selection-highlight",
+      opacity: 0,
+      "pointer-events": "none",
+    });
+    for (const [x, y] of [
+      [source.centerX, sourceY],
+      [geometry.endX, geometry.endY],
+    ]) {
+      selectionHighlight.append(
+        svgElement("circle", {
+          class: "la-message-endpoint-highlight",
+          cx: x,
+          cy: y,
+          r: 8,
+          fill: tokens.selection,
+        }),
+      );
+    }
+
     selectionHighlight.append(
-      svgElement("circle", {
-        class: "la-message-endpoint-highlight",
-        cx: x,
-        cy: y,
-        r: 8,
-        fill: tokens.selection,
+      svgElement("path", {
+        class: "la-message-focus",
+        d: pathData,
+        fill: "none",
+        stroke: tokens.selection,
+        "stroke-width": 7,
+        "stroke-linecap": "round",
       }),
     );
+    group.append(selectionHighlight);
   }
-
-  const focusPath = svgElement("path", {
-    class: "la-message-focus",
-    d: pathData,
-    fill: "none",
-    stroke: tokens.selection,
-    "stroke-width": 7,
-    "stroke-linecap": "round",
-  });
-  selectionHighlight.append(focusPath);
-  group.append(selectionHighlight);
 
   group.append(
     svgElement("path", {
@@ -1423,7 +1426,7 @@ function renderMessage(
       stroke: "transparent",
       "stroke-width": 18,
       "stroke-linecap": "round",
-      "pointer-events": "stroke",
+      "pointer-events": selectable ? "stroke" : "none",
     }),
   );
 
@@ -1443,29 +1446,32 @@ function renderMessage(
   }
   if (row.arrow !== "->x") {
     const normalMarker = `url(#${markerId(prefix, "arrow")})`;
-    const selectedMarker = `url(#${markerId(prefix, "arrow-selected")})`;
     visiblePath.setAttribute("marker-end", normalMarker);
-    visiblePath.dataset.markerNormal = normalMarker;
-    visiblePath.dataset.markerSelected = selectedMarker;
+    if (selectable) {
+      const selectedMarker = `url(#${markerId(
+        prefix,
+        "arrow-selected",
+      )})`;
+      visiblePath.dataset.markerNormal = normalMarker;
+      visiblePath.dataset.markerSelected = selectedMarker;
 
-    const highlightMarker = () => {
-      const frame = group.closest(".la-frame");
-      if (
-        frame?.dataset.selectionActive === "true" &&
-        group.dataset.selected !== "true"
-      ) {
-        return;
-      }
-      visiblePath.setAttribute("marker-end", selectedMarker);
-    };
-    const restoreMarker = () =>
-      visiblePath.setAttribute(
-        "marker-end",
-        group.dataset.selected === "true"
-          ? selectedMarker
-          : normalMarker,
-      );
-    if (selection.enabled) {
+      const highlightMarker = () => {
+        const frame = group.closest(".la-frame");
+        if (
+          frame?.dataset.selectionActive === "true" &&
+          group.dataset.selected !== "true"
+        ) {
+          return;
+        }
+        visiblePath.setAttribute("marker-end", selectedMarker);
+      };
+      const restoreMarker = () =>
+        visiblePath.setAttribute(
+          "marker-end",
+          group.dataset.selected === "true"
+            ? selectedMarker
+            : normalMarker,
+        );
       group.addEventListener("pointerenter", highlightMarker);
       group.addEventListener("pointerleave", restoreMarker);
       group.addEventListener("focus", highlightMarker);
@@ -1540,7 +1546,12 @@ function renderGap(parent, row, layout, tokens, selection) {
   const group = svgElement("g", {
     class: "la-gap",
   });
-  makeSelectable(group, row, selection, `Gap: ${row.label}`);
+  const selectable = makeSelectable(
+    group,
+    row,
+    selection,
+    `Gap: ${row.label}`,
+  );
   const visibleLines = textLines(row.label).map((line) =>
     truncate(line, 46),
   );
@@ -1568,7 +1579,7 @@ function renderGap(parent, row, layout, tokens, selection) {
       width: layout.contentRight - layout.contentLeft,
       height: row.height,
       fill: "transparent",
-      "pointer-events": "all",
+      "pointer-events": selectable ? "all" : "none",
     }),
   );
 

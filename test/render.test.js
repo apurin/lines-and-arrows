@@ -1,0 +1,333 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  renderDiagram,
+  renderDiagramForEditor,
+} from "../src/render.js";
+
+const SOURCE = `@A
+  tag actor
+  tooltip Actor details
+
+@B
+
+parallel Review
+  | connected
+    A -> B: Connect
+      tag event
+      tooltip Event details
+  | delayed
+    gap Later`;
+
+class FakeClassList {
+  constructor(element) {
+    this.element = element;
+    this.names = new Set();
+  }
+
+  add(...names) {
+    for (const name of names) {
+      this.names.add(name);
+    }
+    this.element.attributes.set("class", [...this.names].join(" "));
+  }
+
+  contains(name) {
+    return this.names.has(name);
+  }
+
+  replace(value) {
+    this.names = new Set(String(value).split(/\s+/).filter(Boolean));
+  }
+}
+
+class FakeElement {
+  constructor(name) {
+    this.localName = name;
+    this.attributes = new Map();
+    this.children = [];
+    this.parentNode = null;
+    this.dataset = {};
+    this.listeners = new Map();
+    this.classList = new FakeClassList(this);
+    this.style = {
+      values: new Map(),
+      setProperty: (property, value) => {
+        this.style.values.set(property, String(value));
+      },
+    };
+    this.textContent = "";
+  }
+
+  append(...children) {
+    for (const child of children) {
+      child.parentNode = this;
+      this.children.push(child);
+    }
+  }
+
+  replaceChildren(...children) {
+    for (const child of this.children) {
+      child.parentNode = null;
+    }
+    this.children = [];
+    this.append(...children);
+  }
+
+  remove() {
+    if (!this.parentNode) {
+      return;
+    }
+    this.parentNode.children = this.parentNode.children.filter(
+      (child) => child !== this,
+    );
+    this.parentNode = null;
+  }
+
+  setAttribute(name, value) {
+    const normalized = String(value);
+    this.attributes.set(name, normalized);
+    if (name === "class") {
+      this.classList.replace(normalized);
+    }
+  }
+
+  getAttribute(name) {
+    return this.attributes.get(name) ?? null;
+  }
+
+  removeAttribute(name) {
+    this.attributes.delete(name);
+  }
+
+  addEventListener(type, listener) {
+    const listeners = this.listeners.get(type) ?? [];
+    listeners.push(listener);
+    this.listeners.set(type, listeners);
+  }
+
+  removeEventListener(type, listener) {
+    const listeners = this.listeners.get(type) ?? [];
+    this.listeners.set(
+      type,
+      listeners.filter((candidate) => candidate !== listener),
+    );
+  }
+
+  emit(type) {
+    const event = {
+      type,
+      target: this,
+      currentTarget: this,
+      preventDefault() {},
+      stopPropagation() {},
+    };
+    for (const listener of this.listeners.get(type) ?? []) {
+      listener(event);
+    }
+  }
+
+  matches(selector) {
+    if (selector.startsWith(".")) {
+      return this.classList.contains(selector.slice(1));
+    }
+    return this.localName === selector;
+  }
+
+  closest(selector) {
+    for (let element = this; element; element = element.parentNode) {
+      if (element.matches(selector)) {
+        return element;
+      }
+    }
+    return null;
+  }
+
+  querySelectorAll(selector) {
+    const matches = [];
+    const visit = (element) => {
+      for (const child of element.children) {
+        if (
+          (selector === "[data-la-id]" && child.dataset.laId) ||
+          child.matches(selector)
+        ) {
+          matches.push(child);
+        }
+        visit(child);
+      }
+    };
+    visit(this);
+    return matches;
+  }
+
+  querySelector(selector) {
+    return this.querySelectorAll(selector)[0] ?? null;
+  }
+}
+
+class FakeDocument {
+  createElement(name) {
+    return new FakeElement(name);
+  }
+
+  createElementNS(_namespace, name) {
+    return new FakeElement(name);
+  }
+}
+
+function descendants(root, predicate) {
+  const matches = [];
+  const visit = (element) => {
+    for (const child of element.children) {
+      if (predicate(child)) {
+        matches.push(child);
+      }
+      visit(child);
+    }
+  };
+  visit(root);
+  return matches;
+}
+
+function byClass(root, className) {
+  return descendants(root, (element) =>
+    element.classList.contains(className),
+  );
+}
+
+function directChild(root, predicate) {
+  return root.children.find(predicate);
+}
+
+function renderWithFakeDocument(render) {
+  const previousDocument = globalThis.document;
+  globalThis.document = new FakeDocument();
+  try {
+    const target = new FakeElement("div");
+    const controller = render(target, SOURCE, {
+      theme: "light",
+      branding: false,
+    });
+    return { target, controller };
+  } finally {
+    globalThis.document = previousDocument;
+  }
+}
+
+test("actor-selectable view keeps every non-actor object static", () => {
+  const { target } = renderWithFakeDocument((container, source, options) =>
+    renderDiagram(container, source, {
+      ...options,
+      selectableActors: true,
+    }),
+  );
+
+  const actors = byClass(target, "la-actor");
+  const messages = byClass(target, "la-message");
+  const groupHits = byClass(target, "la-group-hit");
+  const sections = byClass(target, "la-section");
+  const gaps = byClass(target, "la-gap");
+
+  assert.equal(actors.length, 2);
+  assert.equal(messages.length, 1);
+  assert.equal(groupHits.length, 1);
+  assert.equal(sections.length, 2);
+  assert.equal(gaps.length, 1);
+
+  for (const actor of actors) {
+    assert.equal(actor.classList.contains("la-selectable"), true);
+    assert.equal(actor.getAttribute("role"), "button");
+    assert.equal(actor.getAttribute("tabindex"), "0");
+  }
+
+  for (const item of [...messages, ...groupHits, ...sections, ...gaps]) {
+    assert.equal(item.classList.contains("la-selectable"), false);
+    assert.equal(item.getAttribute("role"), null);
+    assert.equal(item.getAttribute("tabindex"), null);
+    assert.equal(item.listeners.has("click"), false);
+    assert.equal(item.listeners.has("keydown"), false);
+    assert.equal(item.listeners.has("pointerenter"), false);
+    assert.equal(item.listeners.has("focus"), false);
+  }
+
+  const message = messages[0];
+  const messageLine = byClass(message, "la-message-line")[0];
+  const markerBeforePointer = messageLine.getAttribute("marker-end");
+  message.emit("pointerenter");
+  assert.equal(messageLine.getAttribute("marker-end"), markerBeforePointer);
+  assert.equal(message.listeners.has("pointerenter"), false);
+  assert.equal(
+    byClass(message, "la-message-selection-highlight").length,
+    0,
+  );
+  assert.equal(messageLine.dataset.markerSelected, undefined);
+
+  const messageHitArea = directChild(
+    message,
+    (element) =>
+      element.localName === "rect" &&
+      element.getAttribute("height") === "50",
+  );
+  const messageHitPath = directChild(
+    message,
+    (element) =>
+      element.localName === "path" &&
+      element.getAttribute("stroke") === "transparent",
+  );
+  assert.equal(messageHitArea.getAttribute("pointer-events"), "none");
+  assert.equal(messageHitPath.getAttribute("pointer-events"), "none");
+
+  const groupHitArea = groupHits[0].children[0];
+  const gapHitArea = gaps[0].children[0];
+  assert.equal(groupHitArea.getAttribute("pointer-events"), "none");
+  assert.equal(gapHitArea.getAttribute("pointer-events"), "none");
+
+  const messageTags = byClass(message, "la-tag");
+  const messageTooltips = byClass(message, "la-tooltip-trigger");
+  assert.equal(messageTags[0].getAttribute("role"), null);
+  assert.equal(messageTags[0].getAttribute("tabindex"), null);
+  assert.equal(messageTooltips[0].getAttribute("role"), "button");
+  assert.equal(messageTooltips[0].getAttribute("tabindex"), "0");
+});
+
+test("editor rendering retains selection behavior for every object type", () => {
+  const { target } = renderWithFakeDocument(renderDiagramForEditor);
+  const actors = byClass(target, "la-actor");
+  const messages = byClass(target, "la-message");
+  const groupHits = byClass(target, "la-group-hit");
+  const sections = byClass(target, "la-section");
+  const gaps = byClass(target, "la-gap");
+
+  const selectableItems = [
+    ...actors,
+    ...messages,
+    ...groupHits,
+    ...sections,
+    ...gaps,
+  ];
+  for (const item of selectableItems) {
+    assert.equal(item.classList.contains("la-selectable"), true);
+    assert.equal(item.getAttribute("role"), "button");
+    assert.equal(item.getAttribute("tabindex"), "0");
+    assert.equal(item.listeners.has("click"), true);
+    assert.equal(item.listeners.has("keydown"), true);
+  }
+
+  const message = messages[0];
+  const messageLine = byClass(message, "la-message-line")[0];
+  assert.equal(
+    byClass(message, "la-message-selection-highlight").length,
+    1,
+  );
+  assert.equal(message.children[0].getAttribute("pointer-events"), "all");
+  assert.equal(messageLine.dataset.markerSelected !== undefined, true);
+  message.emit("pointerenter");
+  assert.equal(
+    messageLine.getAttribute("marker-end"),
+    messageLine.dataset.markerSelected,
+  );
+
+  const gapHitArea = gaps[0].children[0];
+  assert.equal(gapHitArea.getAttribute("pointer-events"), "all");
+});
