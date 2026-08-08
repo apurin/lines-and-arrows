@@ -6,6 +6,7 @@ if (location.hostname === "lines-and-arrows.dev") {
     ["./index.html", "/"],
     ["./features.html", "/features"],
     ["./showcase.html", "/showcase"],
+    ["./constructor.html", "/constructor"],
   ]);
   for (const link of document.querySelectorAll("a[href]")) {
     const href = link.getAttribute("href");

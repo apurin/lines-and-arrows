@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Build an editable Lines &amp; Arrows sequence diagram, choose its embed settings and theme, then copy the exact HTML."
+    />
+    <title>Constructor - Lines &amp; Arrows</title>
+    <link rel="canonical" href="https://lines-and-arrows.dev/constructor" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css?v=20260808-5" />
+  </head>
+  <body class="constructor-page is-loading">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav-shell" aria-label="Primary navigation">
+        <a class="wordmark" href="./index.html">
+          <span class="wordmark-name">Lines &amp; Arrows</span>
+        </a>
+
+        <div class="nav-links">
+          <a href="./showcase.html">Showcase</a>
+          <a href="./constructor.html" aria-current="page">Constructor</a>
+          <a href="./features.html">Features</a>
+          <a href="./agents.md">agents.md</a>
+          <a
+            class="nav-github"
+            href="https://github.com/apurin/lines-and-arrows"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Lines and Arrows on GitHub"
+          >
+            <img
+              src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/github-logo-bold.svg"
+              alt=""
+              width="18"
+              height="18"
+            />
+            <span>GitHub</span>
+          </a>
+        </div>
+        <div class="theme-switcher" role="group" aria-label="Color theme">
+          <button type="button" data-site-theme="light" aria-pressed="true">
+            <span class="control-icon icon-sun" aria-hidden="true"></span>
+            <span class="visually-hidden">Light theme</span>
+          </button>
+          <button type="button" data-site-theme="dark" aria-pressed="false">
+            <span class="control-icon icon-moon" aria-hidden="true"></span>
+            <span class="visually-hidden">Dark theme</span>
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="constructor-shell section-shell" id="top">
+        <header class="constructor-intro">
+          <p class="constructor-kicker">HTML embed constructor</p>
+          <h1>Build the diagram.<br />Take the HTML.</h1>
+          <p class="constructor-lede">
+            Edit the preview, choose how the embed behaves, then copy a complete
+            snippet for your page.
+          </p>
+        </header>
+
+        <section class="constructor-controls" aria-label="Embed settings">
+          <fieldset class="constructor-fieldset constructor-behavior-fieldset">
+            <legend>Behavior</legend>
+            <div class="constructor-behavior-grid">
+              <section
+                class="constructor-behavior-group constructor-initial-state"
+                aria-labelledby="constructor-initial-state-label"
+              >
+                <h3 id="constructor-initial-state-label">Initial state</h3>
+                <div
+                  class="constructor-state-options"
+                  role="radiogroup"
+                  aria-labelledby="constructor-initial-state-label"
+                >
+                  <label class="constructor-state-choice">
+                    <input
+                      type="radio"
+                      name="initial-mode"
+                      value="view"
+                      data-initial-mode
+                      checked
+                    />
+                    <span
+                      class="constructor-radio-control"
+                      aria-hidden="true"
+                    ></span>
+                    <strong>View</strong>
+                  </label>
+                  <label class="constructor-state-choice">
+                    <input
+                      type="radio"
+                      name="initial-mode"
+                      value="edit"
+                      data-initial-mode
+                    />
+                    <span
+                      class="constructor-radio-control"
+                      aria-hidden="true"
+                    ></span>
+                    <strong>Edit</strong>
+                  </label>
+                </div>
+                <label class="constructor-toggle-setting">
+                  <span><strong>View/edit toggle example</strong></span>
+                  <input type="checkbox" data-option-mode-toggle />
+                  <span class="constructor-switch" aria-hidden="true"></span>
+                </label>
+              </section>
+
+              <section
+                class="constructor-behavior-group"
+                aria-labelledby="constructor-view-mode-label"
+              >
+                <h3 id="constructor-view-mode-label">View mode</h3>
+                <div class="constructor-behavior-options">
+                  <label class="constructor-toggle-setting">
+                    <span><strong>Selectable actors</strong></span>
+                    <input
+                      type="checkbox"
+                      data-option-selectable-actors
+                      checked
+                    />
+                    <span class="constructor-switch" aria-hidden="true"></span>
+                  </label>
+                  <label class="constructor-toggle-setting">
+                    <span><strong>Selection handler example</strong></span>
+                    <input type="checkbox" data-option-actor-selection-example />
+                    <span class="constructor-switch" aria-hidden="true"></span>
+                  </label>
+                </div>
+              </section>
+
+              <section
+                class="constructor-behavior-group"
+                aria-labelledby="constructor-edit-mode-label"
+              >
+                <h3 id="constructor-edit-mode-label">Edit mode</h3>
+                <div class="constructor-behavior-options">
+                  <label class="constructor-toggle-setting">
+                    <span><strong>Show undo &amp; redo buttons</strong></span>
+                    <input type="checkbox" data-option-history checked />
+                    <span class="constructor-switch" aria-hidden="true"></span>
+                  </label>
+                </div>
+              </section>
+            </div>
+          </fieldset>
+
+          <fieldset class="constructor-fieldset constructor-design-fieldset">
+            <legend>Design</legend>
+            <div class="constructor-theme-groups">
+              <section class="constructor-theme-group" aria-labelledby="default-themes-title">
+                <h3 id="default-themes-title">Default themes</h3>
+                <div class="constructor-theme-grid">
+                <label class="constructor-theme-choice">
+                  <input
+                    type="radio"
+                    name="diagram-theme"
+                    value="auto"
+                    data-diagram-theme
+                    checked
+                  />
+                  <span class="constructor-theme-surface">
+                    <span class="constructor-theme-swatches" aria-hidden="true">
+                      <span style="background: #f6f7f9"></span>
+                      <span style="background: #3459c8"></span>
+                      <span style="background: #111319"></span>
+                      <span style="background: #9db5ff"></span>
+                    </span>
+                    <span>
+                      <strong>Auto</strong>
+                    </span>
+                  </span>
+                </label>
+                <label class="constructor-theme-choice">
+                  <input
+                    type="radio"
+                    name="diagram-theme"
+                    value="default-light"
+                    data-diagram-theme
+                  />
+                  <span class="constructor-theme-surface">
+                    <span class="constructor-theme-swatches" aria-hidden="true">
+                      <span style="background: #f6f7f9"></span>
+                      <span style="background: #3459c8"></span>
+                      <span style="background: #20242c"></span>
+                      <span style="background: #b4384a"></span>
+                    </span>
+                    <span>
+                      <strong>Light</strong>
+                    </span>
+                  </span>
+                </label>
+                <label class="constructor-theme-choice">
+                  <input
+                    type="radio"
+                    name="diagram-theme"
+                    value="default-dark"
+                    data-diagram-theme
+                  />
+                  <span class="constructor-theme-surface">
+                    <span class="constructor-theme-swatches" aria-hidden="true">
+                      <span style="background: #111319"></span>
+                      <span style="background: #9db5ff"></span>
+                      <span style="background: #e7eaf0"></span>
+                      <span style="background: #ff8fa0"></span>
+                    </span>
+                    <span>
+                      <strong>Dark</strong>
+                    </span>
+                  </span>
+                </label>
+                </div>
+              </section>
+
+              <section class="constructor-theme-group" aria-labelledby="custom-themes-title">
+                <h3 id="custom-themes-title">Custom examples</h3>
+                <div class="constructor-theme-grid">
+                <label class="constructor-theme-choice">
+                  <input
+                    type="radio"
+                    name="diagram-theme"
+                    value="midnight-cobalt"
+                    data-diagram-theme
+                  />
+                  <span class="constructor-theme-surface">
+                    <span class="constructor-theme-swatches" aria-hidden="true">
+                      <span style="background: #0b1020"></span>
+                      <span style="background: #7aa2ff"></span>
+                      <span style="background: #eaf0ff"></span>
+                      <span style="background: #ff6b7a"></span>
+                    </span>
+                    <span>
+                      <strong>Midnight</strong>
+                      <small>Cobalt</small>
+                    </span>
+                  </span>
+                </label>
+                <label class="constructor-theme-choice">
+                  <input
+                    type="radio"
+                    name="diagram-theme"
+                    value="phosphor-terminal"
+                    data-diagram-theme
+                  />
+                  <span class="constructor-theme-surface">
+                    <span class="constructor-theme-swatches" aria-hidden="true">
+                      <span style="background: #07110b"></span>
+                      <span style="background: #33e277"></span>
+                      <span style="background: #b9ffc9"></span>
+                      <span style="background: #ff6577"></span>
+                    </span>
+                    <span>
+                      <strong>Phosphor</strong>
+                      <small>Terminal</small>
+                    </span>
+                  </span>
+                </label>
+                <label class="constructor-theme-choice">
+                  <input
+                    type="radio"
+                    name="diagram-theme"
+                    value="newsprint-monochrome"
+                    data-diagram-theme
+                  />
+                  <span class="constructor-theme-surface">
+                    <span class="constructor-theme-swatches" aria-hidden="true">
+                      <span style="background: #f4f0e8"></span>
+                      <span style="background: #191919"></span>
+                      <span style="background: #c43737"></span>
+                      <span style="background: #8e8a80"></span>
+                    </span>
+                    <span>
+                      <strong>Newsprint</strong>
+                      <small>Monochrome</small>
+                    </span>
+                  </span>
+                </label>
+                </div>
+              </section>
+            </div>
+
+            <div class="constructor-design-options">
+              <label class="constructor-toggle-setting">
+                <span><strong>Branding pill</strong></span>
+                <input type="checkbox" data-option-branding checked />
+                <span class="constructor-switch" aria-hidden="true"></span>
+              </label>
+              <label class="constructor-toggle-setting">
+                <span><strong>Transparent canvas</strong></span>
+                <input type="checkbox" data-option-transparent />
+                <span class="constructor-switch" aria-hidden="true"></span>
+              </label>
+            </div>
+          </fieldset>
+        </section>
+
+        <section
+          class="constructor-workbench"
+          aria-label="Editable diagram preview"
+        >
+          <div
+            class="constructor-stage"
+            data-constructor-stage
+            data-preview-theme="auto"
+          >
+            <div class="diagram-loading">Loading the editable preview</div>
+            <lines-and-arrows
+              id="constructor-diagram"
+              data-fixed-theme="auto"
+              theme="auto"
+              mode="edit"
+              branding="true"
+              canvas-background="solid"
+              label="Editable sequence diagram"
+            ></lines-and-arrows>
+          </div>
+          <p
+            class="constructor-error"
+            id="constructor-error"
+            role="alert"
+            aria-live="polite"
+          ></p>
+        </section>
+
+        <section class="constructor-code" aria-labelledby="constructor-code-title">
+          <header class="constructor-code-heading">
+            <div>
+              <h2 id="constructor-code-title">Paste this HTML.</h2>
+              <p id="constructor-code-summary">
+                View initially, selectable actors on, branding pill on, auto
+                theme.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="button button-primary constructor-copy-button"
+              data-copy-embed
+            >
+              Copy HTML
+            </button>
+          </header>
+          <pre class="home-embed-code constructor-embed-code" tabindex="0"><code class="language-html" id="constructor-embed-code"></code></pre>
+          <p
+            class="visually-hidden"
+            id="constructor-copy-status"
+            aria-live="polite"
+          ></p>
+        </section>
+      </section>
+    </main>
+
+    <footer class="site-footer section-shell">
+      <p>
+        <strong>Lines &amp; Arrows</strong>
+        <span>Build it visually. Keep it as text.</span>
+      </p>
+      <div class="footer-links">
+        <a href="./showcase.html">Showcase</a>
+        <a href="./constructor.html">Constructor</a>
+        <a href="./features.html">Features</a>
+        <a href="./agents.md">agents.md</a>
+        <a href="https://www.linkedin.com/in/apurin" target="_blank" rel="noreferrer">Anton Purin ↗</a>
+      </div>
+    </footer>
+
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/components/prism-core.min.js"
+      integrity="sha384-zLRFO4dwowZvh8kzutOb5AWhH7f39HeJp+N7PtHF1SQtTBnifRx0AtmvTYs3F4YV"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/components/prism-markup.min.js"
+      integrity="sha384-HkMr0bZB9kBW4iVtXn6nd35kO/L/dQtkkUBkL9swzTEDMdIe5ExJChVDSnC79aNA"
+      crossorigin="anonymous"
+    ></script>
+    <script async type="module" src="./constructor.js?v=20260808-6"></script>
+  </body>
+</html>
