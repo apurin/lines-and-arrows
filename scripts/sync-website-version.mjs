@@ -55,10 +55,10 @@ for (const file of files) {
   }
 
   output = output.replace(
-    /lines-and-arrows@(\d+)\.(\d+)(?:\.(\d+))?/g,
-    (_reference, _major, _minor, patch) => {
+    /lines-and-arrows(@|&#64;)(\d+)\.(\d+)(?:\.(\d+))?/g,
+    (_reference, separator, _major, _minor, patch) => {
       concreteReferences += 1;
-      return `lines-and-arrows@${patch === undefined ? compatibleVersion : version}`;
+      return `lines-and-arrows${separator}${patch === undefined ? compatibleVersion : version}`;
     },
   );
 
