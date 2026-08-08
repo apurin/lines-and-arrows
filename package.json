@@ -54,6 +54,7 @@
     "check": "npm test && npm run check:types && npm run build",
     "check:types": "tsc --project type-tests/tsconfig.json",
     "prepack": "npm run build",
+    "website:prepare": "node ./scripts/sync-website-version.mjs",
     "validate": "node ./bin/lines-and-arrows.js validate"
   },
   "keywords": [

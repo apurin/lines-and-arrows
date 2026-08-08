@@ -115,4 +115,6 @@ and push the annotated release tag.
 
 Package releases otherwise follow the trusted-publishing procedure documented
 in the [README](./README.md#publishing). Website deployment is independent of
-package publication.
+package publication. After the npm release is verified, run
+`npm run website:prepare` as the first website deployment step so every runtime
+and example URL is synchronized from `package.json`.

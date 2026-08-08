@@ -36,8 +36,8 @@ framework is required.
 </html>
 ```
 
-The `@0.7` CDN URL accepts compatible patch releases; use `@0.7.0` to pin the
-exact release.
+The major-minor CDN URL accepts compatible patch releases. Use a full `X.Y.Z`
+version when an embed must remain pinned to one exact release.
 
 ## Configure the web component
 

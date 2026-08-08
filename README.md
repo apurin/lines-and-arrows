@@ -295,6 +295,11 @@ separate artifacts:
 - GitHub Releases record each stable package release.
 - The product website in `website/` has its own deployment lifecycle.
 
+After the npm release is published and verified, run `npm run website:prepare`
+before deploying `website/`. The command reads the released version from
+`package.json`, synchronizes the website runtime and static CDN examples, and
+validates the prepared output. The website does not maintain a separate version.
+
 The `files` allowlist in `package.json` defines the npm package contents. It
 contains the runtime source, browser distributions, validation CLI, type
 declarations, consumer documentation, and license notices. Repository tests,
