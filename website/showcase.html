@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Explore eleven editable Lines &amp; Arrows sequence diagrams from software engineering, AI, markets, science, and civic systems."
+      content="Explore twelve Lines &amp; Arrows sequence diagrams from software engineering, AI, markets, science, and civic systems, including an actor-selectable human prehistory example."
     />
     <title>Showcase - Lines &amp; Arrows</title>
     <link rel="canonical" href="https://lines-and-arrows.dev/showcase" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20260805-6" />
+    <link rel="stylesheet" href="./styles.css?v=20260808-4" />
   </head>
   <body class="showcase-page is-loading">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -57,16 +57,28 @@
 
     <main id="main">
       <h1 class="visually-hidden">Lines &amp; Arrows showcase</h1>
+
       <nav
         class="showcase-contents section-shell"
         aria-labelledby="showcase-contents-title"
       >
         <div class="showcase-contents-heading">
           <h2 id="showcase-contents-title">Choose a sequence.</h2>
-          <p>Jump to a story, then switch between its diagram and source.</p>
+          <p>
+            Start with interactive actors, then explore editable diagrams and
+            source.
+          </p>
         </div>
 
         <ul class="showcase-contents-list">
+          <li>
+            <a href="#braided-ancestry">
+              <span class="showcase-contents-name">Human prehistory</span>
+              <span class="showcase-contents-hook">
+                Select a lineage and follow its evidence.
+              </span>
+            </a>
+          </li>
           <li>
             <a href="#compatible-migration">
               <span class="showcase-contents-name">Software engineering</span>
@@ -163,6 +175,179 @@
       </nav>
 
       <section
+        class="showcase-case showcase-case-lead section-shell"
+        id="braided-ancestry"
+        data-braided-showcase
+      >
+        <figure class="showcase-figure braided-figure">
+          <div class="braided-shell">
+            <aside
+              class="braided-detail"
+              data-braided-detail
+              aria-live="polite"
+            >
+              <p class="showcase-area braided-area">Paleoanthropology</p>
+              <div class="braided-title-row">
+                <h2 data-braided-title>Human prehistory</h2>
+                <button
+                  class="braided-close"
+                  type="button"
+                  data-braided-close
+                  aria-label="Close species details"
+                  hidden
+                >
+                  <span class="control-icon icon-x" aria-hidden="true"></span>
+                </button>
+              </div>
+
+              <div class="braided-media" data-braided-media>
+                <img
+                  src="./assets/cueva-de-las-manos.jpg"
+                  alt="Hand stencils covering a rock wall at Cueva de las Manos"
+                  width="1280"
+                  height="719"
+                  decoding="async"
+                />
+              </div>
+              <p class="braided-caption" data-braided-caption>
+                Hand stencils at Cueva de las Manos, Argentina.
+              </p>
+              <p class="braided-credit" data-braided-credit>
+                <a
+                  href="https://commons.wikimedia.org/wiki/File:Cueva_de_las_Manos_(6811931046).jpg"
+                  target="_blank"
+                  rel="noreferrer"
+                >Pablo A. Gimenez, via Wikimedia Commons</a>,
+                <a
+                  href="https://creativecommons.org/licenses/by-sa/2.0/"
+                  target="_blank"
+                  rel="noreferrer"
+                >CC BY-SA 2.0</a>
+              </p>
+
+              <div class="braided-copy">
+                <p class="braided-subtitle" data-braided-subtitle>
+                  Three lineages, several encounters, one living genetic
+                  legacy.
+                </p>
+                <p data-braided-body>
+                  Human evolution is not a clean procession. Populations
+                  separated, met again, and exchanged DNA across Eurasia.
+                </p>
+                <dl class="braided-facts" data-braided-facts>
+                  <div>
+                    <dt>Shape</dt>
+                    <dd>Braided</dd>
+                  </div>
+                  <div>
+                    <dt>Time</dt>
+                    <dd>More than 400 ka to today</dd>
+                  </div>
+                  <div>
+                    <dt>Places</dt>
+                    <dd>Africa and Eurasia</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <p class="braided-sources" data-braided-sources>
+                Evidence:
+                <a
+                  href="https://humanorigins.si.edu/evidence/genetics/ancient-dna-and-neanderthals"
+                  target="_blank"
+                  rel="noreferrer"
+                >Smithsonian</a>,
+                <a
+                  href="https://www.nature.com/articles/s41586-018-0455-x"
+                  target="_blank"
+                  rel="noreferrer"
+                >Nature: Denisova 11</a>,
+                <a
+                  href="https://www.nature.com/articles/nature13408"
+                  target="_blank"
+                  rel="noreferrer"
+                >Nature: EPAS1</a>,
+                <a
+                  href="https://whc.unesco.org/en/list/936/"
+                  target="_blank"
+                  rel="noreferrer"
+                >UNESCO: Cueva de las Manos</a>
+              </p>
+            </aside>
+
+            <div class="braided-diagram-column">
+              <div class="showcase-toolbar braided-toolbar">
+                <p class="braided-instruction">
+                  <strong>Interactive diagram example. Click a species.</strong>
+                  <span>
+                    <code>selectable-actors</code> emits
+                    <code>la-actor-select</code>. This page uses that event to
+                    update the custom left panel.
+                  </span>
+                </p>
+                <div
+                  class="surface-switcher showcase-mode-switcher"
+                  role="group"
+                  aria-label="Human prehistory diagram mode"
+                >
+                  <button
+                    type="button"
+                    data-braided-surface="view"
+                    aria-pressed="true"
+                  >
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    data-braided-surface="source"
+                    aria-pressed="false"
+                  >
+                    Source
+                  </button>
+                </div>
+              </div>
+
+              <div class="braided-diagram-pane" data-braided-diagram-pane>
+                <div class="diagram-loading">Rendering human prehistory</div>
+                <lines-and-arrows
+                  id="braided-ancestry-diagram"
+                  mode="view"
+                  selectable-actors
+                  branding="false"
+                  canvas-background="transparent"
+                  label="Human prehistory among Neanderthals, Denisovans, and Homo sapiens"
+                ></lines-and-arrows>
+              </div>
+
+              <div
+                class="showcase-source-editor braided-source-pane"
+                data-braided-source-pane
+                hidden
+              >
+                <label for="braided-ancestry-source">Diagram source</label>
+                <textarea
+                  id="braided-ancestry-source"
+                  data-braided-source
+                  spellcheck="false"
+                  aria-describedby="braided-ancestry-status"
+                  readonly
+                ></textarea>
+              </div>
+            </div>
+          </div>
+          <p class="showcase-error braided-error" data-braided-error role="alert"></p>
+          <p
+            class="visually-hidden"
+            id="braided-ancestry-status"
+            data-braided-status
+            aria-live="polite"
+          >
+            View mode. Select an actor to see its evidence.
+          </p>
+        </figure>
+      </section>
+
+      <section
         class="showcase-case section-shell"
         id="molecular-address"
         data-showcase
@@ -211,7 +396,6 @@
               data-showcase-diagram
               theme="light"
               mode="view"
-              selectable="false"
               label="Cas9 checks a DNA site before cutting"
             ></lines-and-arrows>
           </div>
@@ -319,7 +503,6 @@ repeat Search the genome
               data-showcase-diagram
               theme="light"
               mode="view"
-              selectable="false"
               label="Vaccination prepares a faster immune response"
             ></lines-and-arrows>
           </div>
@@ -430,7 +613,6 @@ B Cell --> Pathogen: Mount a faster response</textarea>
               data-showcase-diagram
               theme="light"
               mode="view"
-              selectable="false"
               label="A coral reef responds to sustained heat stress"
             ></lines-and-arrows>
           </div>
@@ -538,7 +720,6 @@ choice Temperature trend
               data-showcase-diagram
               theme="light"
               mode="view"
-              selectable="false"
               label="A Mars rover navigates between relay windows"
             ></lines-and-arrows>
           </div>
@@ -656,7 +837,6 @@ Relay Orbiter --> Mission Control: Downlink the science</textarea>
               data-showcase-diagram
               theme="light"
               mode="view"
-              selectable="false"
               label="A campaign test connects creative choices to qualified leads"
             ></lines-and-arrows>
           </div>
@@ -774,7 +954,6 @@ Strategist -> Ad Platform: Scale the winner</textarea>
               data-showcase-diagram
               theme="light"
               mode="view"
-              selectable="false"
               label="An ambiguous ballot moves through anonymous review"
             ></lines-and-arrows>
           </div>
@@ -841,15 +1020,16 @@ Poll Worker --> Voter: Ballot deposited</textarea>
     </main>
 
     <footer class="site-footer section-shell">
-      <p><strong>Lines &amp; Arrows</strong> <span>Eleven stories. One small language.</span></p>
+      <p><strong>Lines &amp; Arrows</strong> <span>Twelve stories. One small language.</span></p>
       <div class="footer-links">
         <a href="./showcase.html">Showcase</a>
+        <a href="./constructor.html">Constructor</a>
         <a href="./features.html">Features</a>
         <a href="./agents.md">agents.md</a>
         <a href="https://www.linkedin.com/in/apurin" target="_blank" rel="noreferrer">Anton Purin ↗</a>
       </div>
     </footer>
 
-    <script async type="module" src="./showcase.js?v=20260805-7"></script>
+    <script async type="module" src="./showcase.js?v=20260808-4"></script>
   </body>
 </html>

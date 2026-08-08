@@ -1,10 +1,241 @@
 import {
   defineLinesAndArrows,
   parse,
-} from "./runtime.js?v=20260805-4";
-import { initializeSiteTheme } from "./site.js?v=20260805-3";
+} from "./runtime.js?v=20260808-1";
+import { initializeSiteTheme } from "./site.js?v=20260806-2";
 
 defineLinesAndArrows();
+
+const braidedSource = `@Neanderthals
+  icon users-three
+  tag sister group
+  tooltip A close human lineage adapted to western Eurasia; ancient DNA records contact with both Homo sapiens and Denisovans.
+  tooltip-icon fingerprint
+
+@Denisovans
+  icon mountains
+  tag DNA-defined
+  tooltip Known from a small fossil record and a large genetic footprint across Asia and Oceania.
+  tooltip-icon dna
+
+@Homo sapiens
+  icon globe-hemisphere-west
+  tag living
+  tooltip Our lineage originated in Africa, then dispersing populations met other human groups across Eurasia.
+  tooltip-icon globe-hemisphere-west
+
+parallel Encounters across Eurasia, ~100-45 ka
+  | Western Eurasia, ~60-45 ka
+    Neanderthals -> Neanderthals: Engrave a cave wall
+      tag wall marks
+      tooltip At La Roche-Cotard, deliberate finger engravings were made more than 57,000 years ago, before Homo sapiens reached the region.
+      tooltip-icon hand
+    Homo sapiens -> Neanderthals: Meet and have children
+      tag gene flow
+      tooltip Ancient genomes record repeated contact rather than a single encounter.
+      tooltip-icon dna
+  | Denisova Cave, Siberia, ~90 ka
+    Neanderthals -> Denisovans: Denisova 11 is born
+      tag F1 hybrid
+      tooltip Her genome shows a Neanderthal mother and a Denisovan father.
+      tooltip-icon identification-card
+  | Asia, several encounters
+    Homo sapiens -> Denisovans: Populations meet
+      tag gene flow
+      tooltip Living genomes suggest contact with more than one Denisovan-related population.
+      tooltip-icon users-three
+
+gap Hundreds of generations pass
+
+legacy Living genomes
+  Neanderthals --> Homo sapiens: Inherited fragments persist
+    tag widespread
+    tooltip Neanderthal-derived DNA is distributed across living populations in different proportions.
+    tooltip-icon fingerprint
+  Denisovans --> Homo sapiens: EPAS1 crosses time
+    tag adaptation
+    tooltip A Denisovan-like EPAS1 haplotype contributes to high-altitude adaptation in Tibetan populations.
+    tooltip-icon mountains`;
+
+const sharedBraidedSources = [
+  [
+    "Smithsonian: ancient DNA",
+    "https://humanorigins.si.edu/evidence/genetics/ancient-dna-and-neanderthals",
+  ],
+  [
+    "Nature: Denisova 11",
+    "https://www.nature.com/articles/s41586-018-0455-x",
+  ],
+  ["Nature: EPAS1", "https://www.nature.com/articles/nature13408"],
+  ["UNESCO: Cueva de las Manos", "https://whc.unesco.org/en/list/936/"],
+];
+
+const braidedDetails = {
+  general: {
+    title: "Human prehistory",
+    subtitle: "Three lineages, several encounters, one living genetic legacy.",
+    body:
+      "Human evolution is not a clean procession. Populations separated, met again, and exchanged DNA across Eurasia.",
+    caption: "Hand stencils at Cueva de las Manos, Argentina.",
+    credits: [
+      [
+        "Pablo A. Gimenez, via Wikimedia Commons",
+        "https://commons.wikimedia.org/wiki/File:Cueva_de_las_Manos_(6811931046).jpg",
+      ],
+      [
+        "CC BY-SA 2.0",
+        "https://creativecommons.org/licenses/by-sa/2.0/",
+      ],
+    ],
+    facts: [
+      ["Shape", "Braided"],
+      ["Time", "More than 400 ka to today"],
+      ["Places", "Africa and Eurasia"],
+    ],
+    sources: sharedBraidedSources,
+    image: "./assets/cueva-de-las-manos.jpg",
+    alt: "Hand stencils covering a rock wall at Cueva de las Manos",
+    position: "center",
+  },
+  Neanderthals: {
+    title: "Neanderthals",
+    subtitle: "Western Eurasia. An abstract mark on a cave wall.",
+    body:
+      "At La Roche-Cotard, deliberate finger flutings form a non-figurative composition. The cave was sealed before Homo sapiens reached the region, and its archaeology attributes the engravings to Neanderthals.",
+    caption:
+      "Triangular Panel finger engravings, La Roche-Cotard, France. Older than 57 ± 3 ka.",
+    credits: [
+      [
+        "Marquet et al., PLOS ONE (2023)",
+        "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0286568",
+      ],
+      ["CC BY 4.0", "https://creativecommons.org/licenses/by/4.0/"],
+    ],
+    facts: [
+      ["Range", "Western Eurasia"],
+      ["Wall art", "Finger engraving"],
+      ["Legacy", "DNA in living people"],
+    ],
+    sources: [
+      [
+        "PLOS: cave engravings",
+        "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0286568",
+      ],
+      [
+        "Smithsonian profile",
+        "https://humanorigins.si.edu/evidence/human-fossils/species/homo-neanderthalensis",
+      ],
+    ],
+    image: "./assets/neanderthal-roche-cotard.jpg",
+    alt: "Triangular Panel finger engravings at La Roche-Cotard cave",
+    position: "center 52%",
+  },
+  Denisovans: {
+    title: "Denisovans",
+    subtitle: "Central and eastern Asia. A family found inside a fragment.",
+    body:
+      "This two-centimetre bone is Denisova 11, nicknamed Denny. Genome analysis showed that she had a Neanderthal mother and a Denisovan father. It is direct evidence that the lineages met and had children.",
+    caption:
+      "Denisova 11, a roughly 90,000-year-old bone fragment from Denisova Cave.",
+    credits: [
+      [
+        "Buckley et al. (2016), via Wikimedia Commons",
+        "https://commons.wikimedia.org/wiki/File:Denisova-11.jpg",
+      ],
+      [
+        "CC BY-SA 4.0",
+        "https://creativecommons.org/licenses/by-sa/4.0/",
+      ],
+    ],
+    facts: [
+      ["Known by", "Ancient DNA"],
+      ["Place", "Altai, Siberia"],
+      ["Surprise", "First-generation child"],
+    ],
+    sources: [
+      [
+        "Nature: Denisova 11 genome",
+        "https://www.nature.com/articles/s41586-018-0455-x",
+      ],
+      [
+        "Commons image record",
+        "https://commons.wikimedia.org/wiki/File:Denisova-11.jpg",
+      ],
+    ],
+    image: "./assets/denisova-11.jpg",
+    alt: "Denisova 11 bone fragment held beside a measuring scale",
+    position: "center",
+    fit: "contain",
+  },
+  "Homo sapiens": {
+    title: "Homo sapiens",
+    subtitle: "Africa to the world. Animals made vivid in stone.",
+    body:
+      "At Lascaux, artists used mineral pigments, confident contours, and the cave wall's own surface to animate aurochs, horses, and deer. It is a spectacular late chapter in a much older history of image-making.",
+    caption:
+      "Aurochs, horses, and deer, Lascaux, France. Approximately 17,000 years old.",
+    credits: [
+      [
+        "Prof saxx, via Wikimedia Commons",
+        "https://commons.wikimedia.org/wiki/File:Lascaux_painting.jpg",
+      ],
+      [
+        "CC BY-SA 3.0",
+        "https://creativecommons.org/licenses/by-sa/3.0/",
+      ],
+    ],
+    facts: [
+      ["Origin", "Africa"],
+      ["Range", "Worldwide"],
+      ["Wall art", "Figurative painting"],
+    ],
+    sources: [
+      ["UNESCO: Vézère Valley", "https://whc.unesco.org/en/list/85"],
+      [
+        "Commons image record",
+        "https://commons.wikimedia.org/wiki/File:Lascaux_painting.jpg",
+      ],
+    ],
+    image: "./assets/lascaux-painting.jpg",
+    alt: "Lascaux cave painting showing aurochs, horses, and deer",
+    position: "center",
+  },
+};
+
+const braidedLayout = {
+  actorHeight: 48,
+  actorGap: 28,
+  marginX: 22,
+  marginTop: 18,
+  timelineTopGap: 28,
+  messageHeight: 46,
+  gapHeight: 48,
+  groupHeaderHeight: 26,
+  sectionHeaderHeight: 24,
+  groupPaddingBottom: 8,
+  groupGap: 8,
+  bottomPadding: 14,
+};
+
+const appendLinks = (container, links, emptyText = "") => {
+  container.replaceChildren();
+  if (links.length === 0) {
+    container.textContent = emptyText;
+    return;
+  }
+
+  for (const [index, [label, url]] of links.entries()) {
+    if (index > 0) {
+      container.append(document.createTextNode(", "));
+    }
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = label;
+    container.append(link);
+  }
+};
 
 const technicalShowcases = [
   {
@@ -293,7 +524,6 @@ const renderShowcase = ({
               data-showcase-diagram
               theme="light"
               mode="view"
-              selectable="false"
               label="${escapeHtml(label)}"
             ></lines-and-arrows>
           </div>
@@ -353,10 +583,129 @@ const showcaseLayout = {
   sectionHeaderHeight: 25,
   groupPaddingBottom: 12,
   groupGap: 10,
-  bottomPadding: 28,
+  bottomPadding: 18,
 };
 
 const theme = initializeSiteTheme();
+
+const braidedShowcase = document.querySelector("[data-braided-showcase]");
+if (braidedShowcase) {
+  const diagram = braidedShowcase.querySelector("#braided-ancestry-diagram");
+  const diagramPane = braidedShowcase.querySelector(
+    "[data-braided-diagram-pane]",
+  );
+  const closeButton = braidedShowcase.querySelector("[data-braided-close]");
+  const media = braidedShowcase.querySelector("[data-braided-media]");
+  const caption = braidedShowcase.querySelector("[data-braided-caption]");
+  const credit = braidedShowcase.querySelector("[data-braided-credit]");
+  const title = braidedShowcase.querySelector("[data-braided-title]");
+  const subtitle = braidedShowcase.querySelector("[data-braided-subtitle]");
+  const body = braidedShowcase.querySelector("[data-braided-body]");
+  const facts = braidedShowcase.querySelector("[data-braided-facts]");
+  const sources = braidedShowcase.querySelector("[data-braided-sources]");
+  const sourcePane = braidedShowcase.querySelector(
+    "[data-braided-source-pane]",
+  );
+  const sourceInput = braidedShowcase.querySelector("[data-braided-source]");
+  const status = braidedShowcase.querySelector("[data-braided-status]");
+  const surfaceButtons = [
+    ...braidedShowcase.querySelectorAll("[data-braided-surface]"),
+  ];
+  const error = braidedShowcase.querySelector("[data-braided-error]");
+
+  const renderDetail = (name = null) => {
+    const detail = braidedDetails[name] ?? braidedDetails.general;
+    closeButton.hidden = !name;
+    closeButton.setAttribute(
+      "aria-label",
+      name ? `Close ${detail.title} details` : "Close species details",
+    );
+
+    const image = document.createElement("img");
+    image.src = detail.image;
+    image.alt = detail.alt;
+    image.decoding = "async";
+    image.style.objectPosition = detail.position;
+    image.classList.toggle("is-contain", detail.fit === "contain");
+    media.replaceChildren(image);
+
+    caption.textContent = detail.caption;
+    appendLinks(credit, detail.credits, "Evidence links appear below.");
+    title.textContent = detail.title;
+    subtitle.textContent = detail.subtitle;
+    body.textContent = detail.body;
+
+    facts.replaceChildren();
+    for (const [term, value] of detail.facts) {
+      const row = document.createElement("div");
+      const key = document.createElement("dt");
+      const definition = document.createElement("dd");
+      key.textContent = term;
+      definition.textContent = value;
+      row.append(key, definition);
+      facts.append(row);
+    }
+
+    sources.replaceChildren(document.createTextNode("Evidence: "));
+    const sourceLinks = document.createElement("span");
+    appendLinks(sourceLinks, detail.sources);
+    sources.append(sourceLinks);
+  };
+
+  diagram.branding = false;
+  diagram.layout = braidedLayout;
+  diagram.palette = {
+    background: "var(--braided-paper)",
+    foreground: "var(--braided-ink)",
+    accent: "var(--braided-blue)",
+    danger: "var(--braided-ochre)",
+  };
+  sourceInput.value = braidedSource;
+
+  const setSurface = (surface) => {
+    for (const button of surfaceButtons) {
+      button.setAttribute(
+        "aria-pressed",
+        String(button.dataset.braidedSurface === surface),
+      );
+    }
+
+    const showSource = surface === "source";
+    diagramPane.hidden = showSource;
+    sourcePane.hidden = !showSource;
+    status.textContent = showSource
+      ? "Source mode. Diagram source is read-only."
+      : "View mode. Select an actor to see its evidence.";
+    if (showSource) {
+      sourceInput.focus();
+    }
+  };
+
+  for (const button of surfaceButtons) {
+    button.addEventListener("click", () => {
+      setSurface(button.dataset.braidedSurface);
+    });
+  }
+
+  try {
+    parse(braidedSource);
+    diagram.source = braidedSource;
+    diagramPane.classList.add("is-ready");
+    diagram.addEventListener("la-actor-select", ({ detail }) => {
+      renderDetail(detail.name);
+    });
+    closeButton.addEventListener("click", () => {
+      diagram.clearActorSelection();
+    });
+  } catch (problem) {
+    diagramPane.classList.add("is-failed");
+    error.textContent =
+      problem instanceof Error
+        ? problem.message
+        : "Unable to render braided ancestry.";
+  }
+}
+
 const showcaseRenderers = new Map();
 const showcaseObserver =
   typeof globalThis.IntersectionObserver === "function"
@@ -446,7 +795,6 @@ for (const showcase of document.querySelectorAll("[data-showcase]")) {
     sourcePane.hidden = true;
     diagramPane.hidden = false;
     diagram.hidden = false;
-    diagram.selectable = surface === "edit";
     diagram.mode = surface;
     status.textContent =
       surface === "edit"
