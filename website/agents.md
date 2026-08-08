@@ -18,7 +18,7 @@ framework is required.
     <title>Sequence diagram</title>
     <script
       type="module"
-      src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.5"
+      src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.7"
     ></script>
   </head>
   <body>
@@ -36,7 +36,7 @@ framework is required.
 </html>
 ```
 
-The `@0.5` CDN URL accepts compatible patch releases; use `@0.5.0` to pin the
+The `@0.7` CDN URL accepts compatible patch releases; use `@0.7.0` to pin the
 exact release.
 
 ## Configure the web component
@@ -46,30 +46,46 @@ Set configuration through attributes on `<lines-and-arrows>`:
 | Attribute | Values and behavior |
 | --- | --- |
 | `mode` | `view` by default. Use `edit` to enable the visual editor, its undo and redo controls, and editing keyboard shortcuts. |
-| `selectable` | Diagram elements are selectable in view mode by default. Use `false` for a non-interactive view. Edit mode remains selectable because selection is required for editing. |
+| `selectable-actors` | Boolean attribute. View mode is static by default; add this attribute to let people select actors. Edit mode keeps its own required selection behavior. |
+| `history-controls` | Undo and redo buttons are shown in edit mode by default. Use `false` to hide the buttons without disabling the methods or keyboard shortcuts. |
 | `branding` | The “Powered by Lines & Arrows” attribution is shown by default. Use `false` to hide it. |
 | `theme` | `auto`, `light`, or `dark`. The default is `auto`. |
 | `canvas-background` | `solid` by default. Use `transparent` when the host supplies a matching palette through the element's `palette` property. |
 | `label` | An accessible name describing the diagram. |
 
-Undo and redo do not use a separate enablement attribute. They are available
-in edit mode through the rendered controls, standard keyboard shortcuts, and
-the element's `undo()` and `redo()` methods. The `canUndo` and `canRedo`
-properties report whether each action is currently available.
+Undo and redo remain available through standard keyboard shortcuts and the
+element's `undo()` and `redo()` methods when `history-controls="false"`. The
+`canUndo` and `canRedo` properties report whether each action is currently
+available.
 
-For example, this creates a selectable view without the attribution:
+For example, this creates an actor-selectable view without the attribution:
 
 ```html
 <lines-and-arrows
+  id="request-flow"
   mode="view"
-  selectable="true"
+  selectable-actors
   branding="false"
   theme="auto"
 >
   Client -> API: Request
   API --> Client: Response
 </lines-and-arrows>
+
+<script type="module">
+  const diagram = document.querySelector("#request-flow");
+  diagram.addEventListener("la-actor-select", ({ detail }) => {
+    console.log(detail.name, detail.actor?.tooltip);
+  });
+  diagram.selectActor("API");
+</script>
 ```
+
+`la-actor-select` detail contains `name` and an immutable `actor` snapshot with
+the actor's name, icon, tag, tooltip text, tooltip icon, and inferred state.
+Clearing selection emits `{ name: null, actor: null }`. Use
+`clearActorSelection()` to clear it programmatically. Messages, groups,
+sections, and gaps are not selectable in view mode.
 
 Prefer the built-in `theme="auto"` unless the diagram needs to blend into a
 specific host surface. Built-in themes use an opaque canvas and translucent

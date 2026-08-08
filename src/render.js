@@ -271,6 +271,40 @@ function textWidth(text, fontSize = 12, minimum = 0) {
   return Math.max(minimum, text.length * fontSize * 0.56);
 }
 
+function textMeasurer(fontSize, fontWeight) {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext?.("2d");
+  if (!context) {
+    return (text) => textWidth(text, fontSize);
+  }
+  context.font = [
+    `${fontWeight} ${fontSize}px system-ui`,
+    "-apple-system",
+    "BlinkMacSystemFont",
+    '"Segoe UI"',
+    "sans-serif",
+  ].join(", ");
+  return (text) => context.measureText(text).width;
+}
+
+function truncateToWidth(text, maximumWidth, measure) {
+  if (measure(text) <= maximumWidth) {
+    return text;
+  }
+
+  let lower = 0;
+  let upper = text.length;
+  while (lower < upper) {
+    const middle = Math.ceil((lower + upper) / 2);
+    if (measure(`${text.slice(0, middle)}…`) <= maximumWidth) {
+      lower = middle;
+    } else {
+      upper = middle - 1;
+    }
+  }
+  return `${text.slice(0, lower)}…`;
+}
+
 function appendTextLines(
   text,
   lines,
@@ -319,20 +353,29 @@ function groupHeaderGeometry(group) {
 }
 
 function sectionLabelGeometry(section) {
-  const visibleLines = textLines(section.label).map((line) =>
-    truncate(line, 28),
+  const fontSize = 10;
+  const measure = textMeasurer(fontSize, 650);
+  const lineGap = 4;
+  const leftLineWidth = 6;
+  const rightLineMinimum = 8;
+  const labelX = section.left + leftLineWidth + lineGap;
+  const availableLabelWidth = Math.max(
+    fontSize * 0.56,
+    section.right - rightLineMinimum - lineGap - labelX,
   );
-  const labelWidth =
-    Math.max(
-      36,
-      ...visibleLines.map((line) => textWidth(line, 10)),
-    ) + 16;
+  const visibleLines = textLines(section.label).map((line) =>
+    truncateToWidth(line, availableLabelWidth, measure),
+  );
+  const labelWidth = Math.max(
+    0,
+    ...visibleLines.map((line) => measure(line)),
+  );
   return {
     visibleLines,
     labelWidth,
-    x: section.left + 10,
-    y: section.top + 3,
-    height: visibleLines.length * 12 + 8,
+    labelX,
+    leftLineEnd: labelX - lineGap,
+    rightLineStart: labelX + labelWidth + lineGap,
   };
 }
 
@@ -1199,11 +1242,16 @@ function renderSection(parent, section, tokens, selection) {
   makeSelectable(group, section, selection, `Section ${section.label}`);
   const lineStart = section.left;
   const lineEnd = section.right;
-  const { visibleLines, labelWidth } = sectionLabelGeometry(section);
+  const {
+    visibleLines,
+    labelX,
+    leftLineEnd,
+    rightLineStart,
+  } = sectionLabelGeometry(section);
 
   for (const [x1, x2] of [
-    [lineStart, lineStart + 6],
-    [lineStart + 10 + labelWidth + 4, lineEnd],
+    [lineStart, leftLineEnd],
+    [rightLineStart, lineEnd],
   ]) {
     if (x2 <= x1) {
       continue;
@@ -1221,7 +1269,8 @@ function renderSection(parent, section, tokens, selection) {
     );
   }
   const label = svgElement("text", {
-    x: lineStart + 18,
+    class: "la-section-label",
+    x: labelX,
     "font-size": 10,
     "font-weight": 650,
     fill: tokens.mutedText,
@@ -1229,7 +1278,7 @@ function renderSection(parent, section, tokens, selection) {
   appendTextLines(
     label,
     visibleLines,
-    lineStart + 18,
+    labelX,
     section.top + 16,
     12,
   );

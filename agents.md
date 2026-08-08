@@ -99,6 +99,17 @@ Inspect `git status` before editing, preserve unrelated work, and stage only
 files belonging to the requested change. Build output and temporary artifacts
 remain uncommitted.
 
-Package releases use the tag-triggered trusted-publishing workflow documented
+Before a package release, also inspect commits ahead of `origin/main`. The
+release commit must contain only the intended release scope and must already be
+reachable from remote `main` before its tag is pushed. Publishing only a tag is
+not a completed release, even though the tag-triggered workflow can publish it.
+
+If the current branch has unrelated commits or worktree changes, do not tag or
+push from that mixed history. Prepare the release from a clean checkout of
+`origin/main`, apply only the intended release changes, verify them, push that
+commit to `main`, and confirm the remote branch contains it. Only then create
+and push the annotated release tag.
+
+Package releases otherwise follow the trusted-publishing procedure documented
 in the [README](./README.md#publishing). Website deployment is independent of
 package publication.

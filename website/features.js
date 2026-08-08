@@ -1,8 +1,8 @@
 import {
   defineLinesAndArrows,
   parse,
-} from "./runtime.js?v=20260805-5";
-import { initializeSiteTheme } from "./site.js?v=20260805-4";
+} from "./runtime.js?v=20260808-1";
+import { initializeSiteTheme } from "./site.js?v=20260806-2";
 
 defineLinesAndArrows();
 
@@ -123,7 +123,6 @@ for (const feature of document.querySelectorAll("[data-feature]")) {
     const editing = mode === "edit";
     viewButton.setAttribute("aria-pressed", String(!editing));
     editButton.setAttribute("aria-pressed", String(editing));
-    diagram.selectable = editing;
     diagram.mode = editing ? "edit" : "view";
     status.textContent = editing
       ? "Edit mode. Select an object to change it, then drag to reorder."

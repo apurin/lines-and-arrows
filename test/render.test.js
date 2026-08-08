@@ -20,6 +20,15 @@ parallel Review
   | delayed
     gap Later`;
 
+const SECTION_GEOMETRY_SOURCE = `@A
+@B
+
+parallel Geometry
+  | short
+    A -> B: First
+  | This section label should use all of the available width before truncating at the right rule
+    B -> A: Second`;
+
 class FakeClassList {
   constructor(element) {
     this.element = element;
@@ -200,12 +209,12 @@ function directChild(root, predicate) {
   return root.children.find(predicate);
 }
 
-function renderWithFakeDocument(render) {
+function renderWithFakeDocument(render, source = SOURCE) {
   const previousDocument = globalThis.document;
   globalThis.document = new FakeDocument();
   try {
     const target = new FakeElement("div");
-    const controller = render(target, SOURCE, {
+    const controller = render(target, source, {
       theme: "light",
       branding: false,
     });
@@ -214,6 +223,48 @@ function renderWithFakeDocument(render) {
     globalThis.document = previousDocument;
   }
 }
+
+function sectionGeometry(section) {
+  const lines = section.children.filter((element) =>
+    element.classList.contains("la-section-line"),
+  );
+  const label = section.children.find(
+    (element) => element.localName === "text",
+  );
+  const renderedLabel = label.children[0].textContent;
+  const labelX = Number(label.getAttribute("x"));
+  return {
+    renderedLabel,
+    leftGap: labelX - Number(lines[0].getAttribute("x2")),
+    rightGap:
+      Number(lines[1].getAttribute("x1")) -
+      (labelX + renderedLabel.length * 10 * 0.56),
+    rightLineWidth:
+      Number(lines[1].getAttribute("x2")) -
+      Number(lines[1].getAttribute("x1")),
+  };
+}
+
+test("section rules use available label width with compact symmetric gaps", () => {
+  const { target } = renderWithFakeDocument(
+    renderDiagram,
+    SECTION_GEOMETRY_SOURCE,
+  );
+  const sections = byClass(target, "la-section");
+  const short = sectionGeometry(sections[0]);
+  const long = sectionGeometry(sections[1]);
+
+  assert.equal(short.renderedLabel, "short");
+  assert.equal(short.leftGap, 4);
+  assert.ok(Math.abs(short.rightGap - short.leftGap) < 0.001);
+
+  assert.ok(long.renderedLabel.length > 28);
+  assert.match(long.renderedLabel, /…$/);
+  assert.equal(long.leftGap, 4);
+  assert.ok(Math.abs(long.rightGap - long.leftGap) < 0.001);
+  assert.ok(long.rightLineWidth >= 8);
+  assert.ok(long.rightLineWidth < 14);
+});
 
 test("actor-selectable view keeps every non-actor object static", () => {
   const { target } = renderWithFakeDocument((container, source, options) =>
@@ -234,6 +285,9 @@ test("actor-selectable view keeps every non-actor object static", () => {
   assert.equal(groupHits.length, 1);
   assert.equal(sections.length, 2);
   assert.equal(gaps.length, 1);
+  for (const section of sections) {
+    assert.equal(byClass(section, "la-section-label").length, 1);
+  }
 
   for (const actor of actors) {
     assert.equal(actor.classList.contains("la-selectable"), true);

@@ -3,8 +3,8 @@ import {
   parse,
   phosphorIconCatalog,
   phosphorIconResolver,
-} from "./runtime.js?v=20260805-5";
-import { initializeSiteTheme } from "./site.js?v=20260805-4";
+} from "./runtime.js?v=20260808-1";
+import { initializeSiteTheme } from "./site.js?v=20260806-2";
 
 defineLinesAndArrows();
 
@@ -100,7 +100,6 @@ const setHeroSurface = (surface) => {
 
   sourceEditor.hidden = true;
   diagram.hidden = false;
-  diagram.selectable = surface === "edit";
   diagram.mode = surface;
   modeStatus.textContent =
     surface === "edit"
