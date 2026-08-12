@@ -2,7 +2,7 @@
 
 This file is for agents changing the Lines & Arrows repository. For instructions
 on authoring or validating a diagram, read the canonical
-[usage guide](./website/agents.md). The formal language contract lives in
+[usage guide](./website/agents.html). The formal language contract lives in
 [syntax.md](./syntax.md).
 
 ## Product and repository boundaries
@@ -66,7 +66,7 @@ on authoring or validating a diagram, read the canonical
 For a syntax change, keep these pieces aligned:
 
 1. Update the formal contract in `syntax.md` and its published website copy.
-2. Update `website/agents.md` when authoring guidance changes.
+2. Update `website/agents.html` when authoring guidance changes.
 3. Update parser, serializer, editor behavior, and public declarations as
    applicable.
 4. Add focused parser, round-trip, validation, and editor-model tests.

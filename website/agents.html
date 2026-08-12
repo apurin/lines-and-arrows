@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="Author, validate, and render Lines &amp; Arrows sequence diagrams."
+    >
+    <title>Lines &amp; Arrows for agents</title>
+    <link rel="canonical" href="https://lines-and-arrows.dev/agents">
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        line-height: 1.55;
+      }
+
+      body {
+        max-width: 76rem;
+        margin: 0 auto;
+        padding: 2rem 1rem 4rem;
+      }
+
+      h2 {
+        margin-top: 2.5rem;
+      }
+
+      code,
+      pre {
+        font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+      }
+
+      pre {
+        overflow-x: auto;
+        padding: 1rem;
+        border: 1px solid CanvasText;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 0.5rem;
+        border: 1px solid CanvasText;
+        text-align: left;
+        vertical-align: top;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Lines &amp; Arrows for agents</h1>
+      <p>
+        Lines &amp; Arrows is an open source sequence-diagram format with a visual
+        editor. The diagram is stored as concise text, so agents can write and
+        validate the same source that people view or edit.
+      </p>
+      <p>
+        This guide contains everything needed to author, validate, and render
+        Lines &amp; Arrows through the supported integrations below. Do not inspect
+        the repository or unrelated examples unless the host imposes an
+        integration requirement that this guide does not cover.
+      </p>
+
+      <h2>Put a diagram on a page</h2>
+      <p>
+        The CDN build registers the <code>&lt;lines-and-arrows&gt;</code> element. No
+        package install or framework is required.
+      </p>
+      <pre><code class="language-html">&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+  &lt;head&gt;
+    &lt;meta charset=&quot;utf-8&quot; /&gt;
+    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot; /&gt;
+    &lt;title&gt;Sequence diagram&lt;/title&gt;
+    &lt;script
+      type=&quot;module&quot;
+      src=&quot;https://cdn.jsdelivr.net/npm/lines-and-arrows@0.7&quot;
+    &gt;&lt;/script&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;lines-and-arrows mode=&quot;view&quot; theme=&quot;auto&quot;&gt;
+      @Client
+      @API
+      @Worker
+
+      Client -&gt; API: Start job
+      API -&gt; Worker: Run
+      Worker --&gt; API: Done
+      API --&gt; Client: Complete
+    &lt;/lines-and-arrows&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+      <p>
+        The major-minor CDN URL accepts compatible patch releases. Use a full
+        <code>X.Y.Z</code> version when an embed must remain pinned to one exact
+        release.
+      </p>
+
+      <h2>Render without custom elements</h2>
+      <p>
+        When a browser host provides an ordinary DOM container but cannot use
+        custom elements or external script tags, import the exact browser module
+        and call <code>renderDiagram()</code> directly:
+      </p>
+      <pre><code class="language-html">&lt;div id=&quot;request-flow&quot;&gt;&lt;/div&gt;
+
+&lt;script type=&quot;module&quot;&gt;
+  import {
+    renderDiagram,
+  } from &quot;https://cdn.jsdelivr.net/npm/lines-and-arrows@0.7.0/+esm&quot;;
+
+  const source = `Client -&gt; API: Start job
+API -&gt; Worker: Run
+Worker --&gt; API: Done
+API --&gt; Client: Complete`;
+
+  renderDiagram(document.getElementById(&quot;request-flow&quot;), source, {
+    theme: &quot;auto&quot;,
+    branding: true,
+    label: &quot;Job request sequence&quot;,
+  });
+&lt;/script&gt;</code></pre>
+      <p>
+        <code>renderDiagram(target, source, options)</code> accepts Lines &amp;
+        Arrows text directly; calling <code>parse()</code> first is optional. Keep
+        the exact <code>X.Y.Z</code> version in constrained or generated embeds.
+      </p>
+
+      <h2>Configure the web component</h2>
+      <p>
+        Set configuration through attributes on
+        <code>&lt;lines-and-arrows&gt;</code>:
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Attribute</th>
+            <th>Values and behavior</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>mode</code></td>
+            <td>
+              <code>view</code> by default. Use <code>edit</code> to enable the
+              visual editor, its undo and redo controls, and editing keyboard
+              shortcuts.
+            </td>
+          </tr>
+          <tr>
+            <td><code>selectable-actors</code></td>
+            <td>
+              Boolean attribute. View mode is static by default; add this
+              attribute to let people select actors. Edit mode keeps its own
+              required selection behavior.
+            </td>
+          </tr>
+          <tr>
+            <td><code>history-controls</code></td>
+            <td>
+              Undo and redo buttons are shown in edit mode by default. Use
+              <code>false</code> to hide the buttons without disabling the methods
+              or keyboard shortcuts.
+            </td>
+          </tr>
+          <tr>
+            <td><code>branding</code></td>
+            <td>
+              The “Powered by Lines &amp; Arrows” attribution is shown by default.
+              Use <code>false</code> to hide it.
+            </td>
+          </tr>
+          <tr>
+            <td><code>theme</code></td>
+            <td>
+              <code>auto</code>, <code>light</code>, or <code>dark</code>. The
+              default is <code>auto</code>.
+            </td>
+          </tr>
+          <tr>
+            <td><code>canvas-background</code></td>
+            <td>
+              <code>solid</code> by default. Use <code>transparent</code> when the
+              host supplies a matching palette through the element's
+              <code>palette</code> property.
+            </td>
+          </tr>
+          <tr>
+            <td><code>label</code></td>
+            <td>An accessible name describing the diagram.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Undo and redo remain available through standard keyboard shortcuts and
+        the element's <code>undo()</code> and <code>redo()</code> methods when
+        <code>history-controls=&quot;false&quot;</code>. The <code>canUndo</code> and
+        <code>canRedo</code> properties report whether each action is currently
+        available.
+      </p>
+      <p>
+        For example, this creates an actor-selectable view without the
+        attribution:
+      </p>
+      <pre><code class="language-html">&lt;lines-and-arrows
+  id=&quot;request-flow&quot;
+  mode=&quot;view&quot;
+  selectable-actors
+  branding=&quot;false&quot;
+  theme=&quot;auto&quot;
+&gt;
+  Client -&gt; API: Request
+  API --&gt; Client: Response
+&lt;/lines-and-arrows&gt;
+
+&lt;script type=&quot;module&quot;&gt;
+  const diagram = document.querySelector(&quot;#request-flow&quot;);
+  diagram.addEventListener(&quot;la-actor-select&quot;, ({ detail }) =&gt; {
+    console.log(detail.name, detail.actor?.tooltip);
+  });
+  diagram.selectActor(&quot;API&quot;);
+&lt;/script&gt;</code></pre>
+      <p>
+        <code>la-actor-select</code> detail contains <code>name</code> and an
+        immutable <code>actor</code> snapshot with the actor's name, icon, tag,
+        tooltip text, tooltip icon, and inferred state. Clearing selection emits
+        <code>{ name: null, actor: null }</code>. Use
+        <code>clearActorSelection()</code> to clear it programmatically. Messages,
+        groups, sections, and gaps are not selectable in view mode.
+      </p>
+      <p>
+        Prefer the built-in <code>theme=&quot;auto&quot;</code> unless the diagram needs to
+        blend into a specific host surface. Built-in themes use an opaque canvas
+        and translucent group overlays, so no palette configuration is required.
+      </p>
+      <p>
+        For host-specific colors, assign <code>palette</code> as a JavaScript
+        property and make the canvas transparent only when the host supplies the
+        visible background:
+      </p>
+      <pre><code class="language-js">const diagram = document.querySelector(&quot;lines-and-arrows&quot;);
+diagram.palette = {
+  background: &quot;var(--page)&quot;,
+  foreground: &quot;var(--text)&quot;,
+  accent: &quot;var(--accent)&quot;,
+  danger: &quot;var(--danger)&quot;,
+};
+diagram.canvasBackground = &quot;transparent&quot;;</code></pre>
+      <p>
+        The renderer derives its remaining colors. Optional
+        <code>accentForeground</code> and <code>dangerForeground</code> values
+        override automatic contrast choices.
+      </p>
+
+      <h2>Use the npm package</h2>
+      <p>Install the package before using its CLI or JavaScript exports:</p>
+      <pre><code class="language-sh">npm install lines-and-arrows
+npx lines-and-arrows validate --json diagram.la</code></pre>
+      <p>Register the web component in an npm-based browser application:</p>
+      <pre><code class="language-js">import &quot;lines-and-arrows/auto&quot;;</code></pre>
+      <p>
+        This import must run through the application's bundler or development
+        server. Then use the same <code>&lt;lines-and-arrows&gt;</code> HTML shown
+        above, without the CDN <code>&lt;script&gt;</code>.
+      </p>
+      <p>Validate source in JavaScript without a browser or DOM:</p>
+      <pre><code class="language-js">import { validate } from &quot;lines-and-arrows/syntax&quot;;
+
+const result = validate(source);
+if (!result.valid) {
+  throw new Error(`Line ${result.error.line}: ${result.error.message}`);
+}</code></pre>
+
+      <h2>Authoring workflow</h2>
+      <ol>
+        <li>Write actors first when their order, icons, tags, or tooltips matter.</li>
+        <li>Write messages and groups in timeline order.</li>
+        <li>Use two spaces for every indentation level. Never use tabs.</li>
+        <li>
+          Save the source and validate it with the CLI or
+          <code>validate(source)</code>.
+        </li>
+        <li>Fix the reported line and validate again.</li>
+      </ol>
+
+      <h2>Syntax</h2>
+      <pre><code class="language-lines-and-arrows">@Actor Name
+  icon catalog-identifier
+  tag short visible text
+  tooltip Additional detail\non another line
+  tooltip-icon catalog-identifier
+
+Source -&gt; Target: Solid message
+Source --&gt; Target: Dashed message
+Source -&gt;x Target: Lost message
+
+group-type Visible label
+  Source -&gt; Target: Nested message
+
+choice Visible label
+  | first outcome
+    Source --&gt; Target: Result
+  | second outcome
+    Source -&gt;x Target: Lost message
+
+gap Visible discontinuity
+// Source-only comment</code></pre>
+      <p>Core rules:</p>
+      <ul>
+        <li>
+          Actor declarations are optional. Without them, actors appear in
+          first-use order. If any actor is declared, declare every referenced
+          actor.
+        </li>
+        <li>
+          <code>-&gt;</code>, <code>--&gt;</code>, and <code>-&gt;x</code> preserve
+          three distinct arrow styles. Use <code>-&gt;x</code> only when a message is
+          not delivered.
+        </li>
+        <li>A message label is optional. Omit the colon when there is no label.</li>
+        <li>
+          Actor and message metadata may contain one <code>tag</code>, one
+          <code>tooltip</code>, and one <code>tooltip-icon</code>. Actors may also
+          contain one <code>icon</code>.
+        </li>
+        <li>
+          Icon identifiers use Phosphor names such as <code>robot</code>,
+          <code>user</code>, <code>cloud</code>, <code>database</code>,
+          <code>gear-six</code>, and <code>tray</code>. An unknown name remains
+          valid but may render without an icon.
+        </li>
+        <li>
+          Any lowercase group type is valid except the reserved word
+          <code>gap</code>. Its visible label is optional; a bare group type starts
+          an unlabeled group. Common types include <code>choice</code>,
+          <code>repeat</code>, <code>parallel</code>, <code>optional</code>, and
+          <code>critical</code>.
+        </li>
+        <li>
+          A group contains either direct items or <code>| section</code> blocks,
+          not both at the same level. Every group and section must contain at
+          least one item.
+        </li>
+        <li>Keep nesting within the format's 128-level safety limit.</li>
+        <li>
+          Use <code>gap TEXT</code> when time passes or part of the sequence is
+          omitted.
+        </li>
+        <li>
+          Use <code>\n</code> for a visible line break and <code>\\</code> for a
+          literal backslash.
+        </li>
+        <li>Keep coordinates, colors, dimensions, and themes out of diagram source.</li>
+      </ul>
+
+      <h2>Tags and tooltips</h2>
+      <p>
+        Use tags sparingly for short qualifiers that readers should see without
+        hovering. An actor tag names a stable constraint or property that
+        remains true throughout the diagram, such as <code>PCI boundary</code> or
+        <code>single writer</code>. A message tag names a contract or outcome of
+        that interaction, such as <code>idempotent</code> or <code>timeout</code>.
+        Put supporting explanation in a tooltip.
+      </p>
+
+      <h2>Complete example</h2>
+      <pre><code class="language-lines-and-arrows">@Agent
+  icon robot
+
+@API
+  icon cloud
+  tag internet-facing
+  tooltip Accepts requests outside the trust boundary
+  tooltip-icon shield-check
+
+@Worker
+  icon gear-six
+
+@Queue
+  icon tray
+
+Agent -&gt; API: Start job
+  tag idempotent
+  tooltip Safe to retry with the same request identifier
+  tooltip-icon key
+
+critical Process job
+  API -&gt; Worker: Run
+  choice
+    | completed
+      Worker --&gt; API: Done
+    | queue unavailable
+      Worker -&gt;x Queue: Publish event
+  gap The next event loop
+  Worker --&gt; Agent: Report result</code></pre>
+    </main>
+  </body>
+</html>

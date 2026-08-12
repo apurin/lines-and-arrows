@@ -88,7 +88,7 @@ API ->x Queue: Delivery lost
 ```
 
 See [syntax.md](./syntax.md) for the complete language definition and the
-[agent usage guide](https://github.com/apurin/lines-and-arrows/blob/main/website/agents.md)
+[agent usage guide](https://lines-and-arrows.dev/agents)
 for a compact authoring reference.
 
 Use `\n` for an intentional line break in labels and tooltips, and `\\` for a

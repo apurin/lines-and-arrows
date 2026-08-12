@@ -1,0 +1,16 @@
+# Lines & Arrows
+
+> Open source sequence diagrams stored as readable text, with a browser renderer, visual editor, and DOM-free validation API.
+
+Use the agent guide for authoring and integration. Use the syntax reference when exact language rules matter.
+
+## Documentation
+
+- [Agent guide](https://lines-and-arrows.dev/agents): Author, validate, and render Lines & Arrows in web pages, constrained browser hosts, and Node.js.
+- [Syntax reference](https://lines-and-arrows.dev/syntax.md): Formal language contract.
+
+## Tools and examples
+
+- [Constructor](https://lines-and-arrows.dev/constructor): Build and configure a diagram visually, then copy its HTML.
+- [Showcase](https://lines-and-arrows.dev/showcase): Rendered and editable examples.
+- [GitHub repository](https://github.com/apurin/lines-and-arrows): Source, package documentation, and issue tracker.
