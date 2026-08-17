@@ -15,7 +15,7 @@ const braidedSource = `@Neanderthals
 @Denisovans
   icon mountains
   tag DNA-defined
-  tooltip Known from a small fossil record and a large genetic footprint across Asia and Oceania.
+  tooltip Discovered through DNA, then traced through a skull, jaws, teeth, and living genomes across Asia and Oceania.
   tooltip-icon dna
 
 @Homo sapiens
@@ -26,10 +26,10 @@ const braidedSource = `@Neanderthals
 
 parallel Encounters across Eurasia, ~100-45 ka
   | Western Eurasia, ~60-45 ka
-    Neanderthals -> Neanderthals: Engrave a cave wall
-      tag wall marks
-      tooltip At La Roche-Cotard, deliberate finger engravings were made more than 57,000 years ago, before Homo sapiens reached the region.
-      tooltip-icon hand
+    Neanderthals -> Neanderthals: Build a life in Eurasia
+      tag deep roots
+      tooltip Neanderthals controlled fire, made clothing and sophisticated tools, and weathered immense climate swings across Europe and western Asia.
+      tooltip-icon campfire
     Homo sapiens -> Neanderthals: Meet and have children
       tag gene flow
       tooltip Ancient genomes record repeated contact rather than a single encounter.
@@ -57,147 +57,122 @@ legacy Living genomes
     tooltip A Denisovan-like EPAS1 haplotype contributes to high-altitude adaptation in Tibetan populations.
     tooltip-icon mountains`;
 
-const sharedBraidedSources = [
-  [
-    "Smithsonian: ancient DNA",
-    "https://humanorigins.si.edu/evidence/genetics/ancient-dna-and-neanderthals",
-  ],
-  [
-    "Nature: Denisova 11",
-    "https://www.nature.com/articles/s41586-018-0455-x",
-  ],
-  ["Nature: EPAS1", "https://www.nature.com/articles/nature13408"],
-  ["UNESCO: Cueva de las Manos", "https://whc.unesco.org/en/list/936/"],
-];
-
 const braidedDetails = {
   general: {
     title: "Human prehistory",
-    subtitle: "Three lineages, several encounters, one living genetic legacy.",
-    body:
-      "Human evolution is not a clean procession. Populations separated, met again, and exchanged DNA across Eurasia.",
-    caption: "Hand stencils at Cueva de las Manos, Argentina.",
-    credits: [
-      [
-        "Pablo A. Gimenez, via Wikimedia Commons",
-        "https://commons.wikimedia.org/wiki/File:Cueva_de_las_Manos_(6811931046).jpg",
-      ],
-      [
-        "CC BY-SA 2.0",
-        "https://creativecommons.org/licenses/by-sa/2.0/",
-      ],
-    ],
-    facts: [
-      ["Shape", "Braided"],
-      ["Time", "More than 400 ka to today"],
-      ["Places", "Africa and Eurasia"],
-    ],
-    sources: sharedBraidedSources,
-    image: "./assets/cueva-de-las-manos.jpg",
-    alt: "Hand stencils covering a rock wall at Cueva de las Manos",
-    position: "center",
-  },
-  Neanderthals: {
-    title: "Neanderthals",
-    subtitle: "Western Eurasia. An abstract mark on a cave wall.",
-    body:
-      "At La Roche-Cotard, deliberate finger flutings form a non-figurative composition. The cave was sealed before Homo sapiens reached the region, and its archaeology attributes the engravings to Neanderthals.",
-    caption:
-      "Triangular Panel finger engravings, La Roche-Cotard, France. Older than 57 ± 3 ka.",
-    credits: [
-      [
-        "Marquet et al., PLOS ONE (2023)",
-        "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0286568",
-      ],
-      ["CC BY 4.0", "https://creativecommons.org/licenses/by/4.0/"],
-    ],
-    facts: [
-      ["Range", "Western Eurasia"],
-      ["Wall art", "Finger engraving"],
-      ["Legacy", "DNA in living people"],
+    story: [
+      "For most of human prehistory, humanity was plural. Across Pleistocene Eurasia, Neanderthals, Denisovans and arriving groups of Homo sapiens occupied overlapping worlds. The diagram is a family story told sideways: populations separated, met again and sometimes had children.",
+      "Ancient DNA turned that possibility into biographies. A bone from Denisova Cave belonged to a girl whose mother was Neanderthal and whose father was Denisovan. Some early Homo sapiens in Europe had Neanderthal ancestors only a few generations back.",
+      "Neanderthals and Denisovans later disappeared as distinct populations, but not completely. Their DNA survives in living people, broken into smaller pieces and reshuffled with every generation. Click a lineage to follow one strand of that inheritance.",
     ],
     sources: [
       [
-        "PLOS: cave engravings",
-        "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0286568",
-      ],
-      [
-        "Smithsonian profile",
-        "https://humanorigins.si.edu/evidence/human-fossils/species/homo-neanderthalensis",
-      ],
-    ],
-    image: "./assets/neanderthal-roche-cotard.jpg",
-    alt: "Triangular Panel finger engravings at La Roche-Cotard cave",
-    position: "center 52%",
-  },
-  Denisovans: {
-    title: "Denisovans",
-    subtitle: "Central and eastern Asia. A family found inside a fragment.",
-    body:
-      "This two-centimetre bone is Denisova 11, nicknamed Denny. Genome analysis showed that she had a Neanderthal mother and a Denisovan father. It is direct evidence that the lineages met and had children.",
-    caption:
-      "Denisova 11, a roughly 90,000-year-old bone fragment from Denisova Cave.",
-    credits: [
-      [
-        "Buckley et al. (2016), via Wikimedia Commons",
-        "https://commons.wikimedia.org/wiki/File:Denisova-11.jpg",
-      ],
-      [
-        "CC BY-SA 4.0",
-        "https://creativecommons.org/licenses/by-sa/4.0/",
-      ],
-    ],
-    facts: [
-      ["Known by", "Ancient DNA"],
-      ["Place", "Altai, Siberia"],
-      ["Surprise", "First-generation child"],
-    ],
-    sources: [
-      [
-        "Nature: Denisova 11 genome",
+        "Nature: a Neanderthal-Denisovan child",
         "https://www.nature.com/articles/s41586-018-0455-x",
       ],
       [
-        "Commons image record",
-        "https://commons.wikimedia.org/wiki/File:Denisova-11.jpg",
+        "Nature: recent Neanderthal ancestors",
+        "https://www.nature.com/articles/s41586-021-03335-3",
       ],
     ],
-    image: "./assets/denisova-11.jpg",
-    alt: "Denisova 11 bone fragment held beside a measuring scale",
+    images: {
+      light: "./assets/prehistory-tools-light.jpg",
+      dark: "./assets/prehistory-tools-dark.jpg",
+    },
+    alt: {
+      light: "Prehistoric tools resting inside a daylight rock shelter",
+      dark: "Used prehistoric tools scattered across a firelit cave floor",
+    },
     position: "center",
-    fit: "contain",
+    zoom: true,
+  },
+  Neanderthals: {
+    title: "Neanderthals",
+    story: [
+      "Neanderthals were not a rough draft of us. For roughly 400,000 years they made lives across Europe and western Asia, adapting to huge swings in climate rather than one endless ice age. They were stocky, strong and close enough to us for their children with Homo sapiens to be fertile.",
+      "They controlled fire, built shelters, made clothing and hunted large animals with carefully planned tools. Some communities used pigments and ornaments. The familiar cave brute is therefore a historical artifact, not an archaeological conclusion.",
+      "Neanderthals disappeared as a distinct population around 40,000 years ago, near the end of several millennia of overlap with Homo sapiens. Their genetic afterlife is enormous: about 2-3% of the ancestry of most present-day people outside Africa is Neanderthal.",
+    ],
+    sources: [
+      [
+        "Smithsonian: Neanderthal life",
+        "https://humanorigins.si.edu/evidence/human-fossils/species/homo-neanderthalensis",
+      ],
+      [
+        "Nature: timing the interbreeding",
+        "https://www.nature.com/articles/s41586-024-08420-x",
+      ],
+    ],
+    images: {
+      light: "./assets/neanderthal-light.jpg",
+      dark: "./assets/neanderthal-dark.jpg",
+    },
+    alt: {
+      light: "Speculative portrait of a Neanderthal woman in daylight",
+      dark: "Speculative portrait of a Neanderthal woman by torchlight",
+    },
+    position: "center",
+  },
+  Denisovans: {
+    title: "Denisovans",
+    story: [
+      "The Denisovans were discovered backwards. In 2010, DNA from a small finger bone in Siberia revealed a human population no one had recognized from anatomy. For years their known body amounted mostly to teeth, bone fragments and a jaw, while their genomes pointed to a range across Asia.",
+      "That changed in 2025. Proteins linked the remarkably complete Harbin cranium, at least 146,000 years old, to a Denisovan population. The skull once called Dragon Man finally gave Denisovans a face as well as a genome.",
+      "Their family ties were equally wide. One girl at Denisova Cave had a Neanderthal mother and a Denisovan father. Denisovan ancestry survives in parts of Asia and Oceania, and a Denisovan-like EPAS1 variant helps many Tibetans live at high altitude.",
+    ],
+    sources: [
+      [
+        "Science: the Harbin proteome",
+        "https://www.science.org/doi/10.1126/science.adu9677",
+      ],
+      [
+        "Nature: a Neanderthal-Denisovan child",
+        "https://www.nature.com/articles/s41586-018-0455-x",
+      ],
+      [
+        "Nature: Denisovan-like EPAS1",
+        "https://www.nature.com/articles/nature13408",
+      ],
+    ],
+    images: {
+      light: "./assets/denisovan-light.jpg",
+      dark: "./assets/denisovan-dark.jpg",
+    },
+    alt: {
+      light: "Speculative portrait of a Denisovan woman in daylight",
+      dark: "Speculative portrait of a Denisovan woman by firelight",
+    },
+    position: "center",
   },
   "Homo sapiens": {
     title: "Homo sapiens",
-    subtitle: "Africa to the world. Animals made vivid in stone.",
-    body:
-      "At Lascaux, artists used mineral pigments, confident contours, and the cave wall's own surface to animate aurochs, horses, and deer. It is a spectacular late chapter in a much older history of image-making.",
-    caption:
-      "Aurochs, horses, and deer, Lascaux, France. Approximately 17,000 years old.",
-    credits: [
-      [
-        "Prof saxx, via Wikimedia Commons",
-        "https://commons.wikimedia.org/wiki/File:Lascaux_painting.jpg",
-      ],
-      [
-        "CC BY-SA 3.0",
-        "https://creativecommons.org/licenses/by-sa/3.0/",
-      ],
-    ],
-    facts: [
-      ["Origin", "Africa"],
-      ["Range", "Worldwide"],
-      ["Wall art", "Figurative painting"],
+    story: [
+      "Homo sapiens did not appear fully formed in one tiny cradle. Fossils from Jebel Irhoud in Morocco, about 315,000 years old, combine a face close to ours with a more archaic braincase. Together with finds elsewhere in Africa, they point to a long, continent-wide emergence.",
+      "Later populations moved into Eurasia in more than one wave. By 45,000 years ago, Homo sapiens groups in Europe were already genetically distinct from one another. Some left no detectable descendants, while others belong to branches that continued into later populations.",
+      "Their lives were built from cumulative culture. Specialized tools made other tools, ornaments travelled through social networks, and pigments and bone flutes preserve a symbolic world. Our species is the only human lineage still living as a distinct population, but our genomes keep the others in the family.",
     ],
     sources: [
-      ["UNESCO: Vézère Valley", "https://whc.unesco.org/en/list/85"],
       [
-        "Commons image record",
-        "https://commons.wikimedia.org/wiki/File:Lascaux_painting.jpg",
+        "Nature: Jebel Irhoud",
+        "https://www.nature.com/articles/nature22336",
+      ],
+      [
+        "Nature: the earliest Eurasian genomes",
+        "https://www.nature.com/articles/s41586-024-08420-x",
+      ],
+      [
+        "Smithsonian: Homo sapiens",
+        "https://humanorigins.si.edu/evidence/human-fossils/species/homo-sapiens",
       ],
     ],
-    image: "./assets/lascaux-painting.jpg",
-    alt: "Lascaux cave painting showing aurochs, horses, and deer",
+    images: {
+      light: "./assets/homo-sapiens-light.jpg",
+      dark: "./assets/homo-sapiens-dark.jpg",
+    },
+    alt: {
+      light: "Illustrative portrait of an Upper Paleolithic Homo sapiens in daylight",
+      dark: "Illustrative portrait of an Upper Paleolithic Homo sapiens by torchlight",
+    },
     position: "center",
   },
 };
@@ -596,12 +571,8 @@ if (braidedShowcase) {
   );
   const closeButton = braidedShowcase.querySelector("[data-braided-close]");
   const media = braidedShowcase.querySelector("[data-braided-media]");
-  const caption = braidedShowcase.querySelector("[data-braided-caption]");
-  const credit = braidedShowcase.querySelector("[data-braided-credit]");
   const title = braidedShowcase.querySelector("[data-braided-title]");
-  const subtitle = braidedShowcase.querySelector("[data-braided-subtitle]");
-  const body = braidedShowcase.querySelector("[data-braided-body]");
-  const facts = braidedShowcase.querySelector("[data-braided-facts]");
+  const story = braidedShowcase.querySelector("[data-braided-story]");
   const sources = braidedShowcase.querySelector("[data-braided-sources]");
   const sourcePane = braidedShowcase.querySelector(
     "[data-braided-source-pane]",
@@ -613,40 +584,44 @@ if (braidedShowcase) {
   ];
   const error = braidedShowcase.querySelector("[data-braided-error]");
 
-  const renderDetail = (name = null) => {
-    const detail = braidedDetails[name] ?? braidedDetails.general;
-    closeButton.hidden = !name;
+  let activeDetailName = null;
+
+  const themedDetailValue = (value, scheme) =>
+    typeof value === "string" ? value : value[scheme] ?? value.light;
+
+  const renderDetail = (name = activeDetailName) => {
+    activeDetailName = Object.hasOwn(braidedDetails, name) ? name : null;
+    const detail = braidedDetails[activeDetailName] ?? braidedDetails.general;
+    const scheme = theme.theme === "dark" ? "dark" : "light";
+
+    closeButton.hidden = activeDetailName === null;
     closeButton.setAttribute(
       "aria-label",
-      name ? `Close ${detail.title} details` : "Close species details",
+      activeDetailName
+        ? `Close ${detail.title} details`
+        : "Close species details",
     );
 
     const image = document.createElement("img");
-    image.src = detail.image;
-    image.alt = detail.alt;
+    image.src = detail.images[scheme];
+    image.alt = themedDetailValue(detail.alt, scheme);
+    image.width = 768;
+    image.height = 512;
     image.decoding = "async";
     image.style.objectPosition = detail.position;
     image.classList.toggle("is-contain", detail.fit === "contain");
+    image.classList.toggle("is-zoomed", detail.zoom === true);
     media.replaceChildren(image);
 
-    caption.textContent = detail.caption;
-    appendLinks(credit, detail.credits, "Evidence links appear below.");
     title.textContent = detail.title;
-    subtitle.textContent = detail.subtitle;
-    body.textContent = detail.body;
-
-    facts.replaceChildren();
-    for (const [term, value] of detail.facts) {
-      const row = document.createElement("div");
-      const key = document.createElement("dt");
-      const definition = document.createElement("dd");
-      key.textContent = term;
-      definition.textContent = value;
-      row.append(key, definition);
-      facts.append(row);
+    story.replaceChildren();
+    for (const paragraphText of detail.story) {
+      const paragraph = document.createElement("p");
+      paragraph.textContent = paragraphText;
+      story.append(paragraph);
     }
 
-    sources.replaceChildren(document.createTextNode("Evidence: "));
+    sources.replaceChildren(document.createTextNode("Further reading: "));
     const sourceLinks = document.createElement("span");
     appendLinks(sourceLinks, detail.sources);
     sources.append(sourceLinks);
@@ -686,6 +661,14 @@ if (braidedShowcase) {
       setSurface(button.dataset.braidedSurface);
     });
   }
+
+  for (const button of document.querySelectorAll("[data-site-theme]")) {
+    button.addEventListener("click", () => {
+      renderDetail(activeDetailName);
+    });
+  }
+
+  renderDetail();
 
   try {
     parse(braidedSource);
