@@ -1,12 +1,5 @@
-import {
-  defineLinesAndArrows,
-  parse,
-  phosphorIconCatalog,
-  phosphorIconResolver,
-} from "./runtime.js?v=20260808-1";
+import "./runtime.js?v=20260818-2";
 import { initializeSiteTheme } from "./site.js?v=20260806-2";
-
-defineLinesAndArrows();
 
 const heroSource = `// Powered by https://lines-and-arrows.dev/
 @Client
@@ -58,9 +51,6 @@ const sourceError = document.querySelector("#hero-source-error");
 const applySourceButton = document.querySelector("#apply-hero-source");
 const modeStatus = document.querySelector("#hero-mode-status");
 
-diagram.iconResolver = phosphorIconResolver;
-diagram.iconCatalog = phosphorIconCatalog;
-
 const theme = initializeSiteTheme();
 diagram.theme = theme.theme;
 diagram.palette = {
@@ -72,9 +62,8 @@ diagram.palette = {
 diagram.canvasBackground = "transparent";
 
 try {
-  parse(heroSource);
   diagram.source = heroSource;
-  sourceInput.value = heroSource;
+  sourceInput.value = diagram.source;
   stage.classList.add("is-ready");
 } catch (problem) {
   stage.querySelector(".diagram-loading").textContent =
@@ -118,10 +107,8 @@ const applyHeroSource = () => {
   sourceError.textContent = "";
 
   try {
-    const result = diagram.replaceSource(sourceInput.value);
-    if (result !== null && result !== false) {
-      sourceInput.value = diagram.source;
-    }
+    diagram.source = sourceInput.value;
+    sourceInput.value = diagram.source;
   } catch (problem) {
     sourceError.textContent =
       problem instanceof Error ? problem.message : "Unable to apply source.";

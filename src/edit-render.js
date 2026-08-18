@@ -1,14 +1,14 @@
 import {
-  DiagramEditor,
   ROOT_CONTAINER_ID,
+  descendantContainerIds,
   findItemLocation,
   findSectionLocation,
   getContainer,
-} from "./editor.js";
+} from "./document.js";
 import {
+  phosphorIconCatalog,
   phosphorIconResolver,
   recommendedActorIconNames,
-  withDefaultIconOptions,
 } from "./icons.js";
 import {
   SELF_MESSAGE_MIN_WIDTH,
@@ -29,7 +29,7 @@ const GROUP_EDITOR_LEFT_INSET =
   GROUP_REORDER_HANDLE_RADIUS * 2 + GROUP_EDITOR_HANDLE_GAP;
 const GROUP_EDITOR_RIGHT_INSET = 10;
 
-export const EDIT_STYLES = `
+const EDIT_STYLES = `
   .la-frame[data-mode="edit"] {
     position: relative;
   }
@@ -1174,61 +1174,6 @@ export const EDIT_STYLES = `
     color: var(--la-text);
   }
 
-  .la-edit-field {
-    display: grid;
-    gap: 4px;
-    margin-top: 8px;
-    color: var(--la-muted-text);
-    font-size: 10px;
-    font-weight: 650;
-  }
-
-  .la-edit-control-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 6px;
-    align-items: stretch;
-  }
-
-  .la-edit-control-row > input,
-  .la-edit-control-row > select,
-  .la-edit-control-row > textarea {
-    min-width: 0;
-  }
-
-  .la-edit-popover[data-titleless="true"]
-    > .la-edit-field:first-child {
-    margin-top: 0;
-  }
-
-  .la-edit-field input,
-  .la-edit-field select,
-  .la-edit-field textarea {
-    box-sizing: border-box;
-    width: 100%;
-    min-height: 32px;
-    margin: 0;
-    padding: 6px 8px;
-    border: 1px solid var(--la-section-line);
-    border-radius: 8px;
-    outline: none;
-    background: color-mix(in srgb, var(--la-surface) 82%, var(--la-group-fill));
-    color: var(--la-text);
-    font: inherit;
-  }
-
-  .la-edit-field textarea {
-    min-height: 54px;
-    resize: vertical;
-  }
-
-  .la-edit-field input:focus,
-  .la-edit-field select:focus,
-  .la-edit-field textarea:focus {
-    border-color: var(--la-selection);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--la-selection) 18%, transparent);
-  }
-
   .la-icon-picker {
     position: relative;
   }
@@ -1455,6 +1400,17 @@ export const EDIT_STYLES = `
 `;
 
 let fieldSequence = 0;
+const iconCatalog = phosphorIconCatalog.map((name) => {
+  const label = name.split("-").join(" ");
+  return { name, label, search: `${name} ${label}` };
+});
+const iconsByName = new Map(iconCatalog.map((icon) => [icon.name, icon]));
+const primaryIconRecommendations = recommendedActorIconNames
+  .slice(0, 16)
+  .map((name) => iconsByName.get(name));
+const secondaryIconRecommendations = recommendedActorIconNames
+  .slice(16, 48)
+  .map((name) => iconsByName.get(name));
 
 function svgElement(name, attributes = {}) {
   const element = document.createElementNS(SVG_NS, name);
@@ -1470,8 +1426,7 @@ function eventPoint(svg, event) {
   const point = svg.createSVGPoint();
   point.x = event.clientX;
   point.y = event.clientY;
-  const matrix = svg.getScreenCTM();
-  return matrix ? point.matrixTransform(matrix.inverse()) : point;
+  return point.matrixTransform(svg.getScreenCTM().inverse());
 }
 
 function timelineEntries(layout) {
@@ -1625,26 +1580,6 @@ function sectionSlots(layout, groupId) {
   return slots;
 }
 
-function itemAndDescendantContainers(item, result = new Set()) {
-  if (item.type !== "group") {
-    return result;
-  }
-  result.add(item.id);
-  if (item.sections.length > 0) {
-    for (const section of item.sections) {
-      result.add(section.id);
-      for (const child of section.items) {
-        itemAndDescendantContainers(child, result);
-      }
-    }
-  } else {
-    for (const child of item.items) {
-      itemAndDescendantContainers(child, result);
-    }
-  }
-  return result;
-}
-
 function selectedModel(document, id) {
   const actor = document.actors.find((candidate) => candidate.id === id);
   if (actor) {
@@ -1657,65 +1592,6 @@ function selectedModel(document, id) {
   return findSectionLocation(document, id)?.section ?? null;
 }
 
-function anchorFor(layout, id) {
-  const actor = layout.actors.find((candidate) => candidate.id === id);
-  if (actor) {
-    const metadataOffset =
-      actor.tag || actor.tooltip
-        ? layout.options.actorMetadataGap +
-          layout.options.actorMetadataHeight
-        : 0;
-    return {
-      x: actor.centerX,
-      y: actor.y + actor.height + metadataOffset,
-    };
-  }
-
-  const row = layout.rows.find((candidate) => candidate.id === id);
-  if (row) {
-    if (row.type === "message") {
-      const source = layout.actorByName.get(row.source);
-      const target = layout.actorByName.get(row.target);
-      if (source && target) {
-        return {
-          x:
-            source.centerX === target.centerX
-              ? source.centerX + 21
-              : (source.centerX + target.centerX) / 2,
-          y: row.y + 14,
-        };
-      }
-    }
-    return {
-      x: layout.width / 2,
-      y: row.bottom,
-    };
-  }
-
-  const group = layout.groups.find((candidate) => candidate.id === id);
-  if (group) {
-    return {
-      x: group.left + Math.min(150, (group.right - group.left) / 2),
-      y: group.top + 28,
-    };
-  }
-
-  const section = layout.sections.find(
-    (candidate) => candidate.id === id,
-  );
-  if (section) {
-    return {
-      x: section.left + Math.min(130, (section.right - section.left) / 2),
-      y: section.y + 10,
-    };
-  }
-
-  return {
-    x: layout.width / 2,
-    y: 20,
-  };
-}
-
 function removePopover(frame) {
   const popover = frame?.querySelector(".la-edit-popover");
   if (!popover) {
@@ -1724,13 +1600,8 @@ function removePopover(frame) {
   if (popover.insertionTrigger) {
     delete popover.insertionTrigger.dataset.menuOpen;
   }
-  popover.cleanupContents?.();
-  popover.cleanupPositioning?.();
-  try {
-    popover.hidePopover?.();
-  } catch {
-    // Removing the element below also closes unsupported or inactive popovers.
-  }
+  popover.cleanupPositioning();
+  popover.hidePopover();
   popover.remove();
 }
 
@@ -1749,36 +1620,35 @@ function removeInlineGapEditor(frame) {
   deleteControl?.remove();
 }
 
-function removeInlineActorEditor(frame) {
-  const inlineEditor = frame?.querySelector(
-    ".la-inline-actor-editor",
-  );
-  inlineEditor?.cleanup?.();
+function removeInlineEditor(frame, selector) {
+  const inlineEditor = frame?.querySelector(selector);
+  inlineEditor?.cleanup();
   inlineEditor?.remove();
+}
+
+function removeInlineActorEditor(frame) {
+  removeInlineEditor(frame, ".la-inline-actor-editor");
 }
 
 function removeInlineGroupEditor(frame) {
-  const inlineEditor = frame?.querySelector(
-    ".la-inline-group-editor",
-  );
-  inlineEditor?.cleanup?.();
-  inlineEditor?.remove();
+  removeInlineEditor(frame, ".la-inline-group-editor");
 }
 
 function removeInlineSectionEditor(frame) {
-  const inlineEditor = frame?.querySelector(
-    ".la-inline-section-editor",
-  );
-  inlineEditor?.cleanup?.();
-  inlineEditor?.remove();
+  removeInlineEditor(frame, ".la-inline-section-editor");
 }
 
 function removeInlineMessageEditor(frame) {
-  const inlineEditor = frame?.querySelector(
-    ".la-inline-message-editor",
-  );
-  inlineEditor?.cleanup?.();
-  inlineEditor?.remove();
+  removeInlineEditor(frame, ".la-inline-message-editor");
+}
+
+function removeContextualEditor(frame) {
+  removePopover(frame);
+  removeInlineGapEditor(frame);
+  removeInlineActorEditor(frame);
+  removeInlineGroupEditor(frame);
+  removeInlineSectionEditor(frame);
+  removeInlineMessageEditor(frame);
 }
 
 function positionPopover(popover, frame, layout, anchor) {
@@ -1786,10 +1656,6 @@ function positionPopover(popover, frame, layout, anchor) {
     return;
   }
   const svg = frame.querySelector(".la-canvas");
-  if (!svg) {
-    return;
-  }
-
   const svgRect = svg.getBoundingClientRect();
   if (popover.dataset.variant === "insert") {
     const diagramScale = svgRect.width / layout.width;
@@ -1799,10 +1665,8 @@ function positionPopover(popover, frame, layout, anchor) {
     );
   }
   const popoverRect = popover.getBoundingClientRect();
-  const viewportWidth =
-    globalThis.innerWidth ?? document.documentElement.clientWidth;
-  const viewportHeight =
-    globalThis.innerHeight ?? document.documentElement.clientHeight;
+  const viewportWidth = innerWidth;
+  const viewportHeight = innerHeight;
   const padding = 8;
   const placement = popover.dataset.placement ?? "vertical";
   const gap =
@@ -1919,6 +1783,35 @@ function positionPopover(popover, frame, layout, anchor) {
   }
 }
 
+function observePosition(element, position) {
+  let frame = null;
+  const reposition = () => {
+    if (frame !== null) {
+      return;
+    }
+    frame = requestAnimationFrame(() => {
+      frame = null;
+      position();
+    });
+  };
+  const resizeObserver = new ResizeObserver(reposition);
+  resizeObserver.observe(element);
+  globalThis.addEventListener("scroll", reposition, true);
+  globalThis.addEventListener("resize", reposition);
+
+  return {
+    reposition,
+    disconnect() {
+      resizeObserver.disconnect();
+      globalThis.removeEventListener("scroll", reposition, true);
+      globalThis.removeEventListener("resize", reposition);
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
+      }
+    },
+  };
+}
+
 function addPopover(
   frame,
   layout,
@@ -1931,19 +1824,6 @@ function addPopover(
   popover.className = "la-edit-popover";
   popover.part = "editor";
   popover.setAttribute("popover", "manual");
-  const contentCleanups = new Set();
-  popover.addContentCleanup = (cleanup) => {
-    contentCleanups.add(cleanup);
-    return () => contentCleanups.delete(cleanup);
-  };
-  popover.cleanupContents = () => {
-    for (const cleanup of contentCleanups) {
-      cleanup();
-    }
-    contentCleanups.clear();
-    delete popover.addContentCleanup;
-    delete popover.cleanupContents;
-  };
   popover.dataset.placement =
     popoverOptions.placement ?? "vertical";
   if (popoverOptions.variant) {
@@ -1973,54 +1853,16 @@ function addPopover(
     }
 
     popover.append(header);
-  } else {
-    popover.dataset.titleless = "true";
   }
   frame.append(popover);
+  popover.showPopover();
 
-  if (typeof popover.showPopover === "function") {
-    try {
-      popover.showPopover();
-    } catch {
-      popover.removeAttribute("popover");
-    }
-  } else {
-    popover.removeAttribute("popover");
-  }
-
-  let animationFrame = null;
-  const reposition = () => {
-    if (animationFrame !== null) {
-      return;
-    }
-    if (typeof globalThis.requestAnimationFrame === "function") {
-      animationFrame = globalThis.requestAnimationFrame(() => {
-        animationFrame = null;
-        positionPopover(popover, frame, layout, anchor);
-      });
-    } else {
-      positionPopover(popover, frame, layout, anchor);
-    }
-  };
-  popover.repositionOverlay = reposition;
-  const resizeObserver = globalThis.ResizeObserver
-    ? new ResizeObserver(reposition)
-    : null;
-  resizeObserver?.observe(popover);
-  globalThis.addEventListener?.("scroll", reposition, true);
-  globalThis.addEventListener?.("resize", reposition);
+  const positioning = observePosition(popover, () =>
+    positionPopover(popover, frame, layout, anchor),
+  );
+  popover.repositionOverlay = positioning.reposition;
   popover.cleanupPositioning = () => {
-    resizeObserver?.disconnect();
-    globalThis.removeEventListener?.("scroll", reposition, true);
-    globalThis.removeEventListener?.("resize", reposition);
-    if (
-      animationFrame !== null &&
-      typeof globalThis.cancelAnimationFrame === "function"
-    ) {
-      globalThis.cancelAnimationFrame(animationFrame);
-    }
-    animationFrame = null;
-    delete popover.repositionOverlay;
+    positioning.disconnect();
   };
   queueMicrotask(() => positionPopover(popover, frame, layout, anchor));
   return popover;
@@ -2028,7 +1870,7 @@ function addPopover(
 
 function addInsertionPicker(popover, actions) {
   const frame = popover.closest(".la-frame");
-  const theme = frame?.dataset.theme ?? "light";
+  const theme = frame.dataset.theme;
   const picker = document.createElement("div");
   picker.className = "la-insert-picker";
   picker.setAttribute("role", "group");
@@ -2042,7 +1884,6 @@ function addInsertionPicker(popover, actions) {
     button.append(
       iconVisual(
         action.icon,
-        phosphorIconResolver,
         theme,
         action.fallback,
       ),
@@ -2058,131 +1899,6 @@ function addInsertionPicker(popover, actions) {
   popover.append(picker);
 }
 
-function addField(popover, label, value, onChange, options = {}) {
-  fieldSequence += 1;
-  const wrapper = document.createElement("div");
-  wrapper.className = "la-edit-field";
-
-  let control;
-  if (options.choices) {
-    control = document.createElement("select");
-    for (const choice of options.choices) {
-      const option = document.createElement("option");
-      option.value = typeof choice === "string" ? choice : choice.value;
-      option.textContent =
-        typeof choice === "string" ? choice : choice.label;
-      control.append(option);
-    }
-  } else if (options.multiline) {
-    control = document.createElement("textarea");
-    control.rows = 2;
-  } else {
-    control = document.createElement("input");
-    control.type = "text";
-  }
-
-  control.id = `la-field-${fieldSequence}`;
-  control.dataset.field = label;
-  control.value = value ?? "";
-  if (options.placeholder && "placeholder" in control) {
-    control.placeholder = options.placeholder;
-  }
-  if (options.pattern && "pattern" in control) {
-    control.pattern = options.pattern;
-  }
-  if (options.inputTransform) {
-    control.addEventListener("input", () => {
-      const transformed = options.inputTransform(control.value);
-      if (control.value !== transformed) {
-        control.value = transformed;
-      }
-    });
-  }
-
-  const text = document.createElement("label");
-  text.htmlFor = control.id;
-  text.textContent = label;
-  wrapper.append(text);
-
-  let committedValue = control.value;
-  const commit = () => {
-    if (control.value === committedValue) {
-      return;
-    }
-    committedValue = control.value;
-    onChange(control.value);
-  };
-
-  const trailing = options.trailing?.({
-    control,
-    commit,
-  });
-
-  control.addEventListener("change", commit);
-  control.addEventListener("blur", (event) => {
-    if (trailing?.contains(event.relatedTarget)) {
-      return;
-    }
-    commit();
-  });
-  control.addEventListener("keydown", (event) => {
-    const shouldCommit =
-      (!options.multiline && event.key === "Enter") ||
-      (options.multiline &&
-        event.key === "Enter" &&
-        (event.metaKey || event.ctrlKey));
-    if (shouldCommit) {
-      event.preventDefault();
-      commit();
-    }
-  });
-
-  if (trailing) {
-    const row = document.createElement("div");
-    row.className = "la-edit-control-row";
-    row.append(control, trailing);
-    wrapper.append(row);
-  } else {
-    wrapper.append(control);
-  }
-  popover.append(wrapper);
-  return control;
-}
-
-function normalizeIconCatalog(entries = []) {
-  const icons = [];
-  const seen = new Set();
-
-  for (const entry of entries) {
-    const source =
-      typeof entry === "string" ? { name: entry } : entry;
-    const name = String(source?.name ?? "").trim();
-    if (!name || seen.has(name)) {
-      continue;
-    }
-    seen.add(name);
-
-    const label =
-      String(source.label ?? "")
-        .trim() ||
-      name
-        .split("-")
-        .filter(Boolean)
-        .join(" ");
-    const keywords = Array.isArray(source.keywords)
-      ? source.keywords.map((value) => String(value))
-      : [];
-    icons.push({
-      name,
-      label,
-      search: [name, label, ...keywords]
-        .join(" ")
-        .toLocaleLowerCase(),
-    });
-  }
-  return icons;
-}
-
 function normalizeGroupTypeInput(value) {
   return String(value ?? "")
     .toLocaleLowerCase()
@@ -2194,7 +1910,6 @@ function normalizeGroupTypeInput(value) {
 
 function iconVisual(
   name,
-  resolver,
   theme,
   fallbackText,
 ) {
@@ -2207,14 +1922,7 @@ function iconVisual(
   fallback.textContent = fallbackText;
   visual.append(fallback);
 
-  let url = null;
-  if (name && resolver) {
-    try {
-      url = resolver(name, theme);
-    } catch {
-      url = null;
-    }
-  }
+  const url = name ? phosphorIconResolver(name, theme) : null;
   if (!url) {
     return visual;
   }
@@ -2233,28 +1941,15 @@ function iconVisual(
   return visual;
 }
 
-export function createIconSelector(
+function createIconSelector(
   container,
   currentName,
   onSelect,
   options,
 ) {
-  const catalog = normalizeIconCatalog(options.catalog);
-  const catalogByName = new Map(
-    catalog.map((icon) => [icon.name, icon]),
-  );
-  const recommendationNames =
-    options.recommendations ?? recommendedActorIconNames;
-  const primaryRecommendations = recommendationNames
-    .slice(0, 16)
-    .map((name) => catalogByName.get(name))
-    .filter(Boolean);
-  const secondaryRecommendations = recommendationNames
-    .slice(16, 48)
-    .map((name) => catalogByName.get(name))
-    .filter(Boolean);
+  const catalog = iconCatalog;
   const frame = container.closest(".la-frame");
-  const theme = frame?.dataset.theme ?? "light";
+  const theme = frame.dataset.theme;
   const selector = document.createElement("div");
   selector.className = "la-icon-selector";
   selector.setAttribute("role", "group");
@@ -2275,8 +1970,7 @@ export function createIconSelector(
   clear.setAttribute("aria-label", options.clearLabel);
   clear.append(
     iconVisual(
-      catalogByName.has("x-circle") ? "x-circle" : null,
-      options.resolver,
+      "x-circle",
       theme,
       "×",
     ),
@@ -2309,7 +2003,6 @@ export function createIconSelector(
     button.append(
       iconVisual(
         icon.name,
-        options.resolver,
         theme,
         icon.label.slice(0, 1).toUpperCase(),
       ),
@@ -2331,28 +2024,26 @@ export function createIconSelector(
     grid.replaceChildren();
 
     if (!query) {
-      for (const icon of primaryRecommendations) {
+      for (const icon of primaryIconRecommendations) {
         appendOption(icon);
       }
       if (
-        primaryRecommendations.length &&
-        secondaryRecommendations.length
+        primaryIconRecommendations.length &&
+        secondaryIconRecommendations.length
       ) {
         const divider = document.createElement("span");
         divider.className = "la-icon-grid-divider";
         divider.setAttribute("aria-hidden", "true");
         grid.append(divider);
       }
-      for (const icon of secondaryRecommendations) {
+      for (const icon of secondaryIconRecommendations) {
         appendOption(icon);
       }
 
       const count =
-        primaryRecommendations.length +
-        secondaryRecommendations.length;
-      empty.textContent = catalog.length
-        ? "No recommended icons available"
-        : "No icon catalog configured";
+        primaryIconRecommendations.length +
+        secondaryIconRecommendations.length;
+      empty.textContent = "No recommended icons available";
       empty.hidden = count > 0;
       return;
     }
@@ -2373,25 +2064,221 @@ export function createIconSelector(
     renderOptions();
   };
   selector.focusSearch = () => search.focus();
-  selector.disposeSelector = () => {
-    delete selector.resetSearch;
-    delete selector.focusSearch;
-    delete selector.disposeSelector;
-  };
 
   selector.append(toolbar, grid, empty);
   renderOptions();
   return selector;
 }
 
-export function createIconPicker(
+function createInlineTooltipEditor(frame, model, owner, field) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "la-inline-actor-tooltip-control";
+
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "la-inline-actor-tooltip-trigger";
+  trigger.setAttribute("aria-label", `Edit ${owner} tooltip`);
+  trigger.setAttribute("aria-haspopup", "dialog");
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.dataset.empty = String(!model.tooltip);
+  trigger.append(
+    iconVisual(
+      model.tooltipIcon,
+      frame.dataset.theme ?? "light",
+      "i",
+    ),
+  );
+
+  const dialog = document.createElement("div");
+  dialog.className = "la-inline-actor-tooltip-dialog";
+  dialog.hidden = true;
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-label", `Edit ${owner} tooltip`);
+
+  const control = document.createElement("textarea");
+  control.className = "la-inline-actor-tooltip-text";
+  control.dataset.field = field;
+  control.rows = 2;
+  fieldSequence += 1;
+  control.id = `la-field-${fieldSequence}`;
+  control.setAttribute("aria-label", `${owner} tooltip text`);
+  control.value = model.tooltip ?? "";
+
+  const textField = document.createElement("div");
+  textField.className = "la-inline-actor-tooltip-field";
+  const label = document.createElement("label");
+  label.htmlFor = control.id;
+  label.textContent = "Tooltip";
+  textField.append(label, control);
+  wrapper.append(trigger, dialog);
+
+  return { wrapper, trigger, dialog, control, textField };
+}
+
+function appendTooltipIconSelector(
+  container,
+  tooltip,
+  model,
+  focusField,
+  commit,
+) {
+  const selector = createIconSelector(
+    container,
+    model.tooltipIcon,
+    (tooltipIcon) => commit({ tooltipIcon }, focusField),
+    {
+      label: "Choose tooltip icon",
+      selectorLabel: "Tooltip icon selector",
+      clearLabel: "Default information icon",
+      defaultText: "i",
+    },
+  );
+  selector.classList.add("la-inline-tooltip-icon-selector");
+
+  const field = document.createElement("div");
+  field.className = "la-inline-actor-tooltip-field";
+  const label = document.createElement("span");
+  label.textContent = "Icon";
+  field.append(label, selector);
+  tooltip.dialog.append(tooltip.textField, field);
+}
+
+function positionInlineTooltipDialog(frame, dialog) {
+  dialog.style.setProperty("--la-inline-tooltip-dialog-shift", "0px");
+  const dialogRect = dialog.getBoundingClientRect();
+  const frameRect = frame.getBoundingClientRect();
+  const leftBoundary = Math.max(8, frameRect.left + 8);
+  const rightBoundary = Math.min(innerWidth - 8, frameRect.right - 8);
+  let shift = 0;
+  if (dialogRect.left < leftBoundary) {
+    shift = leftBoundary - dialogRect.left;
+  } else if (dialogRect.right > rightBoundary) {
+    shift = rightBoundary - dialogRect.right;
+  }
+  dialog.style.setProperty(
+    "--la-inline-tooltip-dialog-shift",
+    `${shift}px`,
+  );
+}
+
+function bindInlineTooltipEditor({
+  frame,
+  tooltip,
+  model,
+  dirtyFields,
+  commit,
+  selectedFocus,
+  beforeOpen,
+}) {
+  let open = false;
+  const position = () => {
+    if (open && !tooltip.dialog.hidden) {
+      positionInlineTooltipDialog(frame, tooltip.dialog);
+    }
+  };
+  const close = (
+    commitChanges = true,
+    restoreFocus = false,
+    deferDraw = false,
+  ) => {
+    if (!open) {
+      return "unchanged";
+    }
+    open = false;
+    tooltip.dialog.hidden = true;
+    tooltip.trigger.setAttribute("aria-expanded", "false");
+    frame.removeEventListener("pointerdown", onOutsidePointerDown);
+    const result = commitChanges
+      ? commit({}, null, deferDraw)
+      : "unchanged";
+    if (restoreFocus && result !== "changed") {
+      queueMicrotask(() => tooltip.trigger.focus());
+    }
+    return result;
+  };
+  const onOutsidePointerDown = (event) => {
+    if (tooltip.wrapper.contains(event.target)) {
+      return;
+    }
+    close(false);
+    commit({}, null, true);
+  };
+  const show = (focusText = true) => {
+    if (open) {
+      return;
+    }
+    beforeOpen?.();
+    open = true;
+    tooltip.dialog.hidden = false;
+    tooltip.trigger.setAttribute("aria-expanded", "true");
+    frame.addEventListener("pointerdown", onOutsidePointerDown);
+    queueMicrotask(() => {
+      position();
+      if (focusText) {
+        tooltip.control.focus();
+      }
+    });
+  };
+
+  tooltip.control.addEventListener("input", () => {
+    dirtyFields.add("tooltip");
+    tooltip.trigger.dataset.empty = String(
+      !tooltip.control.value.trim(),
+    );
+  });
+  tooltip.trigger.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (open) {
+      close(true, true);
+    } else {
+      show();
+    }
+  });
+  tooltip.control.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      tooltip.control.value = model.tooltip ?? "";
+      dirtyFields.delete("tooltip");
+      tooltip.trigger.dataset.empty = String(!model.tooltip);
+      close(false, true);
+      return;
+    }
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (commit() === "unchanged") {
+        close(false, true);
+      }
+      return;
+    }
+    event.stopPropagation();
+  });
+  if (selectedFocus) {
+    show(false);
+  }
+
+  return {
+    position,
+    close,
+    get open() {
+      return open;
+    },
+    cleanup() {
+      frame.removeEventListener("pointerdown", onOutsidePointerDown);
+    },
+  };
+}
+
+function createIconPicker(
   popover,
   currentName,
   onSelect,
   options,
 ) {
   const frame = popover.closest(".la-frame");
-  const theme = frame?.dataset.theme ?? "light";
+  const theme = frame.dataset.theme;
   const picker = document.createElement("div");
   picker.className = "la-icon-picker";
 
@@ -2405,7 +2292,6 @@ export function createIconPicker(
   trigger.append(
     iconVisual(
       triggerIconName,
-      options.resolver,
       theme,
       currentName
         ? currentName.slice(0, 1).toUpperCase()
@@ -2431,7 +2317,7 @@ export function createIconPicker(
     if (panel.hidden) {
       return;
     }
-    frame?.removeEventListener(
+    frame.removeEventListener(
       "pointerdown",
       onOutsidePointerDown,
     );
@@ -2458,19 +2344,19 @@ export function createIconPicker(
       ".la-icon-picker",
     )) {
       if (other !== picker) {
-        other.closePicker?.();
+        other.closePicker();
       }
     }
-    selector.resetSearch?.();
+    selector.resetSearch();
     panel.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
-    frame?.addEventListener(
+    frame.addEventListener(
       "pointerdown",
       onOutsidePointerDown,
     );
     popover.repositionOverlay?.();
     if (options.focusOnOpen !== false) {
-      queueMicrotask(() => selector.focusSearch?.());
+      queueMicrotask(() => selector.focusSearch());
     }
   };
   picker.openPicker = open;
@@ -2491,24 +2377,15 @@ export function createIconPicker(
       close(true, true);
     }
   });
-  let removeContentCleanup = null;
   const dispose = () => {
-    removeContentCleanup?.();
-    removeContentCleanup = null;
-    frame?.removeEventListener(
+    frame.removeEventListener(
       "pointerdown",
       onOutsidePointerDown,
     );
     panel.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
-    selector.disposeSelector?.();
-    delete picker.closePicker;
-    delete picker.openPicker;
-    delete picker.disposePicker;
   };
-  removeContentCleanup =
-    popover.addContentCleanup?.(dispose) ?? null;
-  picker.disposePicker = dispose;
+  picker.cleanup = dispose;
 
   panel.append(selector);
   picker.append(trigger, panel);
@@ -2904,47 +2781,23 @@ function applySelectedVisuals(svg, ids) {
   });
 }
 
-export function renderEditor(target, input, options = {}) {
+export function renderEditor(target, editor, options = {}) {
   if (!target?.replaceChildren) {
     throw new TypeError("renderEditor requires a DOM container.");
   }
-  options = withDefaultIconOptions(options);
-
-  const editor =
-    options.editor instanceof DiagramEditor
-      ? options.editor
-      : new DiagramEditor(input);
   let selectedIds = [];
   let baseController = null;
   let destroyed = false;
   let activeCancel = null;
   let transient = null;
   let pendingFocus = null;
-  let pendingActorPart = null;
-  let pendingGroupPart = null;
-  let pendingMessagePart = null;
   let pendingInlineDraw = null;
-
-  const eventTarget = target.host ?? target;
 
   function notifyChange() {
     const detail = Object.freeze({
       source: editor.source,
-      ast: editor.document,
-      command: editor.lastCommand,
-      canUndo: editor.canUndo,
-      canRedo: editor.canRedo,
     });
     options.onChange?.(detail);
-    if (eventTarget?.dispatchEvent && globalThis.CustomEvent) {
-      eventTarget.dispatchEvent(
-        new CustomEvent("la-change", {
-          detail,
-          bubbles: true,
-          composed: true,
-        }),
-      );
-    }
   }
 
   function notifyError(error, popover = null) {
@@ -2952,15 +2805,6 @@ export function renderEditor(target, input, options = {}) {
       showError(popover, error);
     }
     options.onError?.(error);
-    if (eventTarget?.dispatchEvent && globalThis.CustomEvent) {
-      eventTarget.dispatchEvent(
-        new CustomEvent("la-error", {
-          detail: { error },
-          bubbles: true,
-          composed: true,
-        }),
-      );
-    }
   }
 
   function run(
@@ -3033,7 +2877,7 @@ export function renderEditor(target, input, options = {}) {
 
   function scheduleInlineDraw(frame) {
     if (pendingInlineDraw !== null) {
-      globalThis.clearTimeout?.(pendingInlineDraw);
+      clearTimeout(pendingInlineDraw);
     }
     const redraw = () => {
       pendingInlineDraw = null;
@@ -3045,11 +2889,7 @@ export function renderEditor(target, input, options = {}) {
       }
       draw();
     };
-    if (typeof globalThis.setTimeout === "function") {
-      pendingInlineDraw = globalThis.setTimeout(redraw, 0);
-    } else {
-      queueMicrotask(redraw);
-    }
+    pendingInlineDraw = setTimeout(redraw, 0);
   }
 
   function addInlineActorEditor(frame, layout, model) {
@@ -3083,18 +2923,6 @@ export function renderEditor(target, input, options = {}) {
     inlineEditor.setAttribute("role", "group");
     inlineEditor.setAttribute("aria-label", `Edit actor ${model.name}`);
 
-    const contentCleanups = new Set();
-    inlineEditor.addContentCleanup = (cleanup) => {
-      contentCleanups.add(cleanup);
-      return () => contentCleanups.delete(cleanup);
-    };
-    inlineEditor.cleanupContents = () => {
-      for (const cleanup of contentCleanups) {
-        cleanup();
-      }
-      contentCleanups.clear();
-    };
-
     const card = document.createElement("div");
     card.className = "la-inline-actor-card";
 
@@ -3116,47 +2944,16 @@ export function renderEditor(target, input, options = {}) {
     tagControl.setAttribute("aria-label", "Actor tag");
     tagControl.value = model.tag ?? "";
 
-    const tooltipWrapper = document.createElement("div");
-    tooltipWrapper.className = "la-inline-actor-tooltip-control";
-
-    const tooltipTrigger = document.createElement("button");
-    tooltipTrigger.type = "button";
-    tooltipTrigger.className = "la-inline-actor-tooltip-trigger";
-    tooltipTrigger.setAttribute("aria-label", "Edit actor tooltip");
-    tooltipTrigger.setAttribute("aria-haspopup", "dialog");
-    tooltipTrigger.setAttribute("aria-expanded", "false");
-    tooltipTrigger.dataset.empty = String(!model.tooltip);
-    tooltipTrigger.append(
-      iconVisual(
-        model.tooltipIcon,
-        options.iconResolver,
-        frame.dataset.theme ?? "light",
-        "i",
-      ),
+    const tooltip = createInlineTooltipEditor(
+      frame,
+      model,
+      "actor",
+      "actor-tooltip-text",
     );
-
-    const tooltipDialog = document.createElement("div");
-    tooltipDialog.className = "la-inline-actor-tooltip-dialog";
-    tooltipDialog.hidden = true;
-    tooltipDialog.setAttribute("role", "dialog");
-    tooltipDialog.setAttribute("aria-label", "Edit actor tooltip");
-
-    const tooltipControl = document.createElement("textarea");
-    tooltipControl.className = "la-inline-actor-tooltip-text";
-    tooltipControl.dataset.field = "actor-tooltip-text";
-    tooltipControl.rows = 2;
-    fieldSequence += 1;
-    tooltipControl.id = `la-field-${fieldSequence}`;
-    tooltipControl.setAttribute("aria-label", "Actor tooltip text");
-    tooltipControl.value = model.tooltip ?? "";
-
-    const tooltipTextField = document.createElement("div");
-    tooltipTextField.className = "la-inline-actor-tooltip-field";
-    const tooltipTextLabel = document.createElement("label");
-    tooltipTextLabel.htmlFor = tooltipControl.id;
-    tooltipTextLabel.textContent = "Tooltip";
-    tooltipTextField.append(tooltipTextLabel, tooltipControl);
-    tooltipWrapper.append(tooltipTrigger, tooltipDialog);
+    const {
+      wrapper: tooltipWrapper,
+      control: tooltipControl,
+    } = tooltip;
 
     const deleteControl = document.createElement("button");
     deleteControl.type = "button";
@@ -3181,12 +2978,6 @@ export function renderEditor(target, input, options = {}) {
       dirtyFields.add("tag");
       sizeMetadataPills();
     });
-    tooltipControl.addEventListener("input", () => {
-      dirtyFields.add("tooltip");
-      tooltipTrigger.dataset.empty = String(
-        !tooltipControl.value.trim(),
-      );
-    });
 
     metadata.append(tagControl, tooltipWrapper);
     card.append(nameControl, deleteControl);
@@ -3194,7 +2985,6 @@ export function renderEditor(target, input, options = {}) {
     frame.append(inlineEditor);
 
     let cancelled = false;
-    let iconPicker = null;
     const commit = (
       extraPatch = {},
       focusField = null,
@@ -3244,18 +3034,16 @@ export function renderEditor(target, input, options = {}) {
       }
     };
 
-    iconPicker = createIconPicker(
+    const iconPicker = createIconPicker(
       inlineEditor,
       model.icon,
       (icon) => {
         const result = commit({ icon });
         if (result === "unchanged") {
-          iconPicker?.closePicker?.(false, true);
+          iconPicker.closePicker(false, true);
         }
       },
       {
-        catalog: options.iconCatalog,
-        resolver: options.iconResolver,
         label: "Choose actor icon",
         clearLabel: "No actor icon",
         defaultIcon: "user",
@@ -3266,153 +3054,26 @@ export function renderEditor(target, input, options = {}) {
     iconPicker.dataset.empty = String(!model.icon);
     card.prepend(iconPicker);
     if (pendingFocus === "actor-icon") {
-      iconPicker.openPicker?.();
+      iconPicker.openPicker();
     }
 
-    const tooltipIconSelector = createIconSelector(
+    appendTooltipIconSelector(
       inlineEditor,
-      model.tooltipIcon,
-      (tooltipIcon) => {
-        commit(
-          { tooltipIcon },
-          "actor-tooltip-text",
-        );
-      },
-      {
-        catalog: options.iconCatalog,
-        resolver: options.iconResolver,
-        label: "Choose tooltip icon",
-        selectorLabel: "Tooltip icon selector",
-        clearLabel: "Default information icon",
-        defaultText: "i",
-      },
-    );
-    tooltipIconSelector.classList.add(
-      "la-inline-tooltip-icon-selector",
-    );
-    inlineEditor.addContentCleanup?.(() =>
-      tooltipIconSelector.disposeSelector?.(),
+      tooltip,
+      model,
+      "actor-tooltip-text",
+      commit,
     );
 
-    const tooltipIconField = document.createElement("div");
-    tooltipIconField.className = "la-inline-actor-tooltip-field";
-    const tooltipIconLabel = document.createElement("span");
-    tooltipIconLabel.textContent = "Icon";
-    tooltipIconField.append(tooltipIconLabel, tooltipIconSelector);
-    tooltipDialog.append(tooltipTextField, tooltipIconField);
-
-    let tooltipDialogOpen = false;
-    const positionTooltipDialog = () => {
-      if (!tooltipDialogOpen || tooltipDialog.hidden) {
-        return;
-      }
-      tooltipDialog.style.setProperty(
-        "--la-inline-tooltip-dialog-shift",
-        "0px",
-      );
-      const dialogRect = tooltipDialog.getBoundingClientRect();
-      const frameRect = frame.getBoundingClientRect();
-      const viewportWidth =
-        globalThis.innerWidth ?? document.documentElement.clientWidth;
-      const leftBoundary = Math.max(8, frameRect.left + 8);
-      const rightBoundary = Math.min(
-        viewportWidth - 8,
-        frameRect.right - 8,
-      );
-      let shift = 0;
-      if (dialogRect.left < leftBoundary) {
-        shift = leftBoundary - dialogRect.left;
-      } else if (dialogRect.right > rightBoundary) {
-        shift = rightBoundary - dialogRect.right;
-      }
-      tooltipDialog.style.setProperty(
-        "--la-inline-tooltip-dialog-shift",
-        `${shift}px`,
-      );
-    };
-    const onTooltipOutsidePointerDown = (event) => {
-      if (tooltipWrapper.contains(event.target)) {
-        return;
-      }
-      closeTooltipDialog(false);
-      commit({}, null, true);
-    };
-    const openTooltipDialog = (focusText = true) => {
-      if (tooltipDialogOpen) {
-        return;
-      }
-      iconPicker?.closePicker?.();
-      tooltipDialogOpen = true;
-      tooltipDialog.hidden = false;
-      tooltipTrigger.setAttribute("aria-expanded", "true");
-      frame.addEventListener(
-        "pointerdown",
-        onTooltipOutsidePointerDown,
-      );
-      queueMicrotask(() => {
-        positionTooltipDialog();
-        if (focusText) {
-          tooltipControl.focus();
-        }
-      });
-    };
-    const closeTooltipDialog = (
-      commitChanges = true,
-      restoreFocus = false,
-      deferDraw = false,
-    ) => {
-      if (!tooltipDialogOpen) {
-        return "unchanged";
-      }
-      tooltipDialogOpen = false;
-      tooltipDialog.hidden = true;
-      tooltipTrigger.setAttribute("aria-expanded", "false");
-      frame.removeEventListener(
-        "pointerdown",
-        onTooltipOutsidePointerDown,
-      );
-      const result = commitChanges
-        ? commit({}, null, deferDraw)
-        : "unchanged";
-      if (restoreFocus && result !== "changed") {
-        queueMicrotask(() => tooltipTrigger.focus());
-      }
-      return result;
-    };
-
-    tooltipTrigger.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (tooltipDialogOpen) {
-        closeTooltipDialog(true, true);
-      } else {
-        openTooltipDialog();
-      }
+    const tooltipEditor = bindInlineTooltipEditor({
+      frame,
+      tooltip,
+      model,
+      dirtyFields,
+      commit,
+      selectedFocus: pendingFocus === "actor-tooltip-text",
+      beforeOpen: () => iconPicker.closePicker(),
     });
-    tooltipControl.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        tooltipControl.value = model.tooltip ?? "";
-        dirtyFields.delete("tooltip");
-        tooltipTrigger.dataset.empty = String(!model.tooltip);
-        closeTooltipDialog(false, true);
-        return;
-      }
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        const result = commit();
-        if (result === "unchanged") {
-          closeTooltipDialog(false, true);
-        }
-        return;
-      }
-      event.stopPropagation();
-    });
-    if (pendingFocus === "actor-tooltip-text") {
-      openTooltipDialog(false);
-    }
 
     const positionEditor = () => {
       if (!inlineEditor.isConnected) {
@@ -3508,8 +3169,7 @@ export function renderEditor(target, input, options = {}) {
       );
       const metadataRect = metadata.getBoundingClientRect();
       const frameRect = frame.getBoundingClientRect();
-      const viewportWidth =
-        globalThis.innerWidth ?? document.documentElement.clientWidth;
+      const viewportWidth = innerWidth;
       const leftBoundary = Math.max(8, frameRect.left + 8);
       const rightBoundary = Math.min(
         viewportWidth - 8,
@@ -3525,38 +3185,22 @@ export function renderEditor(target, input, options = {}) {
         "--la-inline-actor-metadata-shift",
         `${metadataShift}px`,
       );
-      positionTooltipDialog();
+      tooltipEditor.position();
     };
-    let positionFrame = null;
-    const repositionEditor = () => {
-      if (positionFrame !== null) {
-        return;
-      }
-      if (typeof globalThis.requestAnimationFrame === "function") {
-        positionFrame = globalThis.requestAnimationFrame(() => {
-          positionFrame = null;
-          positionEditor();
-        });
-      } else {
-        positionEditor();
-      }
-    };
-    const resizeObserver = globalThis.ResizeObserver
-      ? new ResizeObserver(repositionEditor)
-      : null;
-    resizeObserver?.observe(actorShape.ownerSVGElement);
-    globalThis.addEventListener?.("scroll", repositionEditor, true);
-    globalThis.addEventListener?.("resize", repositionEditor);
+    const positioning = observePosition(
+      actorShape.ownerSVGElement,
+      positionEditor,
+    );
 
     inlineEditor.addEventListener("pointerdown", (event) => {
-      if (!iconPicker?.contains(event.target)) {
-        iconPicker?.closePicker?.();
+      if (!iconPicker.contains(event.target)) {
+        iconPicker.closePicker();
       }
       if (
-        tooltipDialogOpen &&
+        tooltipEditor.open &&
         !tooltipWrapper.contains(event.target)
       ) {
-        closeTooltipDialog(false);
+        tooltipEditor.close(false);
       }
       event.stopPropagation();
     });
@@ -3570,7 +3214,7 @@ export function renderEditor(target, input, options = {}) {
       ) {
         return;
       }
-      closeTooltipDialog(false);
+      tooltipEditor.close(false);
       commit({}, null, true);
     });
 
@@ -3609,32 +3253,13 @@ export function renderEditor(target, input, options = {}) {
     });
 
     inlineEditor.cleanup = () => {
-      resizeObserver?.disconnect();
-      frame.removeEventListener(
-        "pointerdown",
-        onTooltipOutsidePointerDown,
-      );
-      globalThis.removeEventListener?.(
-        "scroll",
-        repositionEditor,
-        true,
-      );
-      globalThis.removeEventListener?.("resize", repositionEditor);
-      if (
-        positionFrame !== null &&
-        typeof globalThis.cancelAnimationFrame === "function"
-      ) {
-        globalThis.cancelAnimationFrame(positionFrame);
-      }
-      positionFrame = null;
-      inlineEditor.cleanupContents?.();
+      positioning.disconnect();
+      tooltipEditor.cleanup();
+      iconPicker.cleanup();
       for (let index = 0; index < hiddenElements.length; index += 1) {
         hiddenElements[index].style.visibility =
           previousVisibility[index];
       }
-      delete inlineEditor.addContentCleanup;
-      delete inlineEditor.cleanupContents;
-      delete inlineEditor.cleanup;
     };
     positionEditor();
   }
@@ -3934,26 +3559,7 @@ export function renderEditor(target, input, options = {}) {
       );
     };
 
-    let positionFrame = null;
-    const repositionEditor = () => {
-      if (positionFrame !== null) {
-        return;
-      }
-      if (typeof globalThis.requestAnimationFrame === "function") {
-        positionFrame = globalThis.requestAnimationFrame(() => {
-          positionFrame = null;
-          positionEditor();
-        });
-      } else {
-        positionEditor();
-      }
-    };
-    const resizeObserver = globalThis.ResizeObserver
-      ? new ResizeObserver(repositionEditor)
-      : null;
-    resizeObserver?.observe(svg);
-    globalThis.addEventListener?.("scroll", repositionEditor, true);
-    globalThis.addEventListener?.("resize", repositionEditor);
+    const positioning = observePosition(svg, positionEditor);
 
     inlineEditor.addEventListener("pointerdown", (event) => {
       event.stopPropagation();
@@ -3972,25 +3578,8 @@ export function renderEditor(target, input, options = {}) {
     });
 
     inlineEditor.cleanup = () => {
-      resizeObserver?.disconnect();
-      globalThis.removeEventListener?.(
-        "scroll",
-        repositionEditor,
-        true,
-      );
-      globalThis.removeEventListener?.(
-        "resize",
-        repositionEditor,
-      );
-      if (
-        positionFrame !== null &&
-        typeof globalThis.cancelAnimationFrame === "function"
-      ) {
-        globalThis.cancelAnimationFrame(positionFrame);
-      }
-      positionFrame = null;
+      positioning.disconnect();
       header.style.visibility = previousVisibility;
-      delete inlineEditor.cleanup;
     };
     positionEditor();
   }
@@ -4189,26 +3778,7 @@ export function renderEditor(target, input, options = {}) {
       );
     };
 
-    let positionFrame = null;
-    const repositionEditor = () => {
-      if (positionFrame !== null) {
-        return;
-      }
-      if (typeof globalThis.requestAnimationFrame === "function") {
-        positionFrame = globalThis.requestAnimationFrame(() => {
-          positionFrame = null;
-          positionEditor();
-        });
-      } else {
-        positionEditor();
-      }
-    };
-    const resizeObserver = globalThis.ResizeObserver
-      ? new ResizeObserver(repositionEditor)
-      : null;
-    resizeObserver?.observe(svg);
-    globalThis.addEventListener?.("scroll", repositionEditor, true);
-    globalThis.addEventListener?.("resize", repositionEditor);
+    const positioning = observePosition(svg, positionEditor);
 
     inlineEditor.addEventListener("pointerdown", (event) => {
       event.stopPropagation();
@@ -4224,25 +3794,11 @@ export function renderEditor(target, input, options = {}) {
     });
 
     inlineEditor.cleanup = () => {
-      resizeObserver?.disconnect();
-      globalThis.removeEventListener?.(
-        "scroll",
-        repositionEditor,
-        true,
-      );
-      globalThis.removeEventListener?.("resize", repositionEditor);
-      if (
-        positionFrame !== null &&
-        typeof globalThis.cancelAnimationFrame === "function"
-      ) {
-        globalThis.cancelAnimationFrame(positionFrame);
-      }
-      positionFrame = null;
+      positioning.disconnect();
       label.style.visibility = previousVisibility;
       if (rightRule && previousRightRuleStart !== null) {
         rightRule.setAttribute("x1", previousRightRuleStart);
       }
-      delete inlineEditor.cleanup;
     };
     positionEditor();
   }
@@ -4285,18 +3841,6 @@ export function renderEditor(target, input, options = {}) {
       `Edit arrow from ${model.source} to ${model.target}`,
     );
 
-    const contentCleanups = new Set();
-    inlineEditor.addContentCleanup = (cleanup) => {
-      contentCleanups.add(cleanup);
-      return () => contentCleanups.delete(cleanup);
-    };
-    inlineEditor.cleanupContents = () => {
-      for (const cleanup of contentCleanups) {
-        cleanup();
-      }
-      contentCleanups.clear();
-    };
-
     const labelControl = document.createElement("textarea");
     labelControl.className = "la-inline-message-label";
     labelControl.dataset.field = "message-label";
@@ -4322,47 +3866,16 @@ export function renderEditor(target, input, options = {}) {
     tagControl.setAttribute("aria-label", "Arrow tag");
     tagControl.value = model.tag ?? "";
 
-    const tooltipWrapper = document.createElement("div");
-    tooltipWrapper.className = "la-inline-actor-tooltip-control";
-
-    const tooltipTrigger = document.createElement("button");
-    tooltipTrigger.type = "button";
-    tooltipTrigger.className = "la-inline-actor-tooltip-trigger";
-    tooltipTrigger.setAttribute("aria-label", "Edit arrow tooltip");
-    tooltipTrigger.setAttribute("aria-haspopup", "dialog");
-    tooltipTrigger.setAttribute("aria-expanded", "false");
-    tooltipTrigger.dataset.empty = String(!model.tooltip);
-    tooltipTrigger.append(
-      iconVisual(
-        model.tooltipIcon,
-        options.iconResolver,
-        frame.dataset.theme ?? "light",
-        "i",
-      ),
+    const tooltip = createInlineTooltipEditor(
+      frame,
+      model,
+      "arrow",
+      "message-tooltip-text",
     );
-
-    const tooltipDialog = document.createElement("div");
-    tooltipDialog.className = "la-inline-actor-tooltip-dialog";
-    tooltipDialog.hidden = true;
-    tooltipDialog.setAttribute("role", "dialog");
-    tooltipDialog.setAttribute("aria-label", "Edit arrow tooltip");
-
-    const tooltipControl = document.createElement("textarea");
-    tooltipControl.className = "la-inline-actor-tooltip-text";
-    tooltipControl.dataset.field = "message-tooltip-text";
-    tooltipControl.rows = 2;
-    fieldSequence += 1;
-    tooltipControl.id = `la-field-${fieldSequence}`;
-    tooltipControl.setAttribute("aria-label", "Arrow tooltip text");
-    tooltipControl.value = model.tooltip ?? "";
-
-    const tooltipTextField = document.createElement("div");
-    tooltipTextField.className = "la-inline-actor-tooltip-field";
-    const tooltipTextLabel = document.createElement("label");
-    tooltipTextLabel.htmlFor = tooltipControl.id;
-    tooltipTextLabel.textContent = "Tooltip";
-    tooltipTextField.append(tooltipTextLabel, tooltipControl);
-    tooltipWrapper.append(tooltipTrigger, tooltipDialog);
+    const {
+      wrapper: tooltipWrapper,
+      control: tooltipControl,
+    } = tooltip;
 
     const dirtyFields = new Set();
     let diagramScale = 1;
@@ -4380,12 +3893,6 @@ export function renderEditor(target, input, options = {}) {
     tagControl.addEventListener("input", () => {
       dirtyFields.add("tag");
       sizeTagPill();
-    });
-    tooltipControl.addEventListener("input", () => {
-      dirtyFields.add("tooltip");
-      tooltipTrigger.dataset.empty = String(
-        !tooltipControl.value.trim(),
-      );
     });
 
     metadata.append(tagControl, tooltipWrapper);
@@ -4523,149 +4030,22 @@ export function renderEditor(target, input, options = {}) {
     }
     inlineEditor.append(arrowStyles);
 
-    const tooltipIconSelector = createIconSelector(
+    appendTooltipIconSelector(
       inlineEditor,
-      model.tooltipIcon,
-      (tooltipIcon) => {
-        commit(
-          { tooltipIcon },
-          "message-tooltip-text",
-        );
-      },
-      {
-        catalog: options.iconCatalog,
-        resolver: options.iconResolver,
-        label: "Choose tooltip icon",
-        selectorLabel: "Tooltip icon selector",
-        clearLabel: "Default information icon",
-        defaultText: "i",
-      },
-    );
-    tooltipIconSelector.classList.add(
-      "la-inline-tooltip-icon-selector",
-    );
-    inlineEditor.addContentCleanup?.(() =>
-      tooltipIconSelector.disposeSelector?.(),
+      tooltip,
+      model,
+      "message-tooltip-text",
+      commit,
     );
 
-    const tooltipIconField = document.createElement("div");
-    tooltipIconField.className = "la-inline-actor-tooltip-field";
-    const tooltipIconLabel = document.createElement("span");
-    tooltipIconLabel.textContent = "Icon";
-    tooltipIconField.append(tooltipIconLabel, tooltipIconSelector);
-    tooltipDialog.append(tooltipTextField, tooltipIconField);
-
-    let tooltipDialogOpen = false;
-    const positionTooltipDialog = () => {
-      if (!tooltipDialogOpen || tooltipDialog.hidden) {
-        return;
-      }
-      tooltipDialog.style.setProperty(
-        "--la-inline-tooltip-dialog-shift",
-        "0px",
-      );
-      const dialogRect = tooltipDialog.getBoundingClientRect();
-      const frameRect = frame.getBoundingClientRect();
-      const viewportWidth =
-        globalThis.innerWidth ?? document.documentElement.clientWidth;
-      const leftBoundary = Math.max(8, frameRect.left + 8);
-      const rightBoundary = Math.min(
-        viewportWidth - 8,
-        frameRect.right - 8,
-      );
-      let shift = 0;
-      if (dialogRect.left < leftBoundary) {
-        shift = leftBoundary - dialogRect.left;
-      } else if (dialogRect.right > rightBoundary) {
-        shift = rightBoundary - dialogRect.right;
-      }
-      tooltipDialog.style.setProperty(
-        "--la-inline-tooltip-dialog-shift",
-        `${shift}px`,
-      );
-    };
-    const onTooltipOutsidePointerDown = (event) => {
-      if (tooltipWrapper.contains(event.target)) {
-        return;
-      }
-      closeTooltipDialog(false);
-      commit({}, null, true);
-    };
-    const openTooltipDialog = (focusText = true) => {
-      if (tooltipDialogOpen) {
-        return;
-      }
-      tooltipDialogOpen = true;
-      tooltipDialog.hidden = false;
-      tooltipTrigger.setAttribute("aria-expanded", "true");
-      frame.addEventListener(
-        "pointerdown",
-        onTooltipOutsidePointerDown,
-      );
-      queueMicrotask(() => {
-        positionTooltipDialog();
-        if (focusText) {
-          tooltipControl.focus();
-        }
-      });
-    };
-    const closeTooltipDialog = (
-      commitChanges = true,
-      restoreFocus = false,
-      deferDraw = false,
-    ) => {
-      if (!tooltipDialogOpen) {
-        return "unchanged";
-      }
-      tooltipDialogOpen = false;
-      tooltipDialog.hidden = true;
-      tooltipTrigger.setAttribute("aria-expanded", "false");
-      frame.removeEventListener(
-        "pointerdown",
-        onTooltipOutsidePointerDown,
-      );
-      const result = commitChanges
-        ? commit({}, null, deferDraw)
-        : "unchanged";
-      if (restoreFocus && result !== "changed") {
-        queueMicrotask(() => tooltipTrigger.focus());
-      }
-      return result;
-    };
-
-    tooltipTrigger.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (tooltipDialogOpen) {
-        closeTooltipDialog(true, true);
-      } else {
-        openTooltipDialog();
-      }
+    const tooltipEditor = bindInlineTooltipEditor({
+      frame,
+      tooltip,
+      model,
+      dirtyFields,
+      commit,
+      selectedFocus: pendingFocus === "message-tooltip-text",
     });
-    tooltipControl.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        tooltipControl.value = model.tooltip ?? "";
-        dirtyFields.delete("tooltip");
-        tooltipTrigger.dataset.empty = String(!model.tooltip);
-        closeTooltipDialog(false, true);
-        return;
-      }
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        const result = commit();
-        if (result === "unchanged") {
-          closeTooltipDialog(false, true);
-        }
-        return;
-      }
-      event.stopPropagation();
-    });
-    if (pendingFocus === "message-tooltip-text") {
-      openTooltipDialog(false);
-    }
 
     const positionEditor = () => {
       if (!inlineEditor.isConnected) {
@@ -4801,8 +4181,7 @@ export function renderEditor(target, input, options = {}) {
 
       const metadataRect = metadata.getBoundingClientRect();
       const frameRect = frame.getBoundingClientRect();
-      const viewportWidth =
-        globalThis.innerWidth ?? document.documentElement.clientWidth;
+      const viewportWidth = innerWidth;
       const leftBoundary = Math.max(8, frameRect.left + 8);
       const rightBoundary = Math.min(
         viewportWidth - 8,
@@ -4818,36 +4197,17 @@ export function renderEditor(target, input, options = {}) {
         "--la-inline-message-metadata-shift",
         `${metadataShift}px`,
       );
-      positionTooltipDialog();
+      tooltipEditor.position();
     };
 
-    let positionFrame = null;
-    const repositionEditor = () => {
-      if (positionFrame !== null) {
-        return;
-      }
-      if (typeof globalThis.requestAnimationFrame === "function") {
-        positionFrame = globalThis.requestAnimationFrame(() => {
-          positionFrame = null;
-          positionEditor();
-        });
-      } else {
-        positionEditor();
-      }
-    };
-    const resizeObserver = globalThis.ResizeObserver
-      ? new ResizeObserver(repositionEditor)
-      : null;
-    resizeObserver?.observe(svg);
-    globalThis.addEventListener?.("scroll", repositionEditor, true);
-    globalThis.addEventListener?.("resize", repositionEditor);
+    const positioning = observePosition(svg, positionEditor);
 
     inlineEditor.addEventListener("pointerdown", (event) => {
       if (
-        tooltipDialogOpen &&
+        tooltipEditor.open &&
         !tooltipWrapper.contains(event.target)
       ) {
-        closeTooltipDialog(false);
+        tooltipEditor.close(false);
       }
       event.stopPropagation();
     });
@@ -4861,7 +4221,7 @@ export function renderEditor(target, input, options = {}) {
       ) {
         return;
       }
-      closeTooltipDialog(false);
+      tooltipEditor.close(false);
       commit({}, null, true);
     });
 
@@ -4914,35 +4274,12 @@ export function renderEditor(target, input, options = {}) {
     });
 
     inlineEditor.cleanup = () => {
-      resizeObserver?.disconnect();
-      frame.removeEventListener(
-        "pointerdown",
-        onTooltipOutsidePointerDown,
-      );
-      globalThis.removeEventListener?.(
-        "scroll",
-        repositionEditor,
-        true,
-      );
-      globalThis.removeEventListener?.(
-        "resize",
-        repositionEditor,
-      );
-      if (
-        positionFrame !== null &&
-        typeof globalThis.cancelAnimationFrame === "function"
-      ) {
-        globalThis.cancelAnimationFrame(positionFrame);
-      }
-      positionFrame = null;
-      inlineEditor.cleanupContents?.();
+      positioning.disconnect();
+      tooltipEditor.cleanup();
       for (let index = 0; index < hiddenElements.length; index += 1) {
         hiddenElements[index].style.visibility =
           previousVisibility[index];
       }
-      delete inlineEditor.addContentCleanup;
-      delete inlineEditor.cleanupContents;
-      delete inlineEditor.cleanup;
     };
     positionEditor();
   }
@@ -4960,10 +4297,8 @@ export function renderEditor(target, input, options = {}) {
     const svg = gap.ownerSVGElement;
 
     const label = gap.querySelector(".la-gap-label");
-    const previousVisibility = label?.style.visibility ?? "";
-    if (label) {
-      label.style.visibility = "hidden";
-    }
+    const previousVisibility = label.style.visibility;
+    label.style.visibility = "hidden";
 
     const lines = String(model.label).split("\n");
     const availableWidth = Math.max(
@@ -4974,14 +4309,7 @@ export function renderEditor(target, input, options = {}) {
       Math.max(...lines.map((line) => Math.min(46, line.length))) *
         5.5 +
       22;
-    try {
-      measuredWidth = Math.max(
-        measuredWidth,
-        (label?.getBBox?.().width ?? 0) + 22,
-      );
-    } catch {
-      // The text-length estimate above also works before SVG layout.
-    }
+    measuredWidth = Math.max(measuredWidth, label.getBBox().width + 22);
     const width = Math.min(
       availableWidth,
       Math.max(88, measuredWidth),
@@ -4998,10 +4326,7 @@ export function renderEditor(target, input, options = {}) {
       overflow: "visible",
     });
     inlineEditor.cleanup = () => {
-      if (label) {
-        label.style.visibility = previousVisibility;
-      }
-      delete inlineEditor.cleanup;
+      label.style.visibility = previousVisibility;
     };
 
     const body = document.createElement("div");
@@ -5025,20 +4350,14 @@ export function renderEditor(target, input, options = {}) {
       "la-inline-delete-control la-inline-gap-delete";
     deleteControl.setAttribute("aria-label", "Delete gap");
 
-    let positionFrame = null;
     const positionDeleteControl = () => {
-      positionFrame = null;
       if (!deleteControl.isConnected) {
         return;
       }
       const point = svg.createSVGPoint();
       point.x = layout.contentRight;
       point.y = row.y;
-      const matrix = svg.getScreenCTM();
-      if (!matrix) {
-        return;
-      }
-      const screenPoint = point.matrixTransform(matrix);
+      const screenPoint = point.matrixTransform(svg.getScreenCTM());
       const scale = svg.getBoundingClientRect().width / layout.width;
       deleteControl.style.setProperty(
         "--la-inline-delete-size",
@@ -5051,50 +4370,10 @@ export function renderEditor(target, input, options = {}) {
       deleteControl.style.left = `${screenPoint.x}px`;
       deleteControl.style.top = `${screenPoint.y}px`;
     };
-    const repositionDeleteControl = () => {
-      if (positionFrame !== null) {
-        return;
-      }
-      if (typeof globalThis.requestAnimationFrame === "function") {
-        positionFrame = globalThis.requestAnimationFrame(
-          positionDeleteControl,
-        );
-      } else {
-        positionDeleteControl();
-      }
-    };
-    const resizeObserver = globalThis.ResizeObserver
-      ? new ResizeObserver(repositionDeleteControl)
-      : null;
-    resizeObserver?.observe(svg);
-    globalThis.addEventListener?.(
-      "scroll",
-      repositionDeleteControl,
-      true,
-    );
-    globalThis.addEventListener?.(
-      "resize",
-      repositionDeleteControl,
-    );
+    const positioning = observePosition(svg, positionDeleteControl);
+    const repositionDeleteControl = positioning.reposition;
     deleteControl.cleanup = () => {
-      resizeObserver?.disconnect();
-      globalThis.removeEventListener?.(
-        "scroll",
-        repositionDeleteControl,
-        true,
-      );
-      globalThis.removeEventListener?.(
-        "resize",
-        repositionDeleteControl,
-      );
-      if (
-        positionFrame !== null &&
-        typeof globalThis.cancelAnimationFrame === "function"
-      ) {
-        globalThis.cancelAnimationFrame(positionFrame);
-      }
-      positionFrame = null;
-      delete deleteControl.cleanup;
+      positioning.disconnect();
     };
     control.addEventListener("input", () => {
       const lineCount = control.value.split("\n").length;
@@ -5203,12 +4482,7 @@ export function renderEditor(target, input, options = {}) {
   }
 
   function contextualEditor(frame, layout) {
-    removePopover(frame);
-    removeInlineGapEditor(frame);
-    removeInlineActorEditor(frame);
-    removeInlineGroupEditor(frame);
-    removeInlineSectionEditor(frame);
-    removeInlineMessageEditor(frame);
+    removeContextualEditor(frame);
 
     if (transient?.type === "insert") {
       const popover = addPopover(
@@ -5378,11 +4652,7 @@ export function renderEditor(target, input, options = {}) {
 
     frame.dataset.dragging = "true";
     handle.dataset.dragSource = "true";
-    try {
-      handle.setPointerCapture?.(event.pointerId);
-    } catch {
-      // Window listeners below keep SVG dragging working without capture.
-    }
+    handle.setPointerCapture(event.pointerId);
 
     const finish = () => {
       frame.dataset.dragging = "false";
@@ -5530,13 +4800,9 @@ export function renderEditor(target, input, options = {}) {
   function decorate(frame, svg, layout) {
     const editStyle = document.createElement("style");
     editStyle.textContent = EDIT_STYLES;
-    target.insertBefore(editStyle, frame);
+    frame.prepend(editStyle);
     frame.dataset.mode = "edit";
     frame.tabIndex = 0;
-    if (options.dangerColor) {
-      frame.style.setProperty("--la-danger", options.dangerColor);
-    }
-
     for (const group of layout.groups) {
       const element = svg.querySelector(`[data-la-id="${CSS.escape(group.id)}"]`);
       element?.querySelector("rect")?.setAttribute(
@@ -5578,11 +4844,7 @@ export function renderEditor(target, input, options = {}) {
         transient = null;
         contextualEditor(frame, layout);
       };
-      if (typeof globalThis.setTimeout === "function") {
-        globalThis.setTimeout(close, 0);
-      } else {
-        queueMicrotask(close);
-      }
+      setTimeout(close, 0);
     };
 
     for (const slot of timelineInsertionSlots) {
@@ -5787,7 +5049,7 @@ export function renderEditor(target, input, options = {}) {
             editor.document,
             entry.id,
           );
-          const invalidParents = itemAndDescendantContainers(
+          const invalidParents = descendantContainerIds(
             sourceLocation.item,
           );
           startDrag(
@@ -5921,10 +5183,6 @@ export function renderEditor(target, input, options = {}) {
       handleLayer.append(handle);
     }
     svg.append(handleLayer);
-    const tooltipLayer = svg.querySelector(".la-tooltip-layer");
-    if (tooltipLayer) {
-      svg.append(tooltipLayer);
-    }
 
     let suppressClick = false;
     svg.addEventListener(
@@ -5945,7 +5203,7 @@ export function renderEditor(target, input, options = {}) {
         if (event.button !== 0 || selectedIds.length === 0) {
           return;
         }
-        const owner = event.target.closest?.(
+        const owner = event.target.closest(
           "[data-la-id], [data-owner-id]",
         );
         const ownerId = owner?.dataset.laId ?? owner?.dataset.ownerId;
@@ -5979,9 +5237,9 @@ export function renderEditor(target, input, options = {}) {
     svg.addEventListener("pointerdown", (event) => {
       if (
         event.button !== 0 ||
-        event.target.closest?.("[data-la-id]") ||
-        event.target.closest?.(".la-insertion") ||
-        event.target.closest?.(".la-header-control")
+        event.target.closest("[data-la-id]") ||
+        event.target.closest(".la-insertion") ||
+        event.target.closest(".la-header-control")
       ) {
         return;
       }
@@ -6000,7 +5258,7 @@ export function renderEditor(target, input, options = {}) {
         "stroke-dasharray": "4 4",
       });
       svg.append(marquee);
-      svg.setPointerCapture?.(event.pointerId);
+      svg.setPointerCapture(event.pointerId);
 
       const cancel = () => {
         marquee.remove();
@@ -6078,23 +5336,6 @@ export function renderEditor(target, input, options = {}) {
         transient = null;
         applySelectedVisuals(svg, selectedIds);
         contextualEditor(frame, layout);
-        const detail = {
-          ids: [...selectedIds],
-          kind: "range",
-          items: selectedIds.map(
-            (id) => findItemLocation(editor.document, id).item,
-          ),
-        };
-        options.onSelect?.(detail);
-        if (eventTarget?.dispatchEvent && globalThis.CustomEvent) {
-          eventTarget.dispatchEvent(
-            new CustomEvent("la-select", {
-              detail,
-              bubbles: true,
-              composed: true,
-            }),
-          );
-        }
       };
 
       activeCancel = cancel;
@@ -6104,7 +5345,7 @@ export function renderEditor(target, input, options = {}) {
     });
 
     frame.addEventListener("keydown", (event) => {
-      const editing = event.target.matches?.("input, textarea, select");
+      const editing = event.target.matches("input, textarea, select");
       const command = event.metaKey || event.ctrlKey;
 
       if (command && event.key.toLowerCase() === "z") {
@@ -6194,100 +5435,90 @@ export function renderEditor(target, input, options = {}) {
       return;
     }
     if (pendingInlineDraw !== null) {
-      globalThis.clearTimeout?.(pendingInlineDraw);
+      clearTimeout(pendingInlineDraw);
       pendingInlineDraw = null;
     }
 
     const previousFrame = baseController?.svg?.closest(".la-frame");
-    removeInlineGapEditor(previousFrame);
-    removeInlineActorEditor(previousFrame);
-    removeInlineGroupEditor(previousFrame);
-    removeInlineSectionEditor(previousFrame);
-    removeInlineMessageEditor(previousFrame);
-    removePopover(previousFrame);
+    removeContextualEditor(previousFrame);
     baseController?.destroy();
-    baseController = renderDiagramForEditor(target, editor.document, {
-      ...options,
-      headerActions:
-        options.historyControls === false
-          ? []
-          : [
-              {
-                label: "Undo",
-                icon: "arrow-counter-clockwise",
-                fallback: "↶",
-                className: "la-history-control",
-                field: "history-undo",
-                keyShortcuts: "Control+Z Meta+Z",
-                disabled: !editor.canUndo,
-                onActivate: () =>
-                  run(
-                    () => editor.undo(),
-                    [],
-                    null,
-                    "history-undo",
-                  ),
-              },
-              {
-                label: "Redo",
-                icon: "arrow-clockwise",
-                fallback: "↷",
-                className: "la-history-control",
-                field: "history-redo",
-                keyShortcuts:
-                  "Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y",
-                disabled: !editor.canRedo,
-                onActivate: () =>
-                  run(
-                    () => editor.redo(),
-                    [],
-                    null,
-                    "history-redo",
-                  ),
-              },
-            ],
-      actorPartActivatesSelection(actorId, field) {
-        pendingActorPart = field;
-        baseController?.select(actorId);
+    baseController = renderDiagramForEditor(
+      target,
+      editor.document,
+      options.copySource === false ? "" : editor.source,
+      {
+        ...options,
+        headerActions: [
+          {
+            label: "Undo",
+            icon: "arrow-counter-clockwise",
+            fallback: "↶",
+            className: "la-history-control",
+            field: "history-undo",
+            keyShortcuts: "Control+Z Meta+Z",
+            disabled: !editor.canUndo,
+            onActivate: () =>
+              run(
+                () => editor.undo(),
+                [],
+                null,
+                "history-undo",
+              ),
+          },
+          {
+            label: "Redo",
+            icon: "arrow-clockwise",
+            fallback: "↷",
+            className: "la-history-control",
+            field: "history-redo",
+            keyShortcuts:
+              "Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y",
+            disabled: !editor.canRedo,
+            onActivate: () =>
+              run(
+                () => editor.redo(),
+                [],
+                null,
+                "history-redo",
+              ),
+          },
+        ],
+        actorPartActivatesSelection(actorId, field) {
+          pendingFocus = field;
+          baseController.select(actorId);
+        },
+        groupPartActivatesSelection(groupId, field) {
+          pendingFocus = field;
+          baseController.select(groupId);
+        },
+        messagePartActivatesSelection(messageId, field) {
+          pendingFocus = field;
+          baseController.select(messageId);
+        },
+        onSelect(detail) {
+          transient = null;
+          selectedIds = detail.id ? [detail.id] : [];
+          pendingFocus ??=
+            detail.kind === "gap"
+              ? "gap-label"
+              : detail.kind === "actor"
+                ? "actor-name"
+                : detail.kind === "group"
+                  ? "group-label"
+                  : detail.kind === "section"
+                    ? "section-label"
+                    : detail.kind === "message"
+                      ? "message-label"
+                      : null;
+          applySelectedVisuals(baseController.svg, selectedIds);
+          const frame = baseController.svg.closest(".la-frame");
+          contextualEditor(frame, baseController.layout);
+          focusPendingField(frame, true);
+        },
       },
-      groupPartActivatesSelection(groupId, field) {
-        pendingGroupPart = field;
-        baseController?.select(groupId);
-      },
-      messagePartActivatesSelection(messageId, field) {
-        pendingMessagePart = field;
-        baseController?.select(messageId);
-      },
-      initialSelectedId:
-        selectedIds.length === 1 ? selectedIds[0] : null,
-      onSelect(detail) {
-        transient = null;
-        selectedIds = detail.id ? [detail.id] : [];
-        pendingFocus =
-          detail.kind === "gap"
-            ? "gap-label"
-            : detail.kind === "actor"
-              ? pendingActorPart ?? "actor-name"
-              : detail.kind === "group"
-                ? pendingGroupPart ?? "group-label"
-              : detail.kind === "section"
-                ? "section-label"
-              : detail.kind === "message"
-                ? pendingMessagePart ?? "message-label"
-                : null;
-        pendingActorPart = null;
-        pendingGroupPart = null;
-        pendingMessagePart = null;
-        applySelectedVisuals(baseController.svg, selectedIds);
-        const frame = baseController.svg.closest(".la-frame");
-        contextualEditor(frame, baseController.layout);
-        focusPendingField(frame, true);
-        options.onSelect?.(detail);
-      },
-    });
+    );
 
     const frame = baseController.svg.closest(".la-frame");
-    frame.dataset.mode = "edit";
     decorate(frame, baseController.svg, baseController.layout);
     applySelectedVisuals(baseController.svg, selectedIds);
     contextualEditor(frame, baseController.layout);
@@ -6297,77 +5528,15 @@ export function renderEditor(target, input, options = {}) {
   draw();
 
   return {
-    editor,
-    get ast() {
-      return editor.document;
-    },
-    get source() {
-      return editor.source;
-    },
-    get layout() {
-      return baseController.layout;
-    },
-    get svg() {
-      return baseController.svg;
-    },
-    get selectedId() {
-      return selectedIds.length === 1 ? selectedIds[0] : null;
-    },
-    get selectedIds() {
-      return [...selectedIds];
-    },
-    get canUndo() {
-      return editor.canUndo;
-    },
-    get canRedo() {
-      return editor.canRedo;
-    },
-    select(id) {
-      transient = null;
-      baseController.select(id);
-    },
-    clearSelection() {
-      transient = null;
-      baseController.clearSelection();
-    },
-    undo() {
-      return run(() => editor.undo(), []);
-    },
-    redo() {
-      return run(() => editor.redo(), []);
-    },
-    replaceSource(source) {
-      return run(
-        () => editor.replaceSource(source),
-        [],
-        null,
-        null,
-        false,
-      );
-    },
     destroy() {
       destroyed = true;
       activeCancel?.();
       if (pendingInlineDraw !== null) {
-        globalThis.clearTimeout?.(pendingInlineDraw);
+        clearTimeout(pendingInlineDraw);
         pendingInlineDraw = null;
       }
-      removeInlineGapEditor(
-        baseController?.svg?.closest(".la-frame"),
-      );
-      removeInlineActorEditor(
-        baseController?.svg?.closest(".la-frame"),
-      );
-      removeInlineGroupEditor(
-        baseController?.svg?.closest(".la-frame"),
-      );
-      removeInlineSectionEditor(
-        baseController?.svg?.closest(".la-frame"),
-      );
-      removeInlineMessageEditor(
-        baseController?.svg?.closest(".la-frame"),
-      );
-      removePopover(baseController?.svg?.closest(".la-frame"));
+      const frame = baseController?.svg?.closest(".la-frame");
+      removeContextualEditor(frame);
       baseController?.destroy();
     },
   };

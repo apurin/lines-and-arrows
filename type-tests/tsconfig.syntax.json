@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
     "exactOptionalPropertyTypes": true,
-    "lib": ["ES2022", "DOM"],
+    "lib": ["ES2022"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "noEmit": true,
     "strict": true,
     "target": "ES2022"
   },
-  "include": ["browser-consumer.ts"]
+  "include": ["syntax-consumer.ts"]
 }

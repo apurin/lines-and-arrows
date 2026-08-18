@@ -121,8 +121,8 @@ control uses a lowercase `i`.
 
 The text following `@` is both the actor's visible name and its identity in the
 source. Renaming an actor in the visual editor must update every reference to it
-atomically. Editors and parsers may assign session-local IDs internally, but
-those IDs are not serialized.
+atomically. Public syntax documents contain semantic source data; renderers and
+editors may assign private session IDs.
 
 Actor declarations are optional:
 
@@ -214,8 +214,6 @@ may display the group with a neutral treatment. `gap` is the one reserved type:
 it introduces a timeline gap and cannot introduce a group body.
 
 Groups may be nested.
-Indentation is limited to 128 levels so malformed or hostile source produces a
-structured syntax error instead of exhausting the JavaScript call stack.
 
 ### Sections
 

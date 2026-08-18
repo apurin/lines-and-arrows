@@ -371,7 +371,7 @@
     </main>
 
     <script type="module">
-      import { defineLinesAndArrows } from "../src/index.js";
+      import { defineLinesAndArrows } from "../src/element.js";
 
       defineLinesAndArrows();
 
@@ -621,24 +621,8 @@ Coordinator --> Operator: Settlement safely reversed`;
         .join("");
 
       const diagrams = [...document.querySelectorAll("lines-and-arrows")];
-      const layout = {
-        actorHeight: 48,
-        actorGap: 68,
-        marginX: 38,
-        marginTop: 26,
-        timelineTopGap: 28,
-        messageHeight: 54,
-        gapHeight: 60,
-        groupHeaderHeight: 28,
-        sectionHeaderHeight: 25,
-        groupPaddingBottom: 12,
-        groupGap: 10,
-        bottomPadding: 26,
-      };
-
       diagrams.forEach((diagram, index) => {
         diagram.palette = themes[index].palette;
-        diagram.layout = layout;
         diagram.source = source;
       });
 

@@ -11,10 +11,8 @@ export { serialize } from "./serialize.js";
 
 export function validate(source) {
   try {
-    return {
-      valid: true,
-      document: parse(source),
-    };
+    parse(source);
+    return { valid: true };
   } catch (error) {
     if (!(error instanceof LinesAndArrowsSyntaxError)) {
       throw error;
@@ -23,7 +21,6 @@ export function validate(source) {
     return {
       valid: false,
       error: {
-        name: error.name,
         message: error.message.replace(/^Line \d+: /, ""),
         line: error.line,
       },

@@ -13,8 +13,11 @@ and the editor.
 [Agent guide](https://lines-and-arrows.dev/agents)
 
 The JavaScript runtime has zero dependencies and includes TypeScript
-declarations. The current `0.11` line is under active development before 1.0;
+declarations. The current `0.12` line is under active development before 1.0;
 minor releases may change its contracts.
+
+Browser modules target current stable Chromium. The syntax module and CLI run
+on Node.js 22 or newer without DOM globals.
 
 ## Browser
 
@@ -23,7 +26,7 @@ Load the registered web component from jsDelivr:
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.11"
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.12"
 ></script>
 
 <lines-and-arrows theme="auto">
@@ -49,14 +52,14 @@ npm install lines-and-arrows
 ```
 
 ```js
-import { parse, renderDiagram } from "lines-and-arrows";
+import { renderDiagram } from "lines-and-arrows";
 
 const source = `Customer -> API: Start job
 API --> Customer: Accepted`;
 
 renderDiagram(
   document.querySelector("#diagram"),
-  parse(source),
+  source,
   { theme: "auto" },
 );
 ```
@@ -65,12 +68,18 @@ Package entry points:
 
 | Import | Purpose |
 | --- | --- |
-| `lines-and-arrows` | Parser, serializer, editor model, SVG renderers, themes, icons, and web-component definition |
+| `lines-and-arrows` | Render source as SVG in a browser |
 | `lines-and-arrows/auto` | Registers `<lines-and-arrows>` on import |
-| `lines-and-arrows/element` | Web-component class and explicit registration |
+| `lines-and-arrows/element` | Exports explicit element registration |
 | `lines-and-arrows/syntax` | DOM-free parsing, serialization, and validation |
 
 Node.js 22 or newer is required for the syntax API and CLI.
+
+The element's `source` property accepts diagram text. Assigning different valid
+source starts a fresh editor session; a syntax error throws synchronously and
+preserves the current diagram. Visual edits emit `la-change` with `{ source }`,
+while rendering failures emit `la-error` with `{ error }`. Undo and redo are
+built into edit mode.
 
 ## Diagram source
 
@@ -107,9 +116,9 @@ a compact authoring and embedding workflow.
 Validate a file or standard input with the published CLI:
 
 ```sh
-lines-and-arrows validate diagram.txt
-lines-and-arrows validate --json diagram.txt
-lines-and-arrows validate - < diagram.txt
+lines-and-arrows diagram.txt
+lines-and-arrows --json diagram.txt
+lines-and-arrows - < diagram.txt
 ```
 
 Use `validate`, `parse`, and `serialize` from `lines-and-arrows/syntax` in
@@ -131,9 +140,9 @@ The interactive development demo is available at
 Stable npm releases are produced by the
 [release workflow](https://github.com/apurin/lines-and-arrows/blob/main/.github/workflows/release.yml)
 from an annotated `vX.Y.Z` tag whose commit is already on remote `main`.
-Release preparation runs `npm ci`, `npm run check`, and `npm pack --dry-run`.
-After npm publication, `npm run website:prepare` synchronizes the website with
-the package version for its independent deployment.
+Release preparation runs `npm ci` and `npm run check`. After npm publication,
+`npm run website:prepare` synchronizes the website with the package version for
+its independent deployment.
 
 ## License
 

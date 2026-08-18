@@ -1,4 +1,4 @@
-export const themes = {
+const themes = {
   light: {
     name: "light",
     canvas: "#F6F7F9",
@@ -79,12 +79,8 @@ function normalizePalette(palette) {
       throw new TypeError(`palette.${key} must be a non-empty CSS color.`);
     }
     const value = palette[key].trim();
-    const supportsColor = globalThis.CSS?.supports?.bind(globalThis.CSS);
-    if (
-      /\burl\s*\(/i.test(value) ||
-      (supportsColor && !supportsColor("color", value))
-    ) {
-      throw new TypeError(`palette.${key} must be a safe CSS color.`);
+    if (!CSS.supports("color", value)) {
+      throw new TypeError(`palette.${key} must be a valid CSS color.`);
     }
     normalized[key] = value;
   }
@@ -211,13 +207,12 @@ export function resolvePaletteTheme(
   };
 }
 
-export function resolveTheme(theme = "auto", host = globalThis) {
+export function resolveTheme(theme = "auto") {
   if (theme === "light" || theme === "dark") {
     return themes[theme];
   }
 
-  const isDark = Boolean(
-    host?.matchMedia?.("(prefers-color-scheme: dark)")?.matches,
-  );
-  return isDark ? themes.dark : themes.light;
+  return matchMedia("(prefers-color-scheme: dark)").matches
+    ? themes.dark
+    : themes.light;
 }

@@ -2,16 +2,13 @@ import {
   layoutDiagram,
   layoutDiagramWithoutHeader,
 } from "./layout.js";
-import { withDefaultIconOptions } from "./icons.js";
+import { phosphorIconResolver } from "./icons.js";
 import {
   messageLabelMetrics,
   metadataMetrics,
   selfMessageWidth,
 } from "./metadata.js";
-import {
-  documentSnapshot,
-  freezeDocument,
-} from "./document.js";
+import { assignStructuralIds, visitItems } from "./document.js";
 import { parse } from "./parser.js";
 import { serialize } from "./serialize.js";
 import { textLines } from "./text.js";
@@ -342,10 +339,7 @@ function textWidth(text, fontSize = 12, minimum = 0) {
 
 function textMeasurer(fontSize, fontWeight) {
   const canvas = document.createElement("canvas");
-  const context = canvas.getContext?.("2d");
-  if (!context) {
-    return (text) => textWidth(text, fontSize);
-  }
+  const context = canvas.getContext("2d");
   context.font = [
     `${fontWeight} ${fontSize}px system-ui`,
     "-apple-system",
@@ -688,10 +682,8 @@ function positionTooltipPopover(popover, trigger) {
   }
   const triggerRect = trigger.getBoundingClientRect();
   const popoverRect = popover.getBoundingClientRect();
-  const viewportWidth =
-    globalThis.innerWidth ?? document.documentElement.clientWidth;
-  const viewportHeight =
-    globalThis.innerHeight ?? document.documentElement.clientHeight;
+  const viewportWidth = innerWidth;
+  const viewportHeight = innerHeight;
   const padding = 8;
   const gap = 7;
   const triggerCenter = triggerRect.left + triggerRect.width / 2;
@@ -729,19 +721,10 @@ function positionTooltipPopover(popover, trigger) {
 
 function setTooltipPopoverVisible(popover, visible) {
   popover.dataset.visible = String(visible);
-  if (typeof popover.showPopover !== "function") {
-    popover.removeAttribute("popover");
-    return;
-  }
-
-  try {
-    if (visible && !popover.matches(":popover-open")) {
-      popover.showPopover();
-    } else if (!visible && popover.matches(":popover-open")) {
-      popover.hidePopover();
-    }
-  } catch {
-    popover.removeAttribute("popover");
+  if (visible && !popover.matches(":popover-open")) {
+    popover.showPopover();
+  } else if (!visible && popover.matches(":popover-open")) {
+    popover.hidePopover();
   }
 }
 
@@ -869,7 +852,7 @@ function renderMetadata(
   trigger.append(fallback);
 
   const iconUrl = tooltipIcon
-    ? options.iconResolver?.(tooltipIcon, tokens.name)
+    ? options.iconResolver(tooltipIcon, tokens.name)
     : null;
   if (iconUrl) {
     const image = svgElement("image", {
@@ -898,9 +881,13 @@ function renderMetadata(
       return;
     }
     tracking = enabled;
-    const action = enabled ? "addEventListener" : "removeEventListener";
-    globalThis[action]?.("scroll", position, true);
-    globalThis[action]?.("resize", position);
+    if (enabled) {
+      globalThis.addEventListener("scroll", position, true);
+      globalThis.addEventListener("resize", position);
+    } else {
+      globalThis.removeEventListener("scroll", position, true);
+      globalThis.removeEventListener("resize", position);
+    }
   };
   const sync = () => {
     const visible = hovered || focused || pinned;
@@ -1065,7 +1052,7 @@ function renderActor(
     fallback.textContent = actor.name.slice(0, 1).toUpperCase();
     iconParent.append(fallback);
 
-    const iconUrl = options.iconResolver?.(actor.icon, tokens.name);
+    const iconUrl = options.iconResolver(actor.icon, tokens.name);
     if (iconUrl) {
       const image = svgElement("image", {
         class: "la-actor-icon",
@@ -1802,37 +1789,16 @@ function renderBranding(parent, layout) {
 
 function sourceWithAttribution(source) {
   const canonical = String(source ?? "").replace(/\r\n?/g, "\n");
-  if (
-    canonical === SOURCE_ATTRIBUTION ||
-    canonical.startsWith(`${SOURCE_ATTRIBUTION}\n`)
-  ) {
-    return canonical.endsWith("\n") ? canonical : `${canonical}\n`;
-  }
-  return `${SOURCE_ATTRIBUTION}\n${canonical.replace(/^\n+/, "")}`;
+  const body = canonical
+    .split("\n")
+    .filter((line) => line !== SOURCE_ATTRIBUTION)
+    .join("\n")
+    .replace(/^\n+/, "");
+  return `${SOURCE_ATTRIBUTION}\n${body}`;
 }
 
 async function writeClipboardText(source) {
-  if (globalThis.navigator?.clipboard?.writeText) {
-    try {
-      await globalThis.navigator.clipboard.writeText(source);
-      return;
-    } catch {
-      // Continue with the DOM fallback for restricted clipboard contexts.
-    }
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = source;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  document.body?.append(textarea);
-  textarea.select?.();
-  const copied = document.execCommand?.("copy") === true;
-  textarea.remove();
-  if (!copied) {
-    throw new Error("Unable to copy the diagram source.");
-  }
+  await navigator.clipboard.writeText(source);
 }
 
 function renderHeaderControl(
@@ -1885,12 +1851,7 @@ function renderHeaderControl(
   fallback.textContent = action.fallback;
   control.append(fallback);
 
-  let iconUrl = null;
-  try {
-    iconUrl = options.iconResolver?.(action.icon, tokens.name);
-  } catch {
-    iconUrl = null;
-  }
+  const iconUrl = options.iconResolver(action.icon, tokens.name);
   if (iconUrl) {
     const image = svgElement("image", {
       class: "la-header-control-icon",
@@ -1961,15 +1922,15 @@ function renderHeader(
         control.dataset.copied = "true";
         control.setAttribute("aria-label", "Source copied");
         title.textContent = "Source copied";
-        globalThis.clearTimeout?.(copyResetTimer);
-        copyResetTimer = globalThis.setTimeout?.(() => {
+        clearTimeout(copyResetTimer);
+        copyResetTimer = setTimeout(() => {
           control.dataset.copied = "false";
           control.setAttribute("aria-label", "Copy source");
           title.textContent = "Copy source";
         }, 1600);
       },
       cleanup() {
-        globalThis.clearTimeout?.(copyResetTimer);
+        clearTimeout(copyResetTimer);
       },
     });
   }
@@ -2021,195 +1982,154 @@ function indexSelectableModels(documentModel) {
   const models = new Map();
 
   for (const actor of documentModel.actors) {
-    models.set(actor.id ?? `actor:${actor.name}`, actor);
+    models.set(actor.id, actor);
   }
-
-  function visit(items) {
-    for (const item of items) {
-      models.set(item.id, item);
-      if (item.type !== "group") {
-        continue;
-      }
-      if (item.sections.length > 0) {
-        for (const section of item.sections) {
-          models.set(section.id, section);
-          visit(section.items);
-        }
-      } else {
-        visit(item.items);
-      }
-    }
-  }
-
-  visit(documentModel.items);
+  visitItems(documentModel.items, (item) => models.set(item.id, item));
   return models;
 }
 
-function actorSelectionSnapshot(actor) {
+function actorDetails(actor) {
   return Object.freeze({
-    type: "actor",
     name: actor.name,
     icon: actor.icon ?? null,
     tag: actor.tag ?? null,
     tooltip: actor.tooltip ?? null,
     tooltipIcon: actor.tooltipIcon ?? null,
-    inferred: actor.inferred === true,
   });
 }
 
 function createSelectionController(root, options) {
   const mode = options.selectionMode;
-  const enabled = mode !== "none";
-  const models = options.models;
-  let selectedId = null;
-  let selectedItem = null;
-
-  function canSelect(item) {
-    return (
-      mode === "editor" ||
-      (mode === "actors" && item?.type === "actor")
-    );
+  if (mode === "none") {
+    return {
+      canSelect() {
+        return false;
+      },
+      selectActor() {
+        throw new Error("Actor selection is not enabled.");
+      },
+      enabled: false,
+      mode,
+    };
   }
+  const models = options.models;
+  if (mode === "editor") {
+    return {
+      select(id, emit = true) {
+        const selectedId = id ?? null;
+        const item = selectedId === null ? null : models.get(selectedId);
+        if (selectedId !== null && !item) {
+          throw new RangeError(
+            `No selectable diagram element has ID "${selectedId}".`,
+          );
+        }
+        if (emit) {
+          options.onSelect?.(
+            Object.freeze({
+              id: selectedId,
+              kind: item?.type ?? null,
+              item: item ?? null,
+            }),
+          );
+        }
+      },
+      clear(emit = true) {
+        this.select(null, emit);
+      },
+      canSelect() {
+        return true;
+      },
+      enabled: true,
+      mode,
+    };
+  }
+
+  let selectedId = null;
 
   function apply() {
-    root.querySelectorAll("[data-la-id]").forEach((element) => {
-      const selected = element.dataset.laId === selectedId;
-      const highlighted =
-        selected ||
-        element.matches(":hover, :focus, :focus-visible");
-      element.dataset.selected = String(selected);
-      element.setAttribute("aria-pressed", String(selected));
-      element
-        .querySelectorAll("[data-marker-normal]")
-        .forEach((messageLine) => {
-          messageLine.setAttribute(
-            "marker-end",
-            highlighted
-              ? messageLine.dataset.markerSelected
-              : messageLine.dataset.markerNormal,
-          );
-        });
-    });
+    root
+      .querySelectorAll(".la-selectable[data-la-id]")
+      .forEach((element) => {
+        const selected = element.dataset.laId === selectedId;
+        const highlighted =
+          selected ||
+          element.matches(":hover, :focus, :focus-visible");
+        element.dataset.selected = String(selected);
+        element.setAttribute("aria-pressed", String(selected));
+        element
+          .querySelectorAll("[data-marker-normal]")
+          .forEach((messageLine) => {
+            messageLine.setAttribute(
+              "marker-end",
+              highlighted
+                ? messageLine.dataset.markerSelected
+                : messageLine.dataset.markerNormal,
+            );
+          });
+      });
   }
 
-  const controller = {
+  return {
     select(id, emit = true) {
-      if (!enabled) {
-        return;
-      }
       const nextId = id ?? null;
       const item = nextId === null ? null : models.get(nextId);
-      if (nextId !== null && (!item || !canSelect(item))) {
+      if (nextId !== null && item?.type !== "actor") {
         throw new RangeError(
           `No selectable diagram element has ID "${nextId}".`,
         );
       }
+      if (mode === "actors" && nextId === selectedId) {
+        return;
+      }
       selectedId = nextId;
-      selectedItem = item ?? null;
       apply();
 
-      if (!emit) {
-        return;
-      }
-
-      const eventTarget = options.eventTarget;
-      if (mode === "actors") {
-        const actor = item ? actorSelectionSnapshot(item) : null;
-        const detail = Object.freeze({
-          name: actor?.name ?? null,
-          actor,
-        });
-        options.onActorSelect?.(detail);
-        if (eventTarget?.dispatchEvent && globalThis.CustomEvent) {
-          eventTarget.dispatchEvent(
-            new CustomEvent("la-actor-select", {
-              detail,
-              bubbles: true,
-              composed: true,
-            }),
-          );
-        }
-        return;
-      }
-
-      const detail = Object.freeze({
-        id: selectedId,
-        kind: item?.type ?? null,
-        item: item ?? null,
-      });
-      options.onSelect?.(detail);
-      if (eventTarget?.dispatchEvent && globalThis.CustomEvent) {
-        eventTarget.dispatchEvent(
-          new CustomEvent("la-select", {
-            detail,
-            bubbles: true,
-            composed: true,
-          }),
-        );
+      if (emit) {
+        options.onActorSelect?.(item ? actorDetails(item) : null);
       }
     },
     selectActor(name, emit = true) {
-      if (typeof name !== "string" || !name.trim()) {
-        throw new TypeError("selectActor requires a non-empty actor name.");
-      }
-      if (mode !== "actors") {
+      if (name === null) {
+        this.clear(emit);
         return;
       }
-      const match = [...models.entries()].find(
-        ([, item]) => item.type === "actor" && item.name === name,
-      );
-      if (!match) {
-        throw new RangeError(`No actor named "${name}" exists.`);
+      if (typeof name !== "string" || !name.trim()) {
+        throw new TypeError(
+          "selectActor requires an actor name or null.",
+        );
       }
-      this.select(match[0], emit);
+      for (const [id, item] of models) {
+        if (item.type === "actor" && item.name === name) {
+          this.select(id, emit);
+          return;
+        }
+      }
+      throw new RangeError(`No actor named "${name}" exists.`);
     },
     clear(emit = true) {
       this.select(null, emit);
     },
-    get id() {
-      return selectedId;
+    canSelect(item) {
+      return item.type === "actor";
     },
-    get item() {
-      return selectedItem;
-    },
-    get actorName() {
-      return selectedItem?.type === "actor"
-        ? selectedItem.name
-        : null;
-    },
-    canSelect,
-    get enabled() {
-      return enabled;
-    },
-    get mode() {
-      return mode;
-    },
+    enabled: true,
+    mode,
   };
-
-  return controller;
 }
 
 let rendererSequence = 0;
 
 function renderDiagramSurface(
   target,
-  input,
+  documentModel,
+  source,
   options,
   selectionMode,
 ) {
   if (!target?.replaceChildren) {
     throw new TypeError("renderDiagram requires a DOM container.");
   }
-  options = withDefaultIconOptions(options);
-
-  const documentModel =
-    typeof input === "string"
-      ? freezeDocument(parse(input))
-      : documentSnapshot(input);
-  if (typeof input !== "string") {
-    serialize(documentModel);
-  }
-  const baseTheme = resolveTheme(options.theme, globalThis);
+  const baseTheme = resolveTheme(options.theme);
   const usesPalette =
     options.palette !== null && options.palette !== undefined;
   const canvasBackground = options.canvasBackground ?? "transparent";
@@ -2233,8 +2153,8 @@ function renderDiagramSurface(
     copySource ||
     (options.headerActions?.length ?? 0) > 0;
   const layout = hasHeader
-    ? layoutDiagram(documentModel, options.layout)
-    : layoutDiagramWithoutHeader(documentModel, options.layout);
+    ? layoutDiagram(documentModel)
+    : layoutDiagramWithoutHeader(documentModel);
   const prefix = `la-${rendererSequence}`;
   rendererSequence += 1;
 
@@ -2259,6 +2179,7 @@ function renderDiagramSurface(
   appendDefinitions(svg, tokens, prefix);
   const renderOptions = {
     ...options,
+    iconResolver: phosphorIconResolver,
     actorIconFilter: `url(#${markerId(
       prefix,
       "actor-icon-color",
@@ -2276,11 +2197,12 @@ function renderDiagramSurface(
   tooltipLayer.className = "la-tooltip-layer";
   tooltipLayer.cleanups = [];
 
-  const eventTarget = target.host ?? target;
   const selection = createSelectionController(svg, {
     ...renderOptions,
-    eventTarget,
-    models: indexSelectableModels(documentModel),
+    models:
+      selectionMode === "none"
+        ? null
+        : indexSelectableModels(documentModel),
     selectionMode,
   });
 
@@ -2341,24 +2263,15 @@ function renderDiagramSurface(
     layout,
     tokens,
     renderOptions,
-    serialize(documentModel),
+    source,
     branding,
     tooltipLayer.cleanups,
   );
-  if (selectionMode === "editor" && options.initialSelectedId) {
-    selection.select(options.initialSelectedId, false);
-  } else if (
-    selectionMode === "actors" &&
-    options.initialSelectedActorName
-  ) {
-    selection.selectActor(options.initialSelectedActorName, false);
-  }
-
   if (selection.enabled) {
     svg.addEventListener("click", (event) => {
       if (
         selectionMode === "actors" &&
-        !event.target.closest?.(
+        !event.target.closest(
           ".la-actor, .la-tooltip-trigger, .la-branding",
         )
       ) {
@@ -2372,13 +2285,15 @@ function renderDiagramSurface(
   frame.append(svg, tooltipLayer);
   target.replaceChildren(style, frame);
 
+  let destroyed = false;
   const commonController = {
-    get ast() {
-      return documentModel;
-    },
     layout,
     svg,
     destroy() {
+      if (destroyed) {
+        return;
+      }
+      destroyed = true;
       for (const cleanup of tooltipLayer.cleanups) {
         cleanup();
       }
@@ -2396,9 +2311,6 @@ function renderDiagramSurface(
       clearSelection(emit = true) {
         selection.clear(emit);
       },
-      get selectedId() {
-        return selection.id;
-      },
     };
   }
 
@@ -2407,24 +2319,64 @@ function renderDiagramSurface(
     selectActor(name, emit = true) {
       selection.selectActor(name, emit);
     },
-    clearActorSelection(emit = true) {
-      selection.clear(emit);
+  };
+}
+
+function renderSourceDiagram(
+  target,
+  source,
+  options,
+  selectedActorName = null,
+) {
+  if (typeof source !== "string") {
+    throw new TypeError("renderDiagram requires diagram source text.");
+  }
+  const documentModel = assignStructuralIds(parse(source));
+  const controller = renderDiagramSurface(
+    target,
+    documentModel,
+    options.copySource === false ? "" : serialize(documentModel),
+    options,
+    options.selectableActors === true ? "actors" : "none",
+  );
+  if (selectedActorName && options.selectableActors === true) {
+    controller.selectActor(selectedActorName, false);
+  }
+  return {
+    svg: controller.svg,
+    selectActor(name) {
+      controller.selectActor(name);
     },
-    get selectedActorName() {
-      return selection.actorName;
+    destroy() {
+      controller.destroy();
     },
   };
 }
 
-export function renderDiagram(target, input, options = {}) {
-  return renderDiagramSurface(
-    target,
-    input,
-    options,
-    options.selectableActors === true ? "actors" : "none",
-  );
+export function renderDiagram(target, source, options = {}) {
+  return renderSourceDiagram(target, source, options);
 }
 
-export function renderDiagramForEditor(target, input, options = {}) {
-  return renderDiagramSurface(target, input, options, "editor");
+export function renderDiagramForElement(
+  target,
+  source,
+  options,
+  selectedActorName,
+) {
+  return renderSourceDiagram(target, source, options, selectedActorName);
+}
+
+export function renderDiagramForEditor(
+  target,
+  documentModel,
+  source,
+  options = {},
+) {
+  return renderDiagramSurface(
+    target,
+    documentModel,
+    source,
+    options,
+    "editor",
+  );
 }

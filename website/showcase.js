@@ -1,10 +1,5 @@
-import {
-  defineLinesAndArrows,
-  parse,
-} from "./runtime.js?v=20260808-1";
+import "./runtime.js?v=20260818-2";
 import { initializeSiteTheme } from "./site.js?v=20260806-2";
-
-defineLinesAndArrows();
 
 const braidedSource = `@Neanderthals
   icon users-three
@@ -175,21 +170,6 @@ const braidedDetails = {
     },
     position: "center",
   },
-};
-
-const braidedLayout = {
-  actorHeight: 48,
-  actorGap: 28,
-  marginX: 22,
-  marginTop: 18,
-  timelineTopGap: 28,
-  messageHeight: 46,
-  gapHeight: 48,
-  groupHeaderHeight: 26,
-  sectionHeaderHeight: 24,
-  groupPaddingBottom: 8,
-  groupGap: 8,
-  bottomPadding: 14,
 };
 
 const appendLinks = (container, links, emptyText = "") => {
@@ -546,21 +526,6 @@ document
 
 document.body.classList.remove("is-loading");
 
-const showcaseLayout = {
-  actorHeight: 48,
-  actorGap: 82,
-  marginX: 42,
-  marginTop: 26,
-  timelineTopGap: 28,
-  messageHeight: 54,
-  gapHeight: 58,
-  groupHeaderHeight: 28,
-  sectionHeaderHeight: 25,
-  groupPaddingBottom: 12,
-  groupGap: 10,
-  bottomPadding: 18,
-};
-
 const theme = initializeSiteTheme();
 
 const braidedShowcase = document.querySelector("[data-braided-showcase]");
@@ -628,7 +593,6 @@ if (braidedShowcase) {
   };
 
   diagram.branding = false;
-  diagram.layout = braidedLayout;
   diagram.palette = {
     background: "var(--braided-paper)",
     foreground: "var(--braided-ink)",
@@ -671,14 +635,13 @@ if (braidedShowcase) {
   renderDetail();
 
   try {
-    parse(braidedSource);
     diagram.source = braidedSource;
     diagramPane.classList.add("is-ready");
     diagram.addEventListener("la-actor-select", ({ detail }) => {
-      renderDetail(detail.name);
+      renderDetail(detail?.name ?? null);
     });
     closeButton.addEventListener("click", () => {
-      diagram.clearActorSelection();
+      diagram.selectActor(null);
     });
   } catch (problem) {
     diagramPane.classList.add("is-failed");
@@ -722,7 +685,6 @@ for (const showcase of document.querySelectorAll("[data-showcase]")) {
   const initialSource = sourceInput.value.trim();
 
   diagram.branding = false;
-  diagram.layout = showcaseLayout;
   diagram.theme = theme.theme;
 
   let rendered = false;
@@ -733,7 +695,6 @@ for (const showcase of document.querySelectorAll("[data-showcase]")) {
     }
 
     try {
-      parse(initialSource);
       diagram.source = initialSource;
       diagramPane.classList.add("is-ready");
       rendered = true;
@@ -799,10 +760,8 @@ for (const showcase of document.querySelectorAll("[data-showcase]")) {
     error.textContent = "";
 
     try {
-      const result = diagram.replaceSource(sourceInput.value);
-      if (result !== null && result !== false) {
-        sourceInput.value = diagram.source;
-      }
+      diagram.source = sourceInput.value;
+      sourceInput.value = diagram.source;
     } catch (problem) {
       error.textContent =
         problem instanceof Error ? problem.message : "Unable to apply source.";

@@ -9,52 +9,55 @@ on authoring or validating a diagram, read the canonical
 
 - Diagram source is the durable product format. Visual editing reads and writes
   that format rather than maintaining a richer hidden document.
-- The npm package, CDN bundles, demo, and product website share this repository
+- The npm package, CDN bundle, demo, and product website share this repository
   but are separate deliverables.
 - The runtime is dependency-free ESM. TypeScript compatibility comes from
   handwritten `.d.ts` files; there is no TypeScript source or build.
+- Browser modules target current stable Chromium. The `/syntax` entry and CLI
+  target Node.js 22 or newer and remain DOM-free.
 - UI output is SVG. View and edit rendering share the same layout and theme
   primitives, while edit-only interactions live in their own renderer.
 - The renderer owns the optional visible website attribution. It stays outside
   diagram source and is enabled by default through the `branding` option.
-- Phosphor is the default icon provider. Its version and weight are pinned in
-  `src/icons.js`; hosts can replace the resolver and catalog.
+- Phosphor is the built-in icon provider. Its version, weight, picker catalog,
+  and resolver are internal and pinned in `src/icons.js`.
 
 ## Where responsibilities live
 
 - `src/parser.js` parses text and produces structured syntax errors.
 - `src/serialize.js` validates programmatic documents and writes canonical text.
 - `src/syntax.js` is the DOM-free parse, serialize, and validate entry point.
-- `src/editor.js` owns immutable editor snapshots, commands, undo, and redo.
-- `src/document.js` contains document cloning and freezing helpers.
+- `src/editor.js` owns private immutable editor snapshots, commands, undo, and
+  redo.
+- `src/document.js` contains document ownership and traversal helpers.
 - `src/layout.js` computes geometry without drawing or attaching interactions.
 - `src/render.js` renders static or actor-selectable view-mode SVG.
 - `src/edit-render.js` adds editor controls, drag interactions, and dialogs.
 - `src/element.js` implements the `<lines-and-arrows>` web component.
 - `src/auto.js` is the side-effectful CDN entry that registers the component.
-- `src/index.js` defines the public JavaScript surface.
+- `src/index.js` exposes direct SVG viewing through `renderDiagram`.
 - `src/*.d.ts` defines the matching TypeScript surface.
 - `bin/lines-and-arrows.js` provides DOM-free command-line validation.
 - `demo/` is the local visual workbench; `website/` is the separate product
   website.
-- `scripts/build.mjs` creates the minified CDN bundles in ignored `dist/`.
+- `scripts/build.mjs` creates the minified auto-registration CDN bundle in
+  ignored `dist/`.
 
 ## Contracts that are easy to miss
 
 - `parse` followed by `serialize` must produce stable canonical source.
 - Comments belong structurally to their nearby construct and move with it.
-- Parsed and editor IDs are ephemeral implementation details and are never
-  serialized.
+- Public syntax documents contain semantic source data. Renderer and editor IDs
+  are private session details and are never serialized.
 - Source locations belong in syntax errors, not in persistent document objects.
 - `lines-and-arrows/syntax` must remain usable without a DOM.
 - Importing `lines-and-arrows` is side-effect free. Only the `/auto` entry
   registers a custom element automatically.
 - Copy source prepends the website attribution as a top-level comment exactly
   once, independently of visible branding.
-- `DiagramEditor` owns immutable snapshots. Mutations happen through commands
-  and replace the snapshot atomically.
-- Layout overrides are compacting preferences; shared layout code must still
-  reserve enough space to prevent collisions.
+- The internal editor session owns immutable snapshots. Mutations happen through
+  commands and replace the snapshot atomically.
+- Layout is product-owned and must reserve enough space to prevent collisions.
 - Actor and connection tags render as compact pills. When agents generate
   diagrams or examples, keep these tags to 12 characters or fewer; put longer
   explanations in tooltips.
@@ -62,6 +65,8 @@ on authoring or validating a diagram, read the canonical
   it.
 - The `files` allowlist in `package.json` is the npm package boundary. The
   website, demo, tests, and repository instructions stay outside the package.
+- The packed package stays at or below 150 kB and contains one generated CDN
+  artifact: `dist/lines-and-arrows.auto.min.js`.
 
 ## Making changes
 
@@ -74,23 +79,23 @@ For a syntax change, keep these pieces aligned:
 4. Add focused parser, round-trip, validation, and editor-model tests.
 
 For a public API change, update the implementation export, matching declaration,
-README example, and package export map when a new subpath is introduced.
+README example, type consumers, and agent guide.
 
 For a visual or interaction change, check both view and edit modes, light and
 dark themes, nested groups, gaps, self-messages, long labels, and compact
-layouts. Programmatic layout tests guard known geometry contracts; use the demo
-for visual judgment and interaction testing.
+layouts. Test collision invariants programmatically and exercise interaction in
+the real-browser suite.
 
 For an icon change, keep the pinned provider, recommended catalog, documented
 examples, tests, and third-party notice consistent.
 
 ## Verification
 
-Run the programmatic suite, type checks, and browser build:
+Run the programmatic suite, type checks, browser build, and package-boundary
+check:
 
 ```sh
 npm run check
-npm pack --dry-run
 ```
 
 Use `npm run validate -- FILE` for focused syntax checks. For visual work, serve

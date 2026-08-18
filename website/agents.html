@@ -109,7 +109,7 @@
     &lt;title&gt;Sequence diagram&lt;/title&gt;
     &lt;script
       type=&quot;module&quot;
-      src=&quot;https://cdn.jsdelivr.net/npm/lines-and-arrows@0.11&quot;
+      src=&quot;https://cdn.jsdelivr.net/npm/lines-and-arrows@0.12&quot;
     &gt;&lt;/script&gt;
   &lt;/head&gt;
   &lt;body&gt;
@@ -130,6 +130,10 @@
         <code>X.Y.Z</code> version when an embed must remain pinned to one exact
         release.
       </p>
+      <p>
+        Browser integrations target current stable Chromium. The syntax module
+        and CLI run on Node.js 22 or newer.
+      </p>
 
       <h2>Render without custom elements</h2>
       <p>
@@ -142,7 +146,7 @@
 &lt;script type=&quot;module&quot;&gt;
   import {
     renderDiagram,
-  } from &quot;https://cdn.jsdelivr.net/npm/lines-and-arrows@0.11.0/+esm&quot;;
+  } from &quot;https://cdn.jsdelivr.net/npm/lines-and-arrows@0.12.0/+esm&quot;;
 
   const source = `Client -&gt; API: Start job
 API -&gt; Worker: Run
@@ -157,8 +161,8 @@ API --&gt; Client: Complete`;
 &lt;/script&gt;</code></pre>
       <p>
         <code>renderDiagram(target, source, options)</code> accepts Lines &amp;
-        Arrows text directly; calling <code>parse()</code> first is optional. Keep
-        the exact <code>X.Y.Z</code> version in constrained or generated embeds.
+        Arrows text directly. Keep the exact <code>X.Y.Z</code> version in
+        constrained or generated embeds.
       </p>
 
       <h2>Configure the web component</h2>
@@ -188,14 +192,6 @@ API --&gt; Client: Complete`;
               Boolean attribute. View mode is static by default; add this
               attribute to let people select actors. Edit mode keeps its own
               required selection behavior.
-            </td>
-          </tr>
-          <tr>
-            <td><code>history-controls</code></td>
-            <td>
-              Undo and redo buttons are shown in edit mode by default. Use
-              <code>false</code> to hide the buttons without disabling the methods
-              or keyboard shortcuts.
             </td>
           </tr>
           <tr>
@@ -241,13 +237,6 @@ API --&gt; Client: Complete`;
         action.
       </p>
       <p>
-        Undo and redo remain available through standard keyboard shortcuts and
-        the element's <code>undo()</code> and <code>redo()</code> methods when
-        <code>history-controls=&quot;false&quot;</code>. The <code>canUndo</code> and
-        <code>canRedo</code> properties report whether each action is currently
-        available.
-      </p>
-      <p>
         For example, this creates a compact actor-selectable view without a
         header:
       </p>
@@ -266,17 +255,24 @@ API --&gt; Client: Complete`;
 &lt;script type=&quot;module&quot;&gt;
   const diagram = document.querySelector(&quot;#request-flow&quot;);
   diagram.addEventListener(&quot;la-actor-select&quot;, ({ detail }) =&gt; {
-    console.log(detail.name, detail.actor?.tooltip);
+    console.log(detail?.name, detail?.tooltip);
   });
   diagram.selectActor(&quot;API&quot;);
 &lt;/script&gt;</code></pre>
       <p>
-        <code>la-actor-select</code> detail contains <code>name</code> and an
-        immutable <code>actor</code> snapshot with the actor's name, icon, tag,
-        tooltip text, tooltip icon, and inferred state. Clearing selection emits
-        <code>{ name: null, actor: null }</code>. Use
-        <code>clearActorSelection()</code> to clear it programmatically. Messages,
-        groups, sections, and gaps are not selectable in view mode.
+        <code>la-actor-select</code> detail is an immutable actor snapshot with
+        its name, icon, tag, tooltip text, and tooltip icon. Clearing selection
+        emits <code>null</code>. Call <code>selectActor(null)</code> to clear it
+        programmatically. Messages, groups, sections, and gaps remain static in
+        view mode.
+      </p>
+      <p>
+        Assign diagram text through the element's <code>source</code> property.
+        Assigning different valid source starts a fresh editor session. A syntax
+        error throws synchronously and preserves the current diagram. Visual
+        edits emit <code>la-change</code> with <code>{ source }</code>, while
+        rendering failures emit <code>la-error</code> with <code>{ error }</code>.
+        External source assignment does not emit <code>la-change</code>.
       </p>
       <p>
         Prefer the built-in <code>theme=&quot;auto&quot;</code> unless the diagram needs to
@@ -305,7 +301,7 @@ diagram.canvasBackground = &quot;solid&quot;;</code></pre>
       <h2>Use the npm package</h2>
       <p>Install the package before using its CLI or JavaScript exports:</p>
       <pre><code class="language-sh">npm install lines-and-arrows
-npx lines-and-arrows validate --json diagram.la</code></pre>
+npx lines-and-arrows --json diagram.la</code></pre>
       <p>Register the web component in an npm-based browser application:</p>
       <pre><code class="language-js">import &quot;lines-and-arrows/auto&quot;;</code></pre>
       <p>
@@ -391,7 +387,6 @@ gap Visible discontinuity
           not both at the same level. Every group and section must contain at
           least one item.
         </li>
-        <li>Keep nesting within the format's 128-level safety limit.</li>
         <li>
           Use <code>gap TEXT</code> when time passes or part of the sequence is
           omitted.

@@ -10,16 +10,13 @@ Security fixes target the current minor release line.
 
 - Diagram text is parsed as data and rendered with SVG text nodes, not as HTML.
   It cannot define scripts, links, styles, or arbitrary resources.
-- Parsing rejects indentation deeper than 128 levels. Applications accepting
-  attacker-controlled diagrams should also set a source-size limit before
-  parsing and an item-count limit before rendering; 1 MiB and 10,000 timeline
-  items are conservative starting points for an interactive page.
-- Palettes, layout options, and custom icon resolvers are host-controlled
-  configuration, not diagram syntax. Do not pass untrusted resolver code or
-  unreviewed external resource URLs.
-- The default Phosphor icon resolver fetches used icons from an exactly pinned
-  jsDelivr package. Set `iconResolver` to `null` or provide same-origin URLs for
-  offline or privacy-sensitive use.
+- Applications accepting attacker-controlled diagrams should set source-size
+  and item-count limits appropriate to their interface before parsing or
+  rendering.
+- Palette values are host-controlled configuration, not diagram syntax.
+- Named icons use an exactly pinned Phosphor package from jsDelivr. Hosts can
+  omit icons from source or block those image requests through Content Security
+  Policy when remote images are unsuitable.
 - The renderer creates style elements and inline SVG styles. A strict Content
   Security Policy must allow those styles; loading the CDN module additionally
   requires jsDelivr in `script-src`, and default icons require it in `img-src`.

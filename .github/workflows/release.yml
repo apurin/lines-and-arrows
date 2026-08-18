@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Check out the release
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -32,17 +34,17 @@ jobs:
       - name: Use an OIDC-capable npm
         run: npm install --global npm@11.19.0
 
-      - name: Verify the tag and package version agree
-        run: test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
+      - name: Verify the release ref
+        run: |
+          test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
+          test "$(git cat-file -t "$GITHUB_REF_NAME")" = tag
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
       - name: Install release dependencies
         run: npm ci
 
       - name: Run release checks
         run: npm run check
-
-      - name: Inspect the package
-        run: npm pack --dry-run
 
       - name: Publish to npm
         run: npm publish

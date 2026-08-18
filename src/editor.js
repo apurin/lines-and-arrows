@@ -1,55 +1,25 @@
 import {
+  assignStructuralIds,
   cloneDocument,
+  descendantContainerIds,
+  findGroup,
+  findItemLocation,
+  findSectionLocation,
   freezeDocument,
+  getContainer,
+  visitMessages,
 } from "./document.js";
 import { parse } from "./parser.js";
 import { serialize } from "./serialize.js";
 import { isGroupType } from "./grammar.js";
 
-export const ROOT_CONTAINER_ID = "root";
-
-class DocumentIdAllocator {
-  #reserved = new Set([ROOT_CONTAINER_ID]);
+class EditorIdAllocator {
   #nextByKind = new Map();
 
-  reserveDocument(document) {
-    const ids = new Set();
-    const reserve = (value) => {
-      if (value == null || value === "") {
-        return;
-      }
-      if (typeof value !== "string") {
-        throw new Error("Document IDs must be strings.");
-      }
-      if (value === ROOT_CONTAINER_ID) {
-        throw new Error(`Document ID "${value}" is reserved.`);
-      }
-      if (ids.has(value)) {
-        throw new Error(`Duplicate document ID "${value}".`);
-      }
-      ids.add(value);
-    };
-
-    for (const actor of document.actors) {
-      reserve(actor.id);
-    }
-    visitItems(document.items, (item) => reserve(item.id));
-
-    for (const id of ids) {
-      this.#reserved.add(id);
-    }
-  }
-
   next(kind) {
-    let candidateNumber = this.#nextByKind.get(kind) ?? 1;
-    let candidate = `${kind}:edit-${candidateNumber}`;
-    while (this.#reserved.has(candidate)) {
-      candidateNumber += 1;
-      candidate = `${kind}:edit-${candidateNumber}`;
-    }
-    this.#nextByKind.set(kind, candidateNumber + 1);
-    this.#reserved.add(candidate);
-    return candidate;
+    const next = this.#nextByKind.get(kind) ?? 1;
+    this.#nextByKind.set(kind, next + 1);
+    return `${kind}:edit-${next}`;
   }
 }
 
@@ -87,134 +57,6 @@ function requiredGroupType(value) {
     );
   }
   return text;
-}
-
-function visitItems(items, visitor, parentId = ROOT_CONTAINER_ID) {
-  for (let index = 0; index < items.length; index += 1) {
-    const item = items[index];
-    visitor(item, items, index, parentId);
-    if (item.type !== "group") {
-      continue;
-    }
-    if (item.sections.length > 0) {
-      for (const section of item.sections) {
-        visitor(section, item.sections, item.sections.indexOf(section), item.id);
-        visitItems(section.items, visitor, section.id);
-      }
-    } else {
-      visitItems(item.items, visitor, item.id);
-    }
-  }
-}
-
-function assignDocumentIds(document, allocator) {
-  allocator.reserveDocument(document);
-
-  for (const actor of document.actors) {
-    actor.id ||= allocator.next("actor");
-  }
-
-  visitItems(document.items, (item) => {
-    if (item.type === "section") {
-      item.id ||= allocator.next("section");
-    } else {
-      item.id ||= allocator.next("item");
-    }
-  });
-  return document;
-}
-
-export function ensureDocumentIds(document) {
-  const draft = cloneDocument(document);
-  validateDocument(draft);
-  return freezeDocument(
-    assignDocumentIds(draft, new DocumentIdAllocator()),
-  );
-}
-
-export function findItemLocation(document, id) {
-  let match = null;
-  visitItems(document.items, (item, items, index, parentId) => {
-    if (!match && item.type !== "section" && item.id === id) {
-      match = { item, items, index, parentId };
-    }
-  });
-  return match;
-}
-
-export function findSectionLocation(document, id) {
-  let match = null;
-  visitItems(document.items, (item, sections, index, groupId) => {
-    if (!match && item.type === "section" && item.id === id) {
-      match = { section: item, sections, index, groupId };
-    }
-  });
-  return match;
-}
-
-export function findGroup(document, id) {
-  return findItemLocation(document, id)?.item?.type === "group"
-    ? findItemLocation(document, id).item
-    : null;
-}
-
-export function getContainer(document, id) {
-  if (id === ROOT_CONTAINER_ID) {
-    return {
-      id,
-      items: document.items,
-      type: "root",
-      owner: document,
-    };
-  }
-
-  let match = null;
-  visitItems(document.items, (item) => {
-    if (match) {
-      return;
-    }
-    if (item.type === "section" && item.id === id) {
-      match = {
-        id,
-        items: item.items,
-        type: "section",
-        owner: item,
-      };
-      return;
-    }
-    if (
-      item.type === "group" &&
-      item.id === id &&
-      item.sections.length === 0
-    ) {
-      match = {
-        id,
-        items: item.items,
-        type: "group",
-        owner: item,
-      };
-    }
-  });
-  return match;
-}
-
-function visitMessages(items, visitor) {
-  for (const item of items) {
-    if (item.type === "message") {
-      visitor(item);
-      continue;
-    }
-    if (item.type !== "group") {
-      continue;
-    }
-    if (item.sections.length > 0) {
-      for (const section of item.sections) {
-        visitMessages(section.items, visitor);
-      }
-    } else {
-      visitMessages(item.items, visitor);
-    }
-  }
 }
 
 function uniqueActorName(document, preferred = "New actor") {
@@ -299,26 +141,6 @@ function createTimelineItem(document, allocator, type) {
   throw new Error(`Unsupported timeline item type "${type}".`);
 }
 
-function descendantContainerIds(item, ids = new Set()) {
-  if (item.type !== "group") {
-    return ids;
-  }
-  ids.add(item.id);
-  if (item.sections.length > 0) {
-    for (const section of item.sections) {
-      ids.add(section.id);
-      for (const child of section.items) {
-        descendantContainerIds(child, ids);
-      }
-    }
-  } else {
-    for (const child of item.items) {
-      descendantContainerIds(child, ids);
-    }
-  }
-  return ids;
-}
-
 function cleanupEmptyGroups(items) {
   const kept = [];
 
@@ -350,32 +172,23 @@ function cleanupEmptyGroups(items) {
   return kept;
 }
 
-function validateDocument(document) {
-  return serialize(document);
-}
-
 export class DiagramEditor {
-  #document;
-  #ids = new DocumentIdAllocator();
+  #snapshot;
+  #ids = new EditorIdAllocator();
   #undo = [];
   #redo = [];
-  #lastCommand = null;
 
-  constructor(input) {
-    const draft =
-      typeof input === "string" ? parse(input) : cloneDocument(input);
-    validateDocument(draft);
-    this.#document = freezeDocument(
-      assignDocumentIds(draft, this.#ids),
-    );
+  constructor(source) {
+    const document = freezeDocument(assignStructuralIds(parse(source)));
+    this.#snapshot = Object.freeze({ document, source: serialize(document) });
   }
 
   get document() {
-    return this.#document;
+    return this.#snapshot.document;
   }
 
   get source() {
-    return serialize(this.#document);
+    return this.#snapshot.source;
   }
 
   get canUndo() {
@@ -386,51 +199,32 @@ export class DiagramEditor {
     return this.#redo.length > 0;
   }
 
-  get lastCommand() {
-    return this.#lastCommand;
-  }
-
-  #commit(command, mutate) {
-    const before = this.#document;
-    const beforeSource = serialize(before);
-    const draft = cloneDocument(before);
+  #commit(mutate) {
+    const before = this.#snapshot;
+    const draft = cloneDocument(before.document);
     const result = mutate(draft);
     draft.explicitActors = true;
-    assignDocumentIds(draft, this.#ids);
-    const afterSource = validateDocument(draft);
+    const afterSource = serialize(draft);
 
-    if (afterSource === beforeSource) {
+    if (afterSource === before.source) {
       return result;
     }
 
     this.#undo.push(before);
     this.#redo = [];
-    this.#document = freezeDocument(draft);
-    this.#lastCommand = command;
+    this.#snapshot = Object.freeze({
+      document: freezeDocument(draft),
+      source: afterSource,
+    });
     return result;
-  }
-
-  replaceSource(source) {
-    const next = parse(source);
-    const nextSource = serialize(next);
-    if (nextSource === this.source) {
-      return false;
-    }
-    assignDocumentIds(next, this.#ids);
-    this.#undo.push(this.#document);
-    this.#redo = [];
-    this.#document = freezeDocument(next);
-    this.#lastCommand = "source";
-    return true;
   }
 
   undo() {
     if (!this.canUndo) {
       return false;
     }
-    this.#redo.push(this.#document);
-    this.#document = this.#undo.pop();
-    this.#lastCommand = "undo";
+    this.#redo.push(this.#snapshot);
+    this.#snapshot = this.#undo.pop();
     return true;
   }
 
@@ -438,14 +232,13 @@ export class DiagramEditor {
     if (!this.canRedo) {
       return false;
     }
-    this.#undo.push(this.#document);
-    this.#document = this.#redo.pop();
-    this.#lastCommand = "redo";
+    this.#undo.push(this.#snapshot);
+    this.#snapshot = this.#redo.pop();
     return true;
   }
 
-  addActor(index = this.#document.actors.length) {
-    return this.#commit("add-actor", (document) => {
+  addActor(index = this.document.actors.length) {
+    return this.#commit((document) => {
       const actor = {
         type: "actor",
         id: this.#ids.next("actor"),
@@ -465,7 +258,7 @@ export class DiagramEditor {
   }
 
   updateActor(id, patch) {
-    return this.#commit("update-actor", (document) => {
+    return this.#commit((document) => {
       const actor = document.actors.find((candidate) => candidate.id === id);
       if (!actor) {
         throw new Error("Actor not found.");
@@ -508,7 +301,7 @@ export class DiagramEditor {
   }
 
   moveActor(id, index) {
-    return this.#commit("move-actor", (document) => {
+    return this.#commit((document) => {
       const sourceIndex = document.actors.findIndex(
         (actor) => actor.id === id,
       );
@@ -528,7 +321,7 @@ export class DiagramEditor {
   }
 
   removeActor(id) {
-    return this.#commit("remove-actor", (document) => {
+    return this.#commit((document) => {
       const index = document.actors.findIndex((actor) => actor.id === id);
       if (index === -1) {
         throw new Error("Actor not found.");
@@ -565,7 +358,7 @@ export class DiagramEditor {
   }
 
   addItem(parentId, index, type = "message") {
-    return this.#commit(`add-${type}`, (document) => {
+    return this.#commit((document) => {
       const container = getContainer(document, parentId);
       if (!container) {
         throw new Error("Timeline insertion point no longer exists.");
@@ -578,7 +371,7 @@ export class DiagramEditor {
   }
 
   addMessage(parentId, index, properties = {}) {
-    return this.#commit("add-message", (document) => {
+    return this.#commit((document) => {
       const container = getContainer(document, parentId);
       if (!container) {
         throw new Error("Timeline insertion point no longer exists.");
@@ -591,7 +384,7 @@ export class DiagramEditor {
   }
 
   updateItem(id, patch) {
-    return this.#commit("update-item", (document) => {
+    return this.#commit((document) => {
       const location = findItemLocation(document, id);
       if (!location) {
         throw new Error("Timeline item not found.");
@@ -644,7 +437,7 @@ export class DiagramEditor {
   }
 
   removeItem(id) {
-    return this.#commit("remove-item", (document) => {
+    return this.#commit((document) => {
       const location = findItemLocation(document, id);
       if (!location) {
         throw new Error("Timeline item not found.");
@@ -656,7 +449,7 @@ export class DiagramEditor {
   }
 
   removeItems(ids) {
-    return this.#commit("remove-items", (document) => {
+    return this.#commit((document) => {
       const selected = new Set(ids);
       if (selected.size === 0) {
         return null;
@@ -687,7 +480,7 @@ export class DiagramEditor {
   }
 
   moveItem(id, targetParentId, targetIndex) {
-    return this.#commit("move-item", (document) => {
+    return this.#commit((document) => {
       const source = findItemLocation(document, id);
       if (!source) {
         throw new Error("Timeline item not found.");
@@ -721,7 +514,7 @@ export class DiagramEditor {
   }
 
   wrapItems(parentId, ids, groupType = "group", label = "New group") {
-    return this.#commit("group-items", (document) => {
+    return this.#commit((document) => {
       const container = getContainer(document, parentId);
       if (!container) {
         throw new Error("Selected items do not share a parent.");
@@ -758,7 +551,7 @@ export class DiagramEditor {
   }
 
   ungroup(id) {
-    return this.#commit("ungroup", (document) => {
+    return this.#commit((document) => {
       const location = findItemLocation(document, id);
       if (!location || location.item.type !== "group") {
         throw new Error("Group not found.");
@@ -773,7 +566,7 @@ export class DiagramEditor {
   }
 
   convertGroupToSections(id) {
-    return this.#commit("create-sections", (document) => {
+    return this.#commit((document) => {
       const group = findGroup(document, id);
       if (!group) {
         throw new Error("Group not found.");
@@ -805,7 +598,7 @@ export class DiagramEditor {
   }
 
   addSection(groupId, index) {
-    return this.#commit("add-section", (document) => {
+    return this.#commit((document) => {
       const group = findGroup(document, groupId);
       if (!group) {
         throw new Error("Group not found.");
@@ -831,7 +624,7 @@ export class DiagramEditor {
   }
 
   updateSection(id, patch) {
-    return this.#commit("update-section", (document) => {
+    return this.#commit((document) => {
       const location = findSectionLocation(document, id);
       if (!location) {
         throw new Error("Section not found.");
@@ -847,7 +640,7 @@ export class DiagramEditor {
   }
 
   moveSection(id, index) {
-    return this.#commit("move-section", (document) => {
+    return this.#commit((document) => {
       const location = findSectionLocation(document, id);
       if (!location) {
         throw new Error("Section not found.");
@@ -864,7 +657,7 @@ export class DiagramEditor {
   }
 
   removeSection(id) {
-    return this.#commit("remove-section", (document) => {
+    return this.#commit((document) => {
       const location = findSectionLocation(document, id);
       if (!location) {
         throw new Error("Section not found.");

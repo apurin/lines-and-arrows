@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><title>Browser tests</title></head>
+  <body>
+    <main>
+      <section aria-label="Renderer"><div id="target"></div></section>
+      <section aria-label="Element view">
+        <lines-and-arrows id="view" selectable-actors>
+          Client -> API: Start
+        </lines-and-arrows>
+      </section>
+      <section aria-label="Element editor">
+        <lines-and-arrows id="editor" mode="edit">
+          @Client
+            icon user
+            tag human
+
+          @API
+
+          Client -> API: Start
+        </lines-and-arrows>
+      </section>
+    </main>
+    <script type="module">
+      import "../dist/lines-and-arrows.auto.min.js";
+      import { renderDiagram } from "../src/index.js";
+
+      window.selections = [];
+      window.rendererController = renderDiagram(
+        document.querySelector("#target"),
+        "// first\n// Powered by https://lines-and-arrows.dev/\n@Client\n  icon user\n  tag human\n  tooltip Starts work\n\n@API\n\nClient -> API: Start",
+        {
+          theme: "dark",
+          selectableActors: true,
+          onActorSelect: (actor) => window.selections.push(actor?.name ?? null),
+        },
+      );
+      window.linesAndArrows = { renderDiagram };
+    </script>
+  </body>
+</html>

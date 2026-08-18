@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import { validate } from "../src/syntax.js";
 
 function usage(stream = process.stderr) {
-  stream.write(`Usage: lines-and-arrows validate [--json] <file|->
+  stream.write(`Usage: lines-and-arrows [--json] <file|->
 
 Validate a Lines & Arrows diagram source file, or read source from stdin with -.
 
@@ -34,15 +34,17 @@ if (json) {
 
 if (help) {
   usage(process.stdout);
-} else if (args.length !== 2 || args[0] !== "validate") {
+} else if (args.length !== 1) {
   usage();
   process.exitCode = 2;
 } else {
-  const input = args[1];
+  const input = args[0];
 
   try {
     const source =
-      input === "-" ? await readStdin() : await readFile(input, "utf8");
+      input === "-"
+        ? await readStdin()
+        : await readFile(input, "utf8");
     const result = validate(source);
     const file = input === "-" ? "<stdin>" : input;
 

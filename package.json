@@ -1,6 +1,6 @@
 {
   "name": "lines-and-arrows",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "A lightweight sequence diagram language, SVG viewer, and visual editor.",
   "homepage": "https://lines-and-arrows.dev",
   "repository": {
@@ -50,12 +50,15 @@
   ],
   "scripts": {
     "build": "node ./scripts/build.mjs",
-    "test": "node --test",
-    "check": "npm test && npm run check:types && npm run build",
-    "check:types": "tsc --project type-tests/tsconfig.json",
+    "test": "npm run check:package && npm run test:node && npm run test:browser",
+    "test:browser": "node --test test/browser.test.js",
+    "test:node": "node --test test/editor.test.js test/layout.test.js test/syntax.test.js",
+    "check": "npm test && npm run check:types",
+    "check:package": "npm run build && node ./scripts/check-package.mjs",
+    "check:types": "tsc --project type-tests/tsconfig.json && tsc --project type-tests/tsconfig.syntax.json",
     "prepack": "npm run build",
     "website:prepare": "node ./scripts/sync-website-version.mjs",
-    "validate": "node ./bin/lines-and-arrows.js validate"
+    "validate": "node ./bin/lines-and-arrows.js"
   },
   "keywords": [
     "sequence-diagram",
@@ -74,6 +77,7 @@
   },
   "devDependencies": {
     "esbuild": "0.25.12",
+    "playwright-core": "1.62.1",
     "typescript": "7.0.2"
   },
   "allowScripts": {

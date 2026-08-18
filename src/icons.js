@@ -1,7 +1,7 @@
 import { phosphorIconNames } from "./phosphor-icon-names.js";
 
-export const PHOSPHOR_ICON_VERSION = "2.1.1";
-export const PHOSPHOR_ICON_WEIGHT = "bold";
+const PHOSPHOR_ICON_VERSION = "2.1.1";
+const PHOSPHOR_ICON_WEIGHT = "bold";
 
 const PHOSPHOR_ICON_BASE =
   `https://cdn.jsdelivr.net/npm/@phosphor-icons/core@${PHOSPHOR_ICON_VERSION}` +
@@ -77,21 +77,4 @@ export function phosphorIconResolver(name) {
     return null;
   }
   return `${PHOSPHOR_ICON_BASE}/${encodeURIComponent(normalizedName)}-${PHOSPHOR_ICON_WEIGHT}.svg`;
-}
-
-export function withDefaultIconOptions(options = {}) {
-  const usesDefaultResolver = options.iconResolver === undefined;
-  return {
-    ...options,
-    iconResolver:
-      usesDefaultResolver
-        ? phosphorIconResolver
-        : options.iconResolver,
-    iconCatalog:
-      options.iconCatalog === undefined
-        ? usesDefaultResolver
-          ? phosphorIconCatalog
-          : []
-        : options.iconCatalog,
-  };
 }

@@ -1,6 +1,5 @@
 import type {
   DiagramDocument,
-  DiagramDocumentSnapshot,
   ValidationResult,
 } from "./model.js";
 
@@ -9,7 +8,6 @@ export type {
   Arrow,
   Comment,
   DiagramDocument,
-  DiagramDocumentSnapshot,
   Gap,
   Group,
   Message,
@@ -23,11 +21,9 @@ export type {
 
 export class LinesAndArrowsSyntaxError extends SyntaxError {
   constructor(message: string, line: number);
-  line: number;
+  readonly line: number;
 }
 
 export function parse(source: string): DiagramDocument;
-export function serialize(
-  document: DiagramDocument | DiagramDocumentSnapshot,
-): string;
+export function serialize(document: DiagramDocument): string;
 export function validate(source: string): ValidationResult;

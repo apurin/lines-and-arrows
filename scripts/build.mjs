@@ -7,30 +7,14 @@ const outputDirectory = new URL("../dist/", import.meta.url);
 await rm(outputDirectory, { force: true, recursive: true });
 await mkdir(outputDirectory, { recursive: true });
 
-const shared = {
+await build({
   bundle: true,
+  entryPoints: [new URL("../src/auto.js", import.meta.url).pathname],
   format: "esm",
   minify: true,
+  outfile: new URL(
+    "lines-and-arrows.auto.min.js",
+    outputDirectory,
+  ).pathname,
   platform: "browser",
-  sourcemap: true,
-  target: "es2022",
-};
-
-await Promise.all([
-  build({
-    ...shared,
-    entryPoints: [new URL("../src/index.js", import.meta.url).pathname],
-    outfile: new URL(
-      "lines-and-arrows.min.js",
-      outputDirectory,
-    ).pathname,
-  }),
-  build({
-    ...shared,
-    entryPoints: [new URL("../src/auto.js", import.meta.url).pathname],
-    outfile: new URL(
-      "lines-and-arrows.auto.min.js",
-      outputDirectory,
-    ).pathname,
-  }),
-]);
+});

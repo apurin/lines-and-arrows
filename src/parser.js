@@ -1,8 +1,6 @@
 import { decodeText } from "./text.js";
-import {
-  GROUP_LINE_PATTERN,
-  MAX_NESTING_DEPTH,
-} from "./grammar.js";
+import { GROUP_LINE_PATTERN } from "./grammar.js";
+import { visitMessages } from "./document.js";
 
 const ARROW_PATTERN =
   /^(.*?)\s+(-->|->x|->)\s+([^:]+?)(?::\s*(.*))?$/;
@@ -40,13 +38,6 @@ function makeLine(raw, index) {
   if (leading % 2 !== 0) {
     fail("Indentation must use exactly two spaces per level.", index + 1);
   }
-  if (leading / 2 > MAX_NESTING_DEPTH) {
-    fail(
-      `Nesting cannot exceed ${MAX_NESTING_DEPTH} indentation levels.`,
-      index + 1,
-    );
-  }
-
   const content = raw.slice(leading);
   return {
     raw,
@@ -90,7 +81,7 @@ function assertActorName(value, line) {
 }
 
 function createCursor(source) {
-  const normalized = String(source ?? "").replace(/\r\n?/g, "\n");
+  const normalized = source.replace(/\r\n?/g, "\n");
   return {
     lines: normalized.split("\n").map(makeLine),
     index: 0,
@@ -210,7 +201,7 @@ function parseActor(cursor, leadingComments = []) {
   };
 }
 
-function parseMessage(cursor, line, match, path, leadingComments = []) {
+function parseMessage(cursor, line, match, leadingComments = []) {
   const source = assertActorName(match[1], line.number);
   const arrow = match[2];
   const target = assertActorName(match[3], line.number);
@@ -228,7 +219,6 @@ function parseMessage(cursor, line, match, path, leadingComments = []) {
 
   return {
     type: "message",
-    id: `item:${path.join(".")}`,
     source,
     target,
     arrow,
@@ -245,8 +235,6 @@ function parseMessage(cursor, line, match, path, leadingComments = []) {
 function parseSection(
   cursor,
   indent,
-  groupPath,
-  sectionIndex,
   leadingComments = [],
 ) {
   const line = cursor.lines[cursor.index];
@@ -266,7 +254,6 @@ function parseSection(
   const parsedBody = parseItems(
     cursor,
     indent + 1,
-    [...groupPath, sectionIndex],
     bodyComments,
     indent,
   );
@@ -277,10 +264,8 @@ function parseSection(
 
   return {
     type: "section",
-    id: `section:${[...groupPath, sectionIndex].join(".")}`,
     label,
     items: parsedBody.items,
-    line: line.number,
     leadingComments: relativeComments(leadingComments, line.indent),
     bodyTrailingComments: parsedBody.trailingComments,
   };
@@ -289,7 +274,6 @@ function parseSection(
 function parseSections(
   cursor,
   indent,
-  groupPath,
   initialComments,
   ownerIndent,
 ) {
@@ -298,7 +282,7 @@ function parseSections(
 
   while (cursor.index < cursor.lines.length) {
     const sectionLine = cursor.lines[cursor.index];
-    if (!sectionLine || sectionLine.indent < indent) {
+    if (sectionLine.indent < indent) {
       break;
     }
     if (sectionLine.indent !== indent) {
@@ -314,8 +298,6 @@ function parseSections(
       parseSection(
         cursor,
         indent,
-        groupPath,
-        sections.length,
         pendingComments,
       ),
     );
@@ -328,7 +310,7 @@ function parseSections(
   };
 }
 
-function parseGroup(cursor, line, match, path, leadingComments = []) {
+function parseGroup(cursor, line, match, leadingComments = []) {
   const groupType = match[1];
   const label = optionalText(match[2]);
   cursor.index += 1;
@@ -343,7 +325,6 @@ function parseGroup(cursor, line, match, path, leadingComments = []) {
     fail("Group contents must be indented by one level.", next.number);
   }
 
-  const groupPath = path;
   let sections = [];
   let items = [];
   let bodyTrailingComments = [];
@@ -352,7 +333,6 @@ function parseGroup(cursor, line, match, path, leadingComments = []) {
     const parsedSections = parseSections(
       cursor,
       bodyIndent,
-      groupPath,
       bodyComments,
       line.indent,
     );
@@ -362,7 +342,6 @@ function parseGroup(cursor, line, match, path, leadingComments = []) {
     const parsedBody = parseItems(
       cursor,
       bodyIndent,
-      groupPath,
       bodyComments,
       line.indent,
     );
@@ -385,18 +364,16 @@ function parseGroup(cursor, line, match, path, leadingComments = []) {
 
   return {
     type: "group",
-    id: `item:${path.join(".")}`,
     groupType,
     label,
     items,
     sections,
-    line: line.number,
     leadingComments: relativeComments(leadingComments, line.indent),
     bodyTrailingComments,
   };
 }
 
-function parseGap(cursor, line, path, leadingComments = []) {
+function parseGap(cursor, line, leadingComments = []) {
   const label = assertText(line.content.slice(4), "Gap label", line.number);
   cursor.index += 1;
 
@@ -416,9 +393,7 @@ function parseGap(cursor, line, path, leadingComments = []) {
 
   return {
     type: "gap",
-    id: `item:${path.join(".")}`,
     label,
-    line: line.number,
     leadingComments: relativeComments(leadingComments, line.indent),
   };
 }
@@ -426,7 +401,6 @@ function parseGap(cursor, line, path, leadingComments = []) {
 function parseItems(
   cursor,
   indent,
-  parentPath = [],
   initialComments,
   ownerIndent = Math.max(0, indent - 1),
 ) {
@@ -436,10 +410,6 @@ function parseItems(
 
   while (cursor.index < cursor.lines.length) {
     const line = cursor.lines[cursor.index];
-    if (!line) {
-      break;
-    }
-
     if (line.indent < indent) {
       break;
     }
@@ -453,10 +423,8 @@ function parseItems(
       fail("Actor declarations must appear before the timeline.", line.number);
     }
 
-    const path = [...parentPath, items.length];
-
     if (line.content.startsWith("gap ")) {
-      items.push(parseGap(cursor, line, path, pendingComments));
+      items.push(parseGap(cursor, line, pendingComments));
       pendingComments = consumeTrivia(cursor, indent);
       continue;
     }
@@ -467,7 +435,7 @@ function parseItems(
     const messageMatch = line.content.match(ARROW_PATTERN);
     if (messageMatch) {
       items.push(
-        parseMessage(cursor, line, messageMatch, path, pendingComments),
+        parseMessage(cursor, line, messageMatch, pendingComments),
       );
       pendingComments = consumeTrivia(cursor, indent);
       continue;
@@ -480,7 +448,7 @@ function parseItems(
     const groupMatch = line.content.trimEnd().match(GROUP_LINE_PATTERN);
     if (groupMatch) {
       items.push(
-        parseGroup(cursor, line, groupMatch, path, pendingComments),
+        parseGroup(cursor, line, groupMatch, pendingComments),
       );
       pendingComments = consumeTrivia(cursor, indent);
       continue;
@@ -493,25 +461,6 @@ function parseItems(
     items,
     trailingComments: relativeComments(pendingComments, ownerIndent),
   };
-}
-
-function visitMessages(items, visitor) {
-  for (const item of items) {
-    if (item.type === "message") {
-      visitor(item);
-      continue;
-    }
-    if (item.type !== "group") {
-      continue;
-    }
-    if (item.sections.length > 0) {
-      for (const section of item.sections) {
-        visitMessages(section.items, visitor);
-      }
-    } else {
-      visitMessages(item.items, visitor);
-    }
-  }
 }
 
 function resolveActors(explicitActors, items) {
@@ -546,7 +495,6 @@ function resolveActors(explicitActors, items) {
           tooltip: null,
           tooltipIcon: null,
           line: message.line,
-          inferred: true,
           leadingComments: [],
           propertyComments: [],
         };
@@ -559,7 +507,10 @@ function resolveActors(explicitActors, items) {
 }
 
 function publicActor(actor) {
-  const { line: _line, ...result } = actor;
+  const {
+    line: _line,
+    ...result
+  } = actor;
   return result;
 }
 
@@ -604,7 +555,6 @@ export function parse(source) {
   const parsedTimeline = parseItems(
     cursor,
     0,
-    [],
     pendingComments,
     0,
   );

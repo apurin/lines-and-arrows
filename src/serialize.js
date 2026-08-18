@@ -1,9 +1,7 @@
+import { visitMessages } from "./document.js";
 import { parse } from "./parser.js";
 import { encodeText } from "./text.js";
-import {
-  isGroupType,
-  MAX_NESTING_DEPTH,
-} from "./grammar.js";
+import { isGroupType } from "./grammar.js";
 
 function requireArray(value, path) {
   if (!Array.isArray(value)) {
@@ -56,7 +54,7 @@ function commentList(owner, property, path, options = {}) {
   return value;
 }
 
-function assertTimelineStructure(items, path, depth = 0) {
+function assertTimelineStructure(items, path) {
   requireArray(items, path);
 
   items.forEach((item, index) => {
@@ -98,11 +96,6 @@ function assertTimelineStructure(items, path, depth = 0) {
         `${itemPath}.groupType must start with a lowercase letter, contain only lowercase letters, numbers, or hyphens, and cannot be the reserved "gap" keyword.`,
       );
     }
-    if (depth >= MAX_NESTING_DEPTH) {
-      throw new TypeError(
-        `${itemPath} exceeds the maximum group nesting depth of ${MAX_NESTING_DEPTH}.`,
-      );
-    }
     requireOptionalString(item.label, `${itemPath}.label`);
     commentList(item, "leadingComments", itemPath);
     commentList(item, "bodyTrailingComments", itemPath);
@@ -114,7 +107,7 @@ function assertTimelineStructure(items, path, depth = 0) {
       );
     }
 
-    assertTimelineStructure(item.items, `${itemPath}.items`, depth + 1);
+    assertTimelineStructure(item.items, `${itemPath}.items`);
     item.sections.forEach((section, sectionIndex) => {
       const sectionPath = `${itemPath}.sections[${sectionIndex}]`;
       if (
@@ -130,7 +123,6 @@ function assertTimelineStructure(items, path, depth = 0) {
       assertTimelineStructure(
         section.items,
         `${sectionPath}.items`,
-        depth + 1,
       );
     });
   });
@@ -192,30 +184,14 @@ function assertDocumentStructure(document) {
 
   const inferredNames = [];
   const seenNames = new Set();
-  const visitMessages = (items) => {
-    for (const item of items) {
-      if (item.type === "message") {
-        for (const name of [item.source, item.target]) {
-          if (!seenNames.has(name)) {
-            seenNames.add(name);
-            inferredNames.push(name);
-          }
-        }
-        continue;
-      }
-      if (item.type !== "group") {
-        continue;
-      }
-      if (item.sections.length > 0) {
-        for (const section of item.sections) {
-          visitMessages(section.items);
-        }
-      } else {
-        visitMessages(item.items);
+  visitMessages(document.items, (message) => {
+    for (const name of [message.source, message.target]) {
+      if (!seenNames.has(name)) {
+        seenNames.add(name);
+        inferredNames.push(name);
       }
     }
-  };
-  visitMessages(document.items);
+  });
 
   if (document.explicitActors) {
     if (document.actors.length === 0) {

@@ -1,15 +1,16 @@
-export const CDN_VERSION = "0.11.0";
+export const CDN_VERSION = "0.12.0";
 
-const CDN_URL =
-  `https://cdn.jsdelivr.net/npm/lines-and-arrows@${CDN_VERSION}` +
-  "/dist/lines-and-arrows.min.js";
 const localDevelopment =
   location.hostname === "127.0.0.1" || location.hostname === "localhost";
-const runtimeUrl = localDevelopment ? "../src/index.js" : CDN_URL;
+const packageBase = localDevelopment
+  ? ".."
+  : `https://cdn.jsdelivr.net/npm/lines-and-arrows@${CDN_VERSION}`;
+const cacheKey = localDevelopment ? new URL(import.meta.url).search : "";
+const autoUrl =
+  `${packageBase}/dist/lines-and-arrows.auto.min.js${cacheKey}`;
 
-let runtime;
 try {
-  runtime = await import(runtimeUrl);
+  await import(autoUrl);
 } catch (error) {
   for (const loading of document.querySelectorAll(".diagram-loading")) {
     loading.textContent =
@@ -26,10 +27,3 @@ try {
   document.body?.classList.remove("is-loading");
   throw error;
 }
-
-export const {
-  defineLinesAndArrows,
-  parse,
-  phosphorIconCatalog,
-  phosphorIconResolver,
-} = runtime;

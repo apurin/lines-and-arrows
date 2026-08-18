@@ -257,7 +257,7 @@
     </main>
 
     <script type="module">
-      import { defineLinesAndArrows } from "../src/index.js";
+      import { defineLinesAndArrows } from "../src/element.js";
 
       defineLinesAndArrows();
 
@@ -370,18 +370,21 @@ API --> Customer: Present result`;
         if (diagram.mode !== "view") {
           return;
         }
-        modeHelp.textContent = detail.actor
+        modeHelp.textContent = detail
           ? `View mode. Selected ${detail.name}${
-              detail.actor.tooltip ? ` — ${detail.actor.tooltip}` : ""
+              detail.tooltip ? ` — ${detail.tooltip}` : ""
             }.`
           : "View mode. Select actors without editing them.";
       });
 
       const applySourceEdit = () => {
         sourceError.textContent = "";
-        const result = diagram.replaceSource(sourceInput.value);
-        if (result !== null && result !== false) {
+        try {
+          diagram.source = sourceInput.value;
           sourceInput.value = diagram.source;
+        } catch (error) {
+          sourceError.textContent =
+            error instanceof Error ? error.message : "Unable to apply source.";
         }
       };
 

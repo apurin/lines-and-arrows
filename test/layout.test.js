@@ -1,178 +1,66 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 
-import { layoutDiagram } from "../src/layout.js";
-import { messageLabelMetrics } from "../src/metadata.js";
+import { assignStructuralIds } from "../src/document.js";
+import { layoutDiagram, layoutDiagramWithoutHeader } from "../src/layout.js";
+import { selfMessageWidth } from "../src/metadata.js";
 import { parse } from "../src/parser.js";
 
-test("keeps compact first messages clear of actor metadata", () => {
-  const layout = layoutDiagram(
-    parse(`@Human
-  tag tiny request
-  tooltip A request whose size has not yet been verified
+function layout(source, withoutHeader = false) {
+  const document = assignStructuralIds(parse(source));
+  return withoutHeader ? layoutDiagramWithoutHeader(document) : layoutDiagram(document);
+}
+
+test("actors, metadata, and the first message do not overlap", () => {
+  const result = layout(`@Human
+  tag reviewer
+  tooltip Reviews the finished result
 
 @Agent
 
-Human -> Agent: Make one tiny change`),
-    {
-      actorHeight: 42,
-      actorMetadataGap: 6,
-      actorMetadataHeight: 20,
-      timelineTopGap: 20,
-      messageHeight: 36,
-    },
-  );
-  const human = layout.actorByName.get("Human");
-  const firstMessage = layout.rows[0];
+Human -> Agent: Make one focused change`);
+  const human = result.actorByName.get("Human");
+  const message = result.rows[0];
   const metadataBottom =
-    human.y +
-    human.height +
-    layout.options.actorMetadataGap +
-    layout.options.actorMetadataHeight;
-  const messageLabelTop = firstMessage.y - 21;
+    human.y + human.height + result.options.actorMetadataGap + result.options.actorMetadataHeight;
 
-  assert.equal(layout.options.timelineTopGap, 33);
-  assert.ok(messageLabelTop >= metadataBottom + 4);
-
-  const selfLayout = layoutDiagram(
-    parse(`@Agent
-  tag working
-
-Agent -> Agent: Check the plan`),
-    {
-      actorHeight: 42,
-      actorMetadataGap: 6,
-      actorMetadataHeight: 20,
-      timelineTopGap: 20,
-      messageHeight: 36,
-    },
-  );
-  const agent = selfLayout.actorByName.get("Agent");
-  const selfMessage = selfLayout.rows[0];
-  const selfMetadataBottom =
-    agent.y +
-    agent.height +
-    selfLayout.options.actorMetadataGap +
-    selfLayout.options.actorMetadataHeight;
-  const selfLabelTop = selfMessage.y - 34;
-
-  assert.equal(selfLayout.options.timelineTopGap, 33);
-  assert.ok(selfLabelTop >= selfMetadataBottom + 4);
+  assert.ok(message.top >= metadataBottom + 4);
+  assert.ok(result.actors[1].x >= human.x + human.width);
+  assert.ok(result.width >= result.actors[1].x + result.actors[1].width);
 });
 
-test("reserves the compact diagram header above actors", () => {
-  const defaultLayout = layoutDiagram(parse("A -> B"));
-  const compactLayout = layoutDiagram(parse("A -> B"), { marginTop: 0 });
-
-  assert.equal(defaultLayout.options.marginTop, 28);
-  assert.equal(defaultLayout.actors[0].y, 28);
-  assert.equal(compactLayout.options.marginTop, 28);
-  assert.equal(compactLayout.actors[0].y, 28);
-});
-
-test("keeps the default horizontal inset minimal and accepts zero", () => {
-  const source = parse(`@A
-@B
-@C
-@D
-
-A -> D`);
-  const layout = layoutDiagram(source);
-  const lastActor = layout.actors.at(-1);
-
-  assert.equal(layout.options.marginX, 2);
-  assert.equal(layout.actors[0].x, 2);
-  assert.equal(
-    layout.width - (lastActor.x + lastActor.width),
-    2,
-  );
-
-  const flush = layoutDiagram(source, { marginX: 0 });
-  const flushLastActor = flush.actors.at(-1);
-
-  assert.equal(flush.options.marginX, 0);
-  assert.equal(flush.actors[0].x, 0);
-  assert.equal(
-    flush.width - (flushLastActor.x + flushLastActor.width),
-    0,
-  );
-});
-
-test("keeps compact group and section spacing visually safe", () => {
-  const layout = layoutDiagram(
-    parse(`@Agent
+test("nested groups contain multiline rows and self messages", () => {
+  const result = layout(String.raw`@Agent
 @Worker
 
-parallel First pass
-  | code
-    Agent -> Worker: Update
-  | verification
-    Agent -> Worker: Test
-choice Test result
-  | passed
-    Worker --> Agent: Continue
-  | failed
-    Worker --> Agent: Fix`),
-    {
-      groupHeaderHeight: 16,
-      sectionHeaderHeight: 12,
-      groupPaddingBottom: 2,
-      groupGap: 2,
-    },
-  );
+critical First\nsecond
+  parallel Work
+    | local
+      Worker -> Worker: Long self message that needs room
+    | remote
+      Agent -> Worker: First\nsecond
+      gap Next\nday`);
 
-  assert.equal(layout.options.groupHeaderHeight, 24);
-  assert.equal(layout.options.sectionHeaderHeight, 24);
-  assert.equal(layout.options.groupPaddingBottom, 6);
-  assert.equal(layout.options.groupGap, 8);
-
-  for (const section of layout.sections) {
-    assert.equal(section.y - section.top, 12);
+  for (const group of result.groups) {
+    assert.ok(group.bottom > group.top);
+    const nestedRows = result.rows.filter((row) => row.top >= group.top && row.bottom <= group.bottom);
+    assert.ok(nestedRows.length > 0);
   }
-
-  for (let index = 1; index < layout.groups.length; index += 1) {
-    assert.ok(
-      layout.groups[index].top - layout.groups[index - 1].bottom >= 8,
-    );
-  }
+  assert.ok(result.rows.every((row) => row.bottom <= result.height));
+  const selfMessage = result.rows.find((row) => row.source === row.target);
+  const worker = result.actorByName.get("Worker");
+  const messageRight =
+    worker.centerX +
+    selfMessageWidth(selfMessage, result.options.messageLabelMaxWidth);
+  assert.ok(result.groups[1].right > messageRight);
+  assert.ok(result.groups[0].right > result.groups[1].right);
 });
 
-test("reserves visible rows for intentional line breaks", () => {
-  const single = layoutDiagram(
-    parse(`A -> B: One line
-choice One line
-  | one line
-    gap One line
-    A --> B: Done`),
-  );
-  const multiline = layoutDiagram(
-    parse(String.raw`A -> B: First\nsecond
-choice First\nsecond
-  | first\nsecond
-    gap First\nsecond
-    A --> B: Done`),
-  );
+test("header-free diagrams use the top edge", () => {
+  const source = "A -> B: One";
+  const withHeader = layout(source);
+  const withoutHeader = layout(source, true);
 
-  assert.deepEqual(
-    messageLabelMetrics("First\nsecond").visibleLines,
-    ["First", "second"],
-  );
-  assert.equal(
-    multiline.rows[0].height - single.rows[0].height,
-    13,
-  );
-  assert.equal(
-    multiline.groups[0].headerHeight -
-      single.groups[0].headerHeight,
-    13,
-  );
-  assert.equal(
-    multiline.sections[0].headerHeight -
-      single.sections[0].headerHeight,
-    12,
-  );
-  assert.equal(
-    multiline.rows[1].height - single.rows[1].height,
-    12,
-  );
+  assert.equal(withoutHeader.actors[0].y, 0);
+  assert.ok(withHeader.actors[0].y > withoutHeader.actors[0].y);
 });

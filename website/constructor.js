@@ -1,11 +1,6 @@
-import {
-  CDN_VERSION,
-  defineLinesAndArrows,
-  parse,
-} from "./runtime.js?v=20260808-1";
+import { CDN_VERSION } from "./runtime.js?v=20260818-2";
 import { initializeSiteTheme } from "./site.js?v=20260806-2";
 
-defineLinesAndArrows();
 initializeSiteTheme();
 
 const diagram = document.querySelector("#constructor-diagram");
@@ -25,7 +20,6 @@ const copySourceInput = document.querySelector(
   "[data-option-copy-source]",
 );
 const transparentInput = document.querySelector("[data-option-transparent]");
-const historyInput = document.querySelector("[data-option-history]");
 const resetButton = document.querySelector("[data-reset-constructor]");
 const copyButton = document.querySelector("[data-copy-embed]");
 const copyStatus = document.querySelector("#constructor-copy-status");
@@ -92,7 +86,6 @@ const defaultState = Object.freeze({
   modeToggleExample: false,
   selectableActors: false,
   actorSelectionExample: false,
-  historyControls: true,
   branding: true,
   copySource: true,
   transparent: true,
@@ -115,7 +108,6 @@ const readSavedState = () => {
       "modeToggleExample",
       "selectableActors",
       "actorSelectionExample",
-      "historyControls",
       "branding",
       "copySource",
       "transparent",
@@ -128,7 +120,6 @@ const readSavedState = () => {
       restoredState.theme = savedState.theme;
     }
     if (typeof savedState.source === "string") {
-      parse(savedState.source);
       restoredState.source = savedState.source;
     }
 
@@ -190,7 +181,6 @@ const buildHtml = () => {
     `mode="${editing ? "edit" : "view"}"`,
     `theme="${theme.scheme}"`,
     state.selectableActors ? "selectable-actors" : null,
-    !state.historyControls ? 'history-controls="false"' : null,
     `branding="${state.branding}"`,
     !state.copySource ? 'copy-source="false"' : null,
     `canvas-background="${state.transparent ? "transparent" : "solid"}"`,
@@ -209,7 +199,7 @@ const buildHtml = () => {
 
   return `<!doctype html>
 <script type="module"
-  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@${packageVersion}">
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@${packageVersion}/dist/lines-and-arrows.auto.min.js">
 </script>
 
 ${toggleButton}<lines-and-arrows
@@ -237,7 +227,6 @@ const renderCode = () => {
   }
   interactionDescriptions.push(
     `selectable actors ${state.selectableActors ? "on" : "off"}`,
-    `undo and redo buttons ${state.historyControls ? "on" : "off"}`,
     `copy source ${state.copySource ? "on" : "off"}`,
   );
   codeSummary.textContent = `${initialStateDescription}, ${interactionDescriptions.join(
@@ -259,7 +248,6 @@ const renderControlState = () => {
   modeToggleInput.checked = state.modeToggleExample;
   selectableActorsInput.checked = state.selectableActors;
   actorSelectionExampleInput.checked = state.actorSelectionExample;
-  historyInput.checked = state.historyControls;
   brandingInput.checked = state.branding;
   copySourceInput.checked = state.copySource;
   transparentInput.checked = state.transparent;
@@ -282,7 +270,6 @@ const renderPreview = () => {
   diagram.canvasBackground = state.transparent ? "transparent" : "solid";
   diagram.branding = state.branding;
   diagram.copySource = state.copySource;
-  diagram.historyControls = state.historyControls;
 };
 
 const render = () => {
@@ -332,11 +319,6 @@ actorSelectionExampleInput.addEventListener("change", () => {
   if (state.actorSelectionExample) {
     state.selectableActors = true;
   }
-  render();
-});
-
-historyInput.addEventListener("change", () => {
-  state.historyControls = historyInput.checked;
   render();
 });
 
@@ -392,8 +374,12 @@ resetButton.addEventListener("click", () => {
 });
 
 try {
-  parse(state.source);
-  diagram.source = state.source;
+  try {
+    diagram.source = state.source;
+  } catch {
+    Object.assign(state, defaultState);
+    diagram.source = state.source;
+  }
   diagram.mode = "edit";
   render();
   stage.classList.add("is-ready");

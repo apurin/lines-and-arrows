@@ -29,26 +29,6 @@ const DEFAULTS = {
   bottomPadding: 36,
 };
 
-const MINIMUMS = {
-  actorWidth: 56,
-  actorHeight: 42,
-  actorMetadataGap: 4,
-  actorMetadataHeight: 20,
-  actorGap: 8,
-  marginX: 0,
-  marginTop: 28,
-  timelineTopGap: 8,
-  messageHeight: 36,
-  messageMetadataHeight: 16,
-  messageLabelMaxWidth: 56,
-  gapHeight: 40,
-  groupHeaderHeight: 24,
-  sectionHeaderHeight: 24,
-  groupPaddingBottom: 6,
-  groupGap: 8,
-  bottomPadding: 18,
-};
-
 const ACTOR_METADATA_TIMELINE_GAP = 4;
 const MESSAGE_LABEL_TOP_EXTENT = 21;
 const SELF_MESSAGE_LABEL_TOP_EXTENT = 34;
@@ -61,35 +41,7 @@ const GROUP_SELF_MESSAGE_RIGHT_PADDING = 20;
 const GROUP_LABEL_LINE_HEIGHT = 13;
 const SECTION_LABEL_LINE_HEIGHT = 12;
 const GAP_LABEL_LINE_HEIGHT = 12;
-const LIFELINE_LABEL_MIN_ROWS = 6;
 const LIFELINE_END_OFFSET = 8;
-const LIFELINE_LABEL_BASELINE_OFFSET = 14;
-const LIFELINE_LABEL_BOTTOM_CLEARANCE = 4;
-const LABELED_LIFELINE_BOTTOM_PADDING =
-  LIFELINE_END_OFFSET +
-  LIFELINE_LABEL_BASELINE_OFFSET +
-  LIFELINE_LABEL_BOTTOM_CLEARANCE;
-
-function resolveOptions(
-  overrides,
-  minimumMarginTop = MINIMUMS.marginTop,
-) {
-  const options = { ...DEFAULTS };
-  const requested =
-    overrides && typeof overrides === "object" ? overrides : {};
-
-  for (const key of Object.keys(DEFAULTS)) {
-    const override = requested[key];
-    if (!Number.isFinite(override)) {
-      continue;
-    }
-    const minimum =
-      key === "marginTop" ? minimumMarginTop : MINIMUMS[key];
-    options[key] = Math.max(minimum, override);
-  }
-
-  return options;
-}
 
 function firstItemLabelAdjustment(document, options) {
   const item = document.items[0];
@@ -372,12 +324,8 @@ function layoutItems(
   }
 }
 
-function computeLayout(
-  document,
-  overrides = {},
-  minimumMarginTop = MINIMUMS.marginTop,
-) {
-  const options = resolveOptions(overrides, minimumMarginTop);
+function computeLayout(document, marginTop = DEFAULTS.marginTop) {
+  const options = { ...DEFAULTS, marginTop };
   reserveActorMetadata(document, options);
   const selfMessageWidths = new Map();
   const messageLabelWidths = new Map();
@@ -502,12 +450,6 @@ function computeLayout(
     baseWidth,
     expandedGroupRight + options.marginX,
   );
-  if (state.rows.length >= LIFELINE_LABEL_MIN_ROWS) {
-    options.bottomPadding = Math.max(
-      options.bottomPadding,
-      LABELED_LIFELINE_BOTTOM_PADDING,
-    );
-  }
   const height = state.y + options.bottomPadding;
   const actorByName = state.actorByName;
 
@@ -528,14 +470,10 @@ function computeLayout(
   };
 }
 
-export function layoutDiagram(document, overrides = {}) {
-  return computeLayout(document, overrides);
+export function layoutDiagram(document) {
+  return computeLayout(document);
 }
 
-export function layoutDiagramWithoutHeader(document, overrides = {}) {
-  return computeLayout(
-    document,
-    { ...overrides, marginTop: 0 },
-    0,
-  );
+export function layoutDiagramWithoutHeader(document) {
+  return computeLayout(document, 0);
 }
