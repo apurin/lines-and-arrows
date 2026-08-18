@@ -9,8 +9,37 @@
     />
     <title>Constructor - Lines &amp; Arrows</title>
     <link rel="canonical" href="https://lines-and-arrows.dev/constructor" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Lines &amp; Arrows" />
+    <meta property="og:title" content="Constructor - Lines &amp; Arrows" />
+    <meta
+      property="og:description"
+      content="Build an editable Lines &amp; Arrows diagram, choose its embed settings and theme, then copy the exact HTML."
+    />
+    <meta property="og:url" content="https://lines-and-arrows.dev/constructor" />
+    <meta
+      property="og:image"
+      content="https://lines-and-arrows.dev/assets/social-card.png"
+    />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="A Lines &amp; Arrows sequence diagram showing a person and AI agent creating readable diagram source, rendering it, and sharing it with a team."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Constructor - Lines &amp; Arrows" />
+    <meta
+      name="twitter:description"
+      content="Build a diagram, choose its embed settings, and copy the exact HTML."
+    />
+    <meta
+      name="twitter:image"
+      content="https://lines-and-arrows.dev/assets/social-card.png"
+    />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20260818-1" />
+    <link rel="stylesheet" href="./styles.css?v=20260818-2" />
   </head>
   <body class="constructor-page is-loading">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -67,6 +96,16 @@
         </header>
 
         <section class="constructor-controls" aria-label="Embed settings">
+          <div class="constructor-controls-toolbar">
+            <p>Your progress is saved.</p>
+            <button
+              type="button"
+              class="button button-secondary constructor-reset-button"
+              data-reset-constructor
+            >
+              Reset constructor
+            </button>
+          </div>
           <fieldset class="constructor-fieldset constructor-behavior-fieldset">
             <legend>Behavior</legend>
             <div class="constructor-behavior-grid">
@@ -126,7 +165,6 @@
                     <input
                       type="checkbox"
                       data-option-selectable-actors
-                      checked
                     />
                     <span class="constructor-switch" aria-hidden="true"></span>
                   </label>
@@ -296,7 +334,7 @@
               </label>
               <label class="constructor-toggle-setting">
                 <span><strong>Transparent canvas</strong></span>
-                <input type="checkbox" data-option-transparent />
+                <input type="checkbox" data-option-transparent checked />
                 <span class="constructor-switch" aria-hidden="true"></span>
               </label>
             </div>
@@ -319,7 +357,7 @@
               theme="auto"
               mode="edit"
               branding="true"
-              canvas-background="solid"
+              canvas-background="transparent"
               label="Editable sequence diagram"
             ></lines-and-arrows>
           </div>
@@ -336,7 +374,7 @@
             <div>
               <h2 id="constructor-code-title">Paste this HTML.</h2>
               <p id="constructor-code-summary">
-                View initially, selectable actors on, branding pill on, auto
+                View initially, selectable actors off, branding pill on, auto
                 theme.
               </p>
             </div>
@@ -384,6 +422,6 @@
       integrity="sha384-HkMr0bZB9kBW4iVtXn6nd35kO/L/dQtkkUBkL9swzTEDMdIe5ExJChVDSnC79aNA"
       crossorigin="anonymous"
     ></script>
-    <script async type="module" src="./constructor.js?v=20260808-6"></script>
+    <script async type="module" src="./constructor.js?v=20260818-2"></script>
   </body>
 </html>

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lines &amp; Arrows social card</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        margin: 0;
+        overflow: hidden;
+        background: #f2f0e8;
+        color: #151713;
+        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        text-rendering: optimizeLegibility;
+      }
+
+      .card {
+        width: 1200px;
+        height: 630px;
+        display: grid;
+        grid-template-rows: 54px minmax(0, 1fr);
+        gap: 14px;
+        padding: 30px 48px 32px;
+      }
+
+      .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 32px;
+      }
+
+      .wordmark,
+      .tagline {
+        margin: 0;
+      }
+
+      .wordmark {
+        font-size: 25px;
+        font-weight: 840;
+        letter-spacing: -0.04em;
+      }
+
+      .tagline {
+        color: #64675f;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .diagram-frame {
+        min-height: 0;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+
+      lines-and-arrows {
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <header class="card-header">
+        <p class="wordmark">Lines &amp; Arrows</p>
+        <p class="tagline">Sequence diagrams as text, with a visual editor</p>
+      </header>
+      <div class="diagram-frame">
+        <lines-and-arrows
+          theme="light"
+          branding="false"
+          canvas-background="transparent"
+          label="A person and AI agent create and share a sequence diagram"
+        ></lines-and-arrows>
+      </div>
+    </main>
+
+    <script type="module">
+      import "../src/auto.js";
+
+      const diagram = document.querySelector("lines-and-arrows");
+      diagram.layout = {
+        actorHeight: 48,
+        actorGap: 165,
+        marginX: 36,
+        marginTop: 18,
+        timelineTopGap: 20,
+        messageHeight: 37,
+        gapHeight: 34,
+        groupHeaderHeight: 25,
+        sectionHeaderHeight: 22,
+        groupPaddingBottom: 8,
+        groupGap: 8,
+        bottomPadding: 12,
+      };
+      diagram.source = `@You
+  icon user
+@AI agent
+  icon robot
+  tag collaborator
+@Diagram text
+  icon file-code
+  tag readable
+@Renderer
+  icon code
+  tag live SVG
+@Team
+  icon users-three
+
+You -> AI agent: Describe the system
+AI agent -> AI agent: Plan the sequence
+AI agent -> Diagram text: Write readable source
+parallel Work in either surface
+  | visual editor
+    You -> Renderer: Move an interaction
+  | text editor
+    AI agent -> Diagram text: Refine the syntax
+Diagram text -> Renderer: Render the diagram
+gap The same source travels
+Renderer -> Team: Share a clear sequence
+Team --> You: Continue the conversation`;
+      diagram.shadowRoot?.querySelector(".la-copy-source")?.remove();
+    </script>
+  </body>
+</html>

@@ -988,6 +988,26 @@ lines-and-arrows {
   margin-top: clamp(38px, 4.5vw, 58px);
 }
 
+.constructor-controls-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.constructor-controls-toolbar p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.constructor-reset-button {
+  min-height: 40px;
+  flex: 0 0 auto;
+}
+
 .constructor-fieldset {
   min-width: 0;
   margin: 0;
@@ -1948,6 +1968,11 @@ lines-and-arrows {
   .constructor-controls {
     grid-template-columns: 1fr;
     gap: 28px;
+  }
+
+  .constructor-controls-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .constructor-behavior-grid {

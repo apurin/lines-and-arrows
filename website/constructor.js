@@ -23,8 +23,11 @@ const actorSelectionExampleInput = document.querySelector(
 const brandingInput = document.querySelector("[data-option-branding]");
 const transparentInput = document.querySelector("[data-option-transparent]");
 const historyInput = document.querySelector("[data-option-history]");
+const resetButton = document.querySelector("[data-reset-constructor]");
 const copyButton = document.querySelector("[data-copy-embed]");
 const copyStatus = document.querySelector("#constructor-copy-status");
+
+const storageKey = "lines-and-arrows-constructor-v1";
 
 const initialSource = `// Powered by https://lines-and-arrows.dev/
 @Customer
@@ -81,17 +84,59 @@ const themeOptions = {
   },
 };
 
-const state = {
+const defaultState = Object.freeze({
   initialMode: "view",
   modeToggleExample: false,
-  selectableActors: true,
+  selectableActors: false,
   actorSelectionExample: false,
   historyControls: true,
   branding: true,
-  transparent: false,
+  transparent: true,
   theme: "auto",
   source: initialSource,
+});
+
+const readSavedState = () => {
+  try {
+    const savedState = JSON.parse(globalThis.localStorage.getItem(storageKey));
+    if (!savedState || typeof savedState !== "object") {
+      return { ...defaultState };
+    }
+
+    const restoredState = { ...defaultState };
+    if (["view", "edit"].includes(savedState.initialMode)) {
+      restoredState.initialMode = savedState.initialMode;
+    }
+    for (const key of [
+      "modeToggleExample",
+      "selectableActors",
+      "actorSelectionExample",
+      "historyControls",
+      "branding",
+      "transparent",
+    ]) {
+      if (typeof savedState[key] === "boolean") {
+        restoredState[key] = savedState[key];
+      }
+    }
+    if (themeOptions[savedState.theme]) {
+      restoredState.theme = savedState.theme;
+    }
+    if (typeof savedState.source === "string") {
+      parse(savedState.source);
+      restoredState.source = savedState.source;
+    }
+
+    if (!restoredState.selectableActors) {
+      restoredState.actorSelectionExample = false;
+    }
+    return restoredState;
+  } catch {
+    return { ...defaultState };
+  }
 };
+
+const state = readSavedState();
 
 let generatedHtml = "";
 let copyResetTimer = null;
@@ -198,10 +243,26 @@ const renderCode = () => {
 };
 
 const renderControlState = () => {
+  for (const input of document.querySelectorAll("[data-initial-mode]")) {
+    input.checked = input.value === state.initialMode;
+  }
+  for (const input of document.querySelectorAll("[data-diagram-theme]")) {
+    input.checked = input.value === state.theme;
+  }
   modeToggleInput.checked = state.modeToggleExample;
   selectableActorsInput.checked = state.selectableActors;
   actorSelectionExampleInput.checked = state.actorSelectionExample;
   historyInput.checked = state.historyControls;
+  brandingInput.checked = state.branding;
+  transparentInput.checked = state.transparent;
+};
+
+const persistState = () => {
+  try {
+    globalThis.localStorage.setItem(storageKey, JSON.stringify(state));
+  } catch {
+    // The constructor remains usable when browser storage is unavailable.
+  }
 };
 
 const renderPreview = () => {
@@ -219,6 +280,7 @@ const render = () => {
   renderControlState();
   renderPreview();
   renderCode();
+  persistState();
 };
 
 for (const input of document.querySelectorAll("[data-initial-mode]")) {
@@ -283,6 +345,7 @@ diagram.addEventListener("la-change", (event) => {
   state.source = event.detail.source;
   error.textContent = "";
   renderCode();
+  persistState();
 });
 
 diagram.addEventListener("la-error", (event) => {
@@ -305,9 +368,18 @@ copyButton.addEventListener("click", async () => {
   }
 });
 
+resetButton.addEventListener("click", () => {
+  Object.assign(state, defaultState);
+  diagram.source = state.source;
+  diagram.mode = "edit";
+  error.textContent = "";
+  copyStatus.textContent = "Constructor reset to its defaults.";
+  render();
+});
+
 try {
-  parse(initialSource);
-  diagram.source = initialSource;
+  parse(state.source);
+  diagram.source = state.source;
   diagram.mode = "edit";
   render();
   stage.classList.add("is-ready");

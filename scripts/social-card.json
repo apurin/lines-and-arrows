@@ -1,0 +1,12 @@
+{
+  "source": "scripts/social-card.html",
+  "output": "website/assets/social-card.png",
+  "width": 1200,
+  "height": 630,
+  "captureScale": 2,
+  "format": "png",
+  "provenance": [
+    "Lines & Arrows renderer from src/auto.js",
+    "Pinned Phosphor icon provider configured by the renderer"
+  ]
+}
