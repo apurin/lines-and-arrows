@@ -4,10 +4,15 @@ import { readFile } from "node:fs/promises";
 
 import { validate } from "../src/syntax.js";
 
-function usage() {
-  process.stderr.write(
-    "Usage: lines-and-arrows validate [--json] <file|->\n",
-  );
+function usage(stream = process.stderr) {
+  stream.write(`Usage: lines-and-arrows validate [--json] <file|->
+
+Validate a Lines & Arrows diagram source file, or read source from stdin with -.
+
+Options:
+  --json       Print the validation result as JSON
+  -h, --help   Show this help
+`);
 }
 
 async function readStdin() {
@@ -20,13 +25,16 @@ async function readStdin() {
 }
 
 const args = process.argv.slice(2);
+const help = args.includes("--help") || args.includes("-h");
 const jsonIndex = args.indexOf("--json");
 const json = jsonIndex !== -1;
 if (json) {
   args.splice(jsonIndex, 1);
 }
 
-if (args.length !== 2 || args[0] !== "validate") {
+if (help) {
+  usage(process.stdout);
+} else if (args.length !== 2 || args[0] !== "validate") {
   usage();
   process.exitCode = 2;
 } else {

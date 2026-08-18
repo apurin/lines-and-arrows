@@ -62,3 +62,16 @@ test("validates stdin through the command line", () => {
   assert.equal(failure.status, 1);
   assert.equal(JSON.parse(failure.stdout).valid, false);
 });
+
+test("prints command-line help", () => {
+  for (const flag of ["--help", "-h"]) {
+    const result = spawnSync(process.execPath, [CLI, flag], {
+      encoding: "utf8",
+    });
+
+    assert.equal(result.status, 0);
+    assert.equal(result.stderr, "");
+    assert.match(result.stdout, /Usage: lines-and-arrows validate/);
+    assert.match(result.stdout, /--json/);
+  }
+});
