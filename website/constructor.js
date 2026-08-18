@@ -21,6 +21,9 @@ const actorSelectionExampleInput = document.querySelector(
   "[data-option-actor-selection-example]",
 );
 const brandingInput = document.querySelector("[data-option-branding]");
+const copySourceInput = document.querySelector(
+  "[data-option-copy-source]",
+);
 const transparentInput = document.querySelector("[data-option-transparent]");
 const historyInput = document.querySelector("[data-option-history]");
 const resetButton = document.querySelector("[data-reset-constructor]");
@@ -91,6 +94,7 @@ const defaultState = Object.freeze({
   actorSelectionExample: false,
   historyControls: true,
   branding: true,
+  copySource: true,
   transparent: true,
   theme: "auto",
   source: initialSource,
@@ -113,6 +117,7 @@ const readSavedState = () => {
       "actorSelectionExample",
       "historyControls",
       "branding",
+      "copySource",
       "transparent",
     ]) {
       if (typeof savedState[key] === "boolean") {
@@ -187,6 +192,7 @@ const buildHtml = () => {
     state.selectableActors ? "selectable-actors" : null,
     !state.historyControls ? 'history-controls="false"' : null,
     `branding="${state.branding}"`,
+    !state.copySource ? 'copy-source="false"' : null,
     `canvas-background="${state.transparent ? "transparent" : "solid"}"`,
     'label="Sequence diagram"',
   ].filter(Boolean);
@@ -232,10 +238,11 @@ const renderCode = () => {
   interactionDescriptions.push(
     `selectable actors ${state.selectableActors ? "on" : "off"}`,
     `undo and redo buttons ${state.historyControls ? "on" : "off"}`,
+    `copy source ${state.copySource ? "on" : "off"}`,
   );
   codeSummary.textContent = `${initialStateDescription}, ${interactionDescriptions.join(
     ", ",
-  )}, branding pill ${
+  )}, branding ${
     state.branding ? "on" : "off"
   }, ${theme.label.toLowerCase()} theme${
     state.actorSelectionExample ? ", selection handler example on" : ""
@@ -254,6 +261,7 @@ const renderControlState = () => {
   actorSelectionExampleInput.checked = state.actorSelectionExample;
   historyInput.checked = state.historyControls;
   brandingInput.checked = state.branding;
+  copySourceInput.checked = state.copySource;
   transparentInput.checked = state.transparent;
 };
 
@@ -273,7 +281,8 @@ const renderPreview = () => {
   diagram.palette = theme.palette;
   diagram.canvasBackground = state.transparent ? "transparent" : "solid";
   diagram.branding = state.branding;
-  diagram.historyControls = true;
+  diagram.copySource = state.copySource;
+  diagram.historyControls = state.historyControls;
 };
 
 const render = () => {
@@ -333,6 +342,11 @@ historyInput.addEventListener("change", () => {
 
 brandingInput.addEventListener("change", () => {
   state.branding = brandingInput.checked;
+  render();
+});
+
+copySourceInput.addEventListener("change", () => {
+  state.copySource = copySourceInput.checked;
   render();
 });
 

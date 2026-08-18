@@ -39,7 +39,7 @@
       content="https://lines-and-arrows.dev/assets/social-card.png"
     />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20260818-2" />
+    <link rel="stylesheet" href="./styles.css?v=20260818-3" />
   </head>
   <body class="constructor-page is-loading">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -328,8 +328,13 @@
 
             <div class="constructor-design-options">
               <label class="constructor-toggle-setting">
-                <span><strong>Branding pill</strong></span>
+                <span><strong>Branding</strong></span>
                 <input type="checkbox" data-option-branding checked />
+                <span class="constructor-switch" aria-hidden="true"></span>
+              </label>
+              <label class="constructor-toggle-setting">
+                <span><strong>Copy source</strong></span>
+                <input type="checkbox" data-option-copy-source checked />
                 <span class="constructor-switch" aria-hidden="true"></span>
               </label>
               <label class="constructor-toggle-setting">
@@ -357,6 +362,7 @@
               theme="auto"
               mode="edit"
               branding="true"
+              copy-source="true"
               canvas-background="transparent"
               label="Editable sequence diagram"
             ></lines-and-arrows>
@@ -374,8 +380,8 @@
             <div>
               <h2 id="constructor-code-title">Paste this HTML.</h2>
               <p id="constructor-code-summary">
-                View initially, selectable actors off, branding pill on, auto
-                theme.
+                View initially, selectable actors off, copy source on, branding
+                on, auto theme.
               </p>
             </div>
             <button
@@ -422,6 +428,6 @@
       integrity="sha384-HkMr0bZB9kBW4iVtXn6nd35kO/L/dQtkkUBkL9swzTEDMdIe5ExJChVDSnC79aNA"
       crossorigin="anonymous"
     ></script>
-    <script async type="module" src="./constructor.js?v=20260818-2"></script>
+    <script async type="module" src="./constructor.js?v=20260818-4"></script>
   </body>
 </html>

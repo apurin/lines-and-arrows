@@ -70,7 +70,10 @@ const LABELED_LIFELINE_BOTTOM_PADDING =
   LIFELINE_LABEL_BASELINE_OFFSET +
   LIFELINE_LABEL_BOTTOM_CLEARANCE;
 
-function resolveOptions(overrides) {
+function resolveOptions(
+  overrides,
+  minimumMarginTop = MINIMUMS.marginTop,
+) {
   const options = { ...DEFAULTS };
   const requested =
     overrides && typeof overrides === "object" ? overrides : {};
@@ -80,7 +83,9 @@ function resolveOptions(overrides) {
     if (!Number.isFinite(override)) {
       continue;
     }
-    options[key] = Math.max(MINIMUMS[key], override);
+    const minimum =
+      key === "marginTop" ? minimumMarginTop : MINIMUMS[key];
+    options[key] = Math.max(minimum, override);
   }
 
   return options;
@@ -367,8 +372,12 @@ function layoutItems(
   }
 }
 
-export function layoutDiagram(document, overrides = {}) {
-  const options = resolveOptions(overrides);
+function computeLayout(
+  document,
+  overrides = {},
+  minimumMarginTop = MINIMUMS.marginTop,
+) {
+  const options = resolveOptions(overrides, minimumMarginTop);
   reserveActorMetadata(document, options);
   const selfMessageWidths = new Map();
   const messageLabelWidths = new Map();
@@ -517,4 +526,16 @@ export function layoutDiagram(document, overrides = {}) {
     contentRight: width - options.marginX,
     options,
   };
+}
+
+export function layoutDiagram(document, overrides = {}) {
+  return computeLayout(document, overrides);
+}
+
+export function layoutDiagramWithoutHeader(document, overrides = {}) {
+  return computeLayout(
+    document,
+    { ...overrides, marginTop: 0 },
+    0,
+  );
 }

@@ -109,7 +109,7 @@
     &lt;title&gt;Sequence diagram&lt;/title&gt;
     &lt;script
       type=&quot;module&quot;
-      src=&quot;https://cdn.jsdelivr.net/npm/lines-and-arrows@0.10&quot;
+      src=&quot;https://cdn.jsdelivr.net/npm/lines-and-arrows@0.11&quot;
     &gt;&lt;/script&gt;
   &lt;/head&gt;
   &lt;body&gt;
@@ -142,7 +142,7 @@
 &lt;script type=&quot;module&quot;&gt;
   import {
     renderDiagram,
-  } from &quot;https://cdn.jsdelivr.net/npm/lines-and-arrows@0.10.0/+esm&quot;;
+  } from &quot;https://cdn.jsdelivr.net/npm/lines-and-arrows@0.11.0/+esm&quot;;
 
   const source = `Client -&gt; API: Start job
 API -&gt; Worker: Run
@@ -202,8 +202,15 @@ API --&gt; Client: Complete`;
             <td><code>branding</code></td>
             <td>
               The compact header shows “Powered by Lines &amp; Arrows” by default.
-              Use <code>false</code> to hide the attribution text. The Copy source
-              action remains available.
+              Use <code>false</code> to hide the attribution text.
+            </td>
+          </tr>
+          <tr>
+            <td><code>copy-source</code></td>
+            <td>
+              The Copy source action is shown by default. Use <code>false</code>
+              to hide it. A view with branding and this action both hidden omits
+              the compact header row and its spacing.
             </td>
           </tr>
           <tr>
@@ -229,7 +236,9 @@ API --&gt; Client: Complete`;
       <p>
         Copy source places canonical diagram text on the clipboard with
         <code>// Powered by https://lines-and-arrows.dev/</code> as its first line.
-        The source stays ready to paste into the Constructor.
+        The source stays ready to paste into the Constructor. Set
+        <code>copy-source=&quot;false&quot;</code> when the host provides its own source
+        action.
       </p>
       <p>
         Undo and redo remain available through standard keyboard shortcuts and
@@ -239,14 +248,15 @@ API --&gt; Client: Complete`;
         available.
       </p>
       <p>
-        For example, this creates an actor-selectable view without the
-        attribution:
+        For example, this creates a compact actor-selectable view without a
+        header:
       </p>
       <pre><code class="language-html">&lt;lines-and-arrows
   id=&quot;request-flow&quot;
   mode=&quot;view&quot;
   selectable-actors
   branding=&quot;false&quot;
+  copy-source=&quot;false&quot;
   theme=&quot;auto&quot;
 &gt;
   Client -&gt; API: Request

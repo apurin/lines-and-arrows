@@ -1360,6 +1360,10 @@ lines-and-arrows {
   font-size: 0.72rem;
 }
 
+.constructor-error:empty {
+  display: none;
+}
+
 .constructor-code {
   padding: clamp(76px, 9vw, 126px) 0 clamp(84px, 10vw, 144px);
 }

@@ -66,6 +66,28 @@ test("keeps history buttons on by default and reflects the opt-out attribute", (
   assert.equal(element.historyControls, true);
 });
 
+test("keeps copy source on by default and reflects the opt-out attribute", () => {
+  const attributes = new Map();
+  const element = new LinesAndArrowsElement();
+  element.getAttribute = (name) => attributes.get(name) ?? null;
+  element.setAttribute = (name, value) => attributes.set(name, String(value));
+  element.removeAttribute = (name) => attributes.delete(name);
+
+  assert.equal(
+    LinesAndArrowsElement.observedAttributes.includes("copy-source"),
+    true,
+  );
+  assert.equal(element.copySource, true);
+
+  element.copySource = false;
+  assert.equal(attributes.get("copy-source"), "false");
+  assert.equal(element.copySource, false);
+
+  element.copySource = true;
+  assert.equal(attributes.has("copy-source"), false);
+  assert.equal(element.copySource, true);
+});
+
 test("uses a transparent canvas by default and reflects a solid override", () => {
   const attributes = new Map();
   const element = new LinesAndArrowsElement();

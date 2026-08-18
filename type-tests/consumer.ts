@@ -40,6 +40,7 @@ const palette: ThemePalette = {
 };
 const controller = renderDiagram(document.body, editor.document, {
   palette,
+  copySource: false,
   selectableActors: true,
   initialSelectedActorName: "Client",
   onActorSelect(detail: ActorSelectionDetail) {
@@ -79,6 +80,9 @@ element.clearActorSelection();
 element.historyControls = false;
 const historyControls: boolean = element.historyControls;
 void historyControls;
+element.copySource = false;
+const copySource: boolean = element.copySource;
+void copySource;
 element.addEventListener("la-change", (event) => {
   const detail: ChangeDetail = event.detail;
   void detail.source;

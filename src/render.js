@@ -1,4 +1,7 @@
-import { layoutDiagram } from "./layout.js";
+import {
+  layoutDiagram,
+  layoutDiagramWithoutHeader,
+} from "./layout.js";
 import { withDefaultIconOptions } from "./icons.js";
 import {
   messageLabelMetrics,
@@ -1944,6 +1947,37 @@ function renderHeader(
   branding,
   cleanups,
 ) {
+  const actions = [...(options.headerActions ?? [])];
+  let copyResetTimer = null;
+  if (options.copySource !== false) {
+    actions.push({
+      label: "Copy source",
+      icon: "copy",
+      fallback: "⧉",
+      className: "la-copy-source",
+      field: "copy-source",
+      async onActivate(control, title) {
+        await writeClipboardText(sourceWithAttribution(source));
+        control.dataset.copied = "true";
+        control.setAttribute("aria-label", "Source copied");
+        title.textContent = "Source copied";
+        globalThis.clearTimeout?.(copyResetTimer);
+        copyResetTimer = globalThis.setTimeout?.(() => {
+          control.dataset.copied = "false";
+          control.setAttribute("aria-label", "Copy source");
+          title.textContent = "Copy source";
+        }, 1600);
+      },
+      cleanup() {
+        globalThis.clearTimeout?.(copyResetTimer);
+      },
+    });
+  }
+
+  if (!branding && actions.length === 0) {
+    return;
+  }
+
   const header = svgElement("g", {
     class: "la-diagram-header",
     role: "group",
@@ -1953,56 +1987,33 @@ function renderHeader(
     renderBranding(header, layout);
   }
 
-  const actions = [...(options.headerActions ?? [])];
-  let copyResetTimer = null;
-  actions.push({
-    label: "Copy source",
-    icon: "copy",
-    fallback: "⧉",
-    className: "la-copy-source",
-    field: "copy-source",
-    async onActivate(control, title) {
-      await writeClipboardText(sourceWithAttribution(source));
-      control.dataset.copied = "true";
-      control.setAttribute("aria-label", "Source copied");
-      title.textContent = "Source copied";
-      globalThis.clearTimeout?.(copyResetTimer);
-      copyResetTimer = globalThis.setTimeout?.(() => {
-        control.dataset.copied = "false";
-        control.setAttribute("aria-label", "Copy source");
-        title.textContent = "Copy source";
-      }, 1600);
-    },
-    cleanup() {
-      globalThis.clearTimeout?.(copyResetTimer);
-    },
-  });
-
-  const actionsWidth =
-    actions.length * HEADER_CONTROL_SIZE +
-    Math.max(0, actions.length - 1) * HEADER_CONTROL_GAP;
-  const top = Math.max(
-    2,
-    (layout.options.marginTop - HEADER_CONTROL_SIZE) / 2,
-  );
-  const actionsGroup = svgElement("g", {
-    class: "la-header-actions",
-    role: "group",
-    "aria-label": "Diagram controls",
-  });
-  actions.forEach((action, index) => {
-    renderHeaderControl(
-      actionsGroup,
-      action,
-      layout.contentRight - actionsWidth +
-        index * (HEADER_CONTROL_SIZE + HEADER_CONTROL_GAP),
-      top,
-      tokens,
-      options,
-      cleanups,
+  if (actions.length > 0) {
+    const actionsWidth =
+      actions.length * HEADER_CONTROL_SIZE +
+      Math.max(0, actions.length - 1) * HEADER_CONTROL_GAP;
+    const top = Math.max(
+      2,
+      (layout.options.marginTop - HEADER_CONTROL_SIZE) / 2,
     );
-  });
-  header.append(actionsGroup);
+    const actionsGroup = svgElement("g", {
+      class: "la-header-actions",
+      role: "group",
+      "aria-label": "Diagram controls",
+    });
+    actions.forEach((action, index) => {
+      renderHeaderControl(
+        actionsGroup,
+        action,
+        layout.contentRight - actionsWidth +
+          index * (HEADER_CONTROL_SIZE + HEADER_CONTROL_GAP),
+        top,
+        tokens,
+        options,
+        cleanups,
+      );
+    });
+    header.append(actionsGroup);
+  }
   parent.append(header);
 }
 
@@ -2216,7 +2227,14 @@ function renderDiagramSurface(
         )
       : baseTheme;
   const branding = options.branding !== false;
-  const layout = layoutDiagram(documentModel, options.layout);
+  const copySource = options.copySource !== false;
+  const hasHeader =
+    branding ||
+    copySource ||
+    (options.headerActions?.length ?? 0) > 0;
+  const layout = hasHeader
+    ? layoutDiagram(documentModel, options.layout)
+    : layoutDiagramWithoutHeader(documentModel, options.layout);
   const prefix = `la-${rendererSequence}`;
   rendererSequence += 1;
 

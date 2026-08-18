@@ -18,6 +18,7 @@ export class LinesAndArrowsElement extends HTMLElementBase {
       "selectable-actors",
       "history-controls",
       "branding",
+      "copy-source",
       "canvas-background",
     ];
   }
@@ -127,6 +128,18 @@ export class LinesAndArrowsElement extends HTMLElementBase {
       this.setAttribute("branding", "false");
     } else {
       this.removeAttribute("branding");
+    }
+  }
+
+  get copySource() {
+    return this.getAttribute("copy-source") !== "false";
+  }
+
+  set copySource(value) {
+    if (value === false) {
+      this.setAttribute("copy-source", "false");
+    } else {
+      this.removeAttribute("copy-source");
     }
   }
 
@@ -331,6 +344,7 @@ export class LinesAndArrowsElement extends HTMLElementBase {
         label: this.getAttribute("label") || "Sequence diagram",
         historyControls: this.historyControls,
         branding: this.branding,
+        copySource: this.copySource,
         canvasBackground: this.canvasBackground,
         palette: this.#palette,
         iconResolver: this.#iconResolver,

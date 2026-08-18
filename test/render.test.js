@@ -340,6 +340,35 @@ test("keeps copy source available when attribution text is hidden", () => {
   controller.destroy();
 });
 
+test("removes the empty header row when branding and copy are hidden", () => {
+  const { target, controller } = renderWithFakeDocument(
+    renderDiagram,
+    SOURCE,
+    { copySource: false },
+  );
+
+  assert.equal(byClass(target, "la-diagram-header").length, 0);
+  assert.equal(byClass(target, "la-branding").length, 0);
+  assert.equal(byClass(target, "la-copy-source").length, 0);
+  assert.equal(controller.layout.options.marginTop, 0);
+  assert.equal(controller.layout.actors[0].y, 0);
+  controller.destroy();
+});
+
+test("keeps the header row when copy is hidden but branding is visible", () => {
+  const { target, controller } = renderWithFakeDocument(
+    renderDiagram,
+    SOURCE,
+    { branding: true, copySource: false },
+  );
+
+  assert.equal(byClass(target, "la-diagram-header").length, 1);
+  assert.equal(byClass(target, "la-branding").length, 1);
+  assert.equal(byClass(target, "la-copy-source").length, 0);
+  assert.equal(controller.layout.options.marginTop, 28);
+  controller.destroy();
+});
+
 test("uses a transparent canvas by default with a solid opt-in", () => {
   const transparent = renderWithFakeDocument(renderDiagram);
   const transparentFrame = transparent.target.children.find(

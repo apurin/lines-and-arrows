@@ -13,7 +13,7 @@ and the editor.
 [Agent guide](https://lines-and-arrows.dev/agents)
 
 The JavaScript runtime has zero dependencies and includes TypeScript
-declarations. The current `0.10` line is under active development before 1.0;
+declarations. The current `0.11` line is under active development before 1.0;
 minor releases may change its contracts.
 
 ## Browser
@@ -23,7 +23,7 @@ Load the registered web component from jsDelivr:
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.10"
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.11"
 ></script>
 
 <lines-and-arrows theme="auto">
@@ -37,7 +37,10 @@ Load the registered web component from jsDelivr:
 
 Set `mode="edit"` to open the visual editor. The
 [Constructor](https://lines-and-arrows.dev/constructor) produces complete HTML
-for themes, editing controls, actor selection, branding, and canvas behavior.
+for themes, editing controls, actor selection, branding, copy source, and canvas
+behavior. Set `copy-source="false"` to hide the Copy source action. When a view
+sets both `branding="false"` and `copy-source="false"`, the diagram starts at
+the top edge.
 
 ## npm
 

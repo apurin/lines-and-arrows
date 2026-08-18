@@ -151,6 +151,7 @@ export interface BaseRenderOptions {
   canvasBackground?: CanvasBackground;
   label?: string;
   branding?: boolean;
+  copySource?: boolean;
   iconResolver?: IconResolver | null;
   iconCatalog?: readonly IconCatalogEntry[];
   layout?: Record<string, number>;
@@ -396,6 +397,7 @@ export class LinesAndArrowsElement extends HTMLElement {
   selectableActors: boolean;
   historyControls: boolean;
   branding: boolean;
+  copySource: boolean;
   canvasBackground: CanvasBackground;
   palette: ThemePalette | null;
   get iconResolver(): IconResolver | null;

@@ -61,10 +61,13 @@ Agent -> Agent: Check the plan`),
 });
 
 test("reserves the compact diagram header above actors", () => {
-  const layout = layoutDiagram(parse("A -> B"), { marginTop: 0 });
+  const defaultLayout = layoutDiagram(parse("A -> B"));
+  const compactLayout = layoutDiagram(parse("A -> B"), { marginTop: 0 });
 
-  assert.equal(layout.options.marginTop, 28);
-  assert.equal(layout.actors[0].y, 28);
+  assert.equal(defaultLayout.options.marginTop, 28);
+  assert.equal(defaultLayout.actors[0].y, 28);
+  assert.equal(compactLayout.options.marginTop, 28);
+  assert.equal(compactLayout.actors[0].y, 28);
 });
 
 test("keeps the default horizontal inset minimal and accepts zero", () => {
