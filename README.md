@@ -45,10 +45,12 @@ import {
 Set `mode="edit"` to enable the visual editor, including canvas undo and redo
 controls. View mode is non-selectable by default; add the boolean
 `selectable-actors` attribute when actors should respond to pointer and keyboard
-selection. A quiet “Powered by Lines & Arrows” website link appears by default;
-set `branding="false"` to hide it.
-Set `history-controls="false"` to hide the canvas undo and redo buttons while
-keeping the element's `undo()`, `redo()`, `canUndo`, and `canRedo` API.
+selection. A compact header centers the quiet “Powered by Lines & Arrows” link
+above the actors and provides a Copy source button. Copied source begins with
+`// Powered by https://lines-and-arrows.dev/`. Set `branding="false"` to hide
+the attribution text. Set `history-controls="false"` to hide the edit-mode undo
+and redo buttons while keeping the element's `undo()`, `redo()`, `canUndo`, and
+`canRedo` API.
 Source nested naturally inside the element may share the page's indentation;
 the component removes that common indentation while preserving the diagram's
 relative indentation.
@@ -184,8 +186,11 @@ The `<lines-and-arrows>` element exposes `source`, `mode`, `theme`, `palette`,
 `clearActorSelection()`, and `selectedActorName` control the optional actor
 selection. The
 JavaScript renderers accept the same `branding` boolean and default it to
-`true`; `renderEditor()` also accepts `historyControls: false` to hide its
-canvas buttons.
+`true`. Both renderers provide the Copy source header action. `renderEditor()`
+also accepts `historyControls: false` to hide its undo and redo buttons.
+The default layout uses a 2-unit horizontal inset and accepts
+`layout: { marginX: 0 }` for edge-to-edge content. Hosts can provide larger
+surrounding space with their own CSS margin or padding.
 
 Actor selection is opt-in through `selectableActors: true` or the
 `selectable-actors` element attribute. `initialSelectedActorName` preselects an

@@ -60,6 +60,41 @@ Agent -> Agent: Check the plan`),
   assert.ok(selfLabelTop >= selfMetadataBottom + 4);
 });
 
+test("reserves the compact diagram header above actors", () => {
+  const layout = layoutDiagram(parse("A -> B"), { marginTop: 0 });
+
+  assert.equal(layout.options.marginTop, 28);
+  assert.equal(layout.actors[0].y, 28);
+});
+
+test("keeps the default horizontal inset minimal and accepts zero", () => {
+  const source = parse(`@A
+@B
+@C
+@D
+
+A -> D`);
+  const layout = layoutDiagram(source);
+  const lastActor = layout.actors.at(-1);
+
+  assert.equal(layout.options.marginX, 2);
+  assert.equal(layout.actors[0].x, 2);
+  assert.equal(
+    layout.width - (lastActor.x + lastActor.width),
+    2,
+  );
+
+  const flush = layoutDiagram(source, { marginX: 0 });
+  const flushLastActor = flush.actors.at(-1);
+
+  assert.equal(flush.options.marginX, 0);
+  assert.equal(flush.actors[0].x, 0);
+  assert.equal(
+    flush.width - (flushLastActor.x + flushLastActor.width),
+    0,
+  );
+});
+
 test("keeps compact group and section spacing visually safe", () => {
   const layout = layoutDiagram(
     parse(`@Agent

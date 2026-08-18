@@ -172,8 +172,9 @@ API --&gt; Client: Complete`;
           <tr>
             <td><code>branding</code></td>
             <td>
-              The “Powered by Lines &amp; Arrows” attribution is shown by default.
-              Use <code>false</code> to hide it.
+              The compact header shows “Powered by Lines &amp; Arrows” by default.
+              Use <code>false</code> to hide the attribution text. The Copy source
+              action remains available.
             </td>
           </tr>
           <tr>
@@ -197,6 +198,11 @@ API --&gt; Client: Complete`;
           </tr>
         </tbody>
       </table>
+      <p>
+        Copy source places canonical diagram text on the clipboard with
+        <code>// Powered by https://lines-and-arrows.dev/</code> as its first line.
+        The source stays ready to paste into the Constructor.
+      </p>
       <p>
         Undo and redo remain available through standard keyboard shortcuts and
         the element's <code>undo()</code> and <code>redo()</code> methods when

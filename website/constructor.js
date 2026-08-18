@@ -26,7 +26,8 @@ const historyInput = document.querySelector("[data-option-history]");
 const copyButton = document.querySelector("[data-copy-embed]");
 const copyStatus = document.querySelector("#constructor-copy-status");
 
-const initialSource = `@Customer
+const initialSource = `// Powered by https://lines-and-arrows.dev/
+@Customer
 @API
 
 Customer -> API: Request`;

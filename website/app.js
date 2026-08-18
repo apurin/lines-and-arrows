@@ -8,7 +8,8 @@ import { initializeSiteTheme } from "./site.js?v=20260806-2";
 
 defineLinesAndArrows();
 
-const heroSource = `@Client
+const heroSource = `// Powered by https://lines-and-arrows.dev/
+@Client
   icon browser
 
 @API Gateway
