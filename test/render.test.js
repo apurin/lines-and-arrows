@@ -361,8 +361,31 @@ test("uses a transparent canvas by default with a solid opt-in", () => {
   solid.controller.destroy();
 });
 
-test("renders quiet actor titles at the ends of lifelines", () => {
-  const { target, controller } = renderWithFakeDocument(renderDiagram);
+test("renders actor titles after more than five timeline elements", () => {
+  const fiveElements = renderWithFakeDocument(
+    renderDiagram,
+    `A -> B: One
+B --> A: Two
+A -> B: Three
+B --> A: Four
+A -> B: Five`,
+  );
+  assert.equal(
+    byClass(fiveElements.target, "la-lifeline-label").length,
+    0,
+  );
+  fiveElements.controller.destroy();
+
+  const { target, controller } = renderWithFakeDocument(
+    renderDiagram,
+    `repeat Flow
+  A -> B: One
+  B --> A: Two
+  A -> B: Three
+  B --> A: Four
+  A -> B: Five
+  B --> A: Six`,
+  );
   const labels = byClass(target, "la-lifeline-label");
 
   assert.deepEqual(

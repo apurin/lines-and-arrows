@@ -1351,6 +1351,7 @@ function renderSection(parent, section, tokens, selection) {
 }
 
 function renderLifelines(parent, layout, tokens) {
+  const showActorLabels = layout.rows.length > 5;
   for (const actor of layout.actors) {
     parent.append(
       svgElement("line", {
@@ -1365,6 +1366,9 @@ function renderLifelines(parent, layout, tokens) {
         "pointer-events": "none",
       }),
     );
+    if (!showActorLabels) {
+      continue;
+    }
     const label = svgElement("text", {
       class: "la-lifeline-label",
       x: actor.centerX,
