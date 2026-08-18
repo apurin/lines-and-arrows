@@ -61,6 +61,14 @@ const GROUP_SELF_MESSAGE_RIGHT_PADDING = 20;
 const GROUP_LABEL_LINE_HEIGHT = 13;
 const SECTION_LABEL_LINE_HEIGHT = 12;
 const GAP_LABEL_LINE_HEIGHT = 12;
+const LIFELINE_LABEL_MIN_ROWS = 6;
+const LIFELINE_END_OFFSET = 8;
+const LIFELINE_LABEL_BASELINE_OFFSET = 14;
+const LIFELINE_LABEL_BOTTOM_CLEARANCE = 4;
+const LABELED_LIFELINE_BOTTOM_PADDING =
+  LIFELINE_END_OFFSET +
+  LIFELINE_LABEL_BASELINE_OFFSET +
+  LIFELINE_LABEL_BOTTOM_CLEARANCE;
 
 function resolveOptions(overrides) {
   const options = { ...DEFAULTS };
@@ -485,6 +493,12 @@ export function layoutDiagram(document, overrides = {}) {
     baseWidth,
     expandedGroupRight + options.marginX,
   );
+  if (state.rows.length >= LIFELINE_LABEL_MIN_ROWS) {
+    options.bottomPadding = Math.max(
+      options.bottomPadding,
+      LABELED_LIFELINE_BOTTOM_PADDING,
+    );
+  }
   const height = state.y + options.bottomPadding;
   const actorByName = state.actorByName;
 
@@ -497,7 +511,8 @@ export function layoutDiagram(document, overrides = {}) {
     groups: state.groups,
     sections: state.sections,
     lifelineTop: options.marginTop + options.actorHeight,
-    lifelineBottom: height - options.bottomPadding + 8,
+    lifelineBottom:
+      height - options.bottomPadding + LIFELINE_END_OFFSET,
     contentLeft: options.marginX,
     contentRight: width - options.marginX,
     options,

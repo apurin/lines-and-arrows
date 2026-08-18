@@ -385,6 +385,7 @@ A -> B: Five`,
   B --> A: Four
   A -> B: Five
   B --> A: Six`,
+    { layout: { bottomPadding: 18 } },
   );
   const labels = byClass(target, "la-lifeline-label");
 
@@ -400,6 +401,9 @@ A -> B: Five`,
     assert.equal(
       Number(label.getAttribute("y")),
       controller.layout.lifelineBottom + 14,
+    );
+    assert.ok(
+      controller.layout.height - Number(label.getAttribute("y")) >= 4,
     );
     assert.equal(label.getAttribute("font-size"), "8");
     assert.equal(label.getAttribute("opacity"), "0.48");

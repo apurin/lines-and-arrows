@@ -21,6 +21,8 @@ const BRANDING_FONT_SIZE = 7;
 const SOURCE_ATTRIBUTION = `// Powered by ${BRANDING_HREF}`;
 const HEADER_CONTROL_SIZE = 18;
 const HEADER_CONTROL_GAP = 2;
+const LIFELINE_LABEL_MIN_ROWS = 6;
+const LIFELINE_LABEL_BASELINE_OFFSET = 14;
 let tooltipSequence = 0;
 
 const VIEW_STYLES = `
@@ -1351,7 +1353,8 @@ function renderSection(parent, section, tokens, selection) {
 }
 
 function renderLifelines(parent, layout, tokens) {
-  const showActorLabels = layout.rows.length > 5;
+  const showActorLabels =
+    layout.rows.length >= LIFELINE_LABEL_MIN_ROWS;
   for (const actor of layout.actors) {
     parent.append(
       svgElement("line", {
@@ -1372,7 +1375,9 @@ function renderLifelines(parent, layout, tokens) {
     const label = svgElement("text", {
       class: "la-lifeline-label",
       x: actor.centerX,
-      y: layout.lifelineBottom + 14,
+      y:
+        layout.lifelineBottom +
+        LIFELINE_LABEL_BASELINE_OFFSET,
       "text-anchor": "middle",
       "font-size": 8,
       "font-weight": 650,

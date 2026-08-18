@@ -1,4 +1,4 @@
-export const CDN_VERSION = "0.9.0";
+export const CDN_VERSION = "0.10.0";
 
 const CDN_URL =
   `https://cdn.jsdelivr.net/npm/lines-and-arrows@${CDN_VERSION}` +

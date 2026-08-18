@@ -18,7 +18,7 @@ The jsDelivr entry registers the web component automatically:
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.9"
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.10"
 ></script>
 
 <lines-and-arrows mode="view" theme="auto">
@@ -30,7 +30,7 @@ The jsDelivr entry registers the web component automatically:
 </lines-and-arrows>
 ```
 
-The `@0.9` compatibility alias receives patch releases without crossing into a
+The `@0.10` compatibility alias receives patch releases without crossing into a
 potentially breaking `1.0`. Use an exact version when a deployment must remain
 fully pinned.
 
@@ -39,7 +39,7 @@ For direct CDN access to the JavaScript API without automatic registration:
 ```js
 import {
   renderDiagram,
-} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.9/dist/lines-and-arrows.min.js";
+} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.10/dist/lines-and-arrows.min.js";
 ```
 
 Set `mode="edit"` to enable the visual editor, including canvas undo and redo
@@ -320,9 +320,9 @@ Stable releases use semantic versions. Before `1.0`, patch releases preserve
 the current minor-version contract, while a new minor version may introduce
 breaking changes. Consumers can choose between:
 
-- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.9` for compatible patch
-  updates within the `0.9` line.
-- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.9.0` for an immutable,
+- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.10` for compatible patch
+  updates within the `0.10` line.
+- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.10.0` for an immutable,
   exactly pinned release.
 
 Publishing runs exclusively through the
