@@ -18,7 +18,7 @@ The jsDelivr entry registers the web component automatically:
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.7"
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.8"
 ></script>
 
 <lines-and-arrows mode="view" theme="auto">
@@ -30,8 +30,8 @@ The jsDelivr entry registers the web component automatically:
 </lines-and-arrows>
 ```
 
-The `@0.7` compatibility alias receives patch releases without crossing into a
-potentially breaking `0.8`. Use an exact version when a deployment must remain
+The `@0.8` compatibility alias receives patch releases without crossing into a
+potentially breaking `0.9`. Use an exact version when a deployment must remain
 fully pinned.
 
 For direct CDN access to the JavaScript API without automatic registration:
@@ -39,7 +39,7 @@ For direct CDN access to the JavaScript API without automatic registration:
 ```js
 import {
   renderDiagram,
-} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.7/dist/lines-and-arrows.min.js";
+} from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.8/dist/lines-and-arrows.min.js";
 ```
 
 Set `mode="edit"` to enable the visual editor, including canvas undo and redo
@@ -50,7 +50,9 @@ above the actors and provides a Copy source button. Copied source begins with
 `// Powered by https://lines-and-arrows.dev/`. Set `branding="false"` to hide
 the attribution text. Set `history-controls="false"` to hide the edit-mode undo
 and redo buttons while keeping the element's `undo()`, `redo()`, `canUndo`, and
-`canRedo` API.
+`canRedo` API. The canvas is transparent by default; set
+`canvas-background="solid"` when the component should paint its theme or
+palette background.
 Source nested naturally inside the element may share the page's indentation;
 the component removes that common indentation while preserving the diagram's
 relative indentation.
@@ -240,17 +242,19 @@ diagram.palette = {
   accent: "var(--accent)",
   danger: "var(--danger)",
 };
-diagram.canvasBackground = "transparent";
+diagram.canvasBackground = "solid";
 ```
 
 The renderer derives muted text, lines, nested group fills, tags, selection,
 and editor surfaces from these colors. `accentForeground` and
 `dangerForeground` are optional contrast overrides. `renderDiagram()` and
 `renderEditor()` accept the same `palette` and `canvasBackground` options.
-Built-in light and dark themes keep an opaque canvas while using translucent
-group overlays. Lifelines use a low-opacity version of the actor accent and sit
-behind every other diagram layer, remaining visible beneath groups but not
-through gaps. Metadata pills use opaque derived surfaces.
+The canvas is transparent by default so the host background remains visible;
+use `canvasBackground: "solid"` to paint the theme or palette background.
+Built-in light and dark themes use translucent group overlays. Lifelines use a
+low-opacity version of the actor accent and sit behind every other diagram
+layer, remaining visible beneath groups but not through gaps. Metadata pills
+use opaque derived surfaces.
 
 Actor and tooltip icons work without configuration through the default
 Phosphor resolver. Set
@@ -314,9 +318,9 @@ Stable releases use semantic versions. Before `1.0`, patch releases preserve
 the current minor-version contract, while a new minor version may introduce
 breaking changes. Consumers can choose between:
 
-- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.7` for compatible patch
-  updates within the `0.7` line.
-- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.7.0` for an immutable,
+- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.8` for compatible patch
+  updates within the `0.8` line.
+- `https://cdn.jsdelivr.net/npm/lines-and-arrows@0.8.0` for an immutable,
   exactly pinned release.
 
 Publishing runs exclusively through the

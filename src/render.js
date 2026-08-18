@@ -2192,7 +2192,7 @@ function renderDiagramSurface(
   const baseTheme = resolveTheme(options.theme, globalThis);
   const usesPalette =
     options.palette !== null && options.palette !== undefined;
-  const canvasBackground = options.canvasBackground ?? "solid";
+  const canvasBackground = options.canvasBackground ?? "transparent";
   if (canvasBackground !== "solid" && canvasBackground !== "transparent") {
     throw new TypeError(
       'canvasBackground must be either "solid" or "transparent".',

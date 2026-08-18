@@ -340,6 +340,27 @@ test("keeps copy source available when attribution text is hidden", () => {
   controller.destroy();
 });
 
+test("uses a transparent canvas by default with a solid opt-in", () => {
+  const transparent = renderWithFakeDocument(renderDiagram);
+  const transparentFrame = transparent.target.children.find(
+    (element) => element.localName === "div",
+  );
+  assert.equal(
+    transparentFrame.style.values.get("--la-canvas"),
+    "transparent",
+  );
+  transparent.controller.destroy();
+
+  const solid = renderWithFakeDocument(renderDiagram, SOURCE, {
+    canvasBackground: "solid",
+  });
+  const solidFrame = solid.target.children.find(
+    (element) => element.localName === "div",
+  );
+  assert.equal(solidFrame.style.values.get("--la-canvas"), "#F6F7F9");
+  solid.controller.destroy();
+});
+
 test("renders quiet actor titles at the ends of lifelines", () => {
   const { target, controller } = renderWithFakeDocument(renderDiagram);
   const labels = byClass(target, "la-lifeline-label");

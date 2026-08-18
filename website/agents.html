@@ -80,7 +80,7 @@
     &lt;title&gt;Sequence diagram&lt;/title&gt;
     &lt;script
       type=&quot;module&quot;
-      src=&quot;https://cdn.jsdelivr.net/npm/lines-and-arrows@0.7&quot;
+      src=&quot;https://cdn.jsdelivr.net/npm/lines-and-arrows@0.8&quot;
     &gt;&lt;/script&gt;
   &lt;/head&gt;
   &lt;body&gt;
@@ -113,7 +113,7 @@
 &lt;script type=&quot;module&quot;&gt;
   import {
     renderDiagram,
-  } from &quot;https://cdn.jsdelivr.net/npm/lines-and-arrows@0.7.0/+esm&quot;;
+  } from &quot;https://cdn.jsdelivr.net/npm/lines-and-arrows@0.8.0/+esm&quot;;
 
   const source = `Client -&gt; API: Start job
 API -&gt; Worker: Run
@@ -187,9 +187,8 @@ API --&gt; Client: Complete`;
           <tr>
             <td><code>canvas-background</code></td>
             <td>
-              <code>solid</code> by default. Use <code>transparent</code> when the
-              host supplies a matching palette through the element's
-              <code>palette</code> property.
+              <code>transparent</code> by default. Use <code>solid</code> when the
+              component should paint its theme or palette background.
             </td>
           </tr>
           <tr>
@@ -242,13 +241,13 @@ API --&gt; Client: Complete`;
       </p>
       <p>
         Prefer the built-in <code>theme=&quot;auto&quot;</code> unless the diagram needs to
-        blend into a specific host surface. Built-in themes use an opaque canvas
-        and translucent group overlays, so no palette configuration is required.
+        blend into a specific host surface. The canvas is transparent by default,
+        and built-in themes use translucent group overlays.
       </p>
       <p>
         For host-specific colors, assign <code>palette</code> as a JavaScript
-        property and make the canvas transparent only when the host supplies the
-        visible background:
+        property. Set a solid canvas only when the component should paint the
+        configured background:
       </p>
       <pre><code class="language-js">const diagram = document.querySelector(&quot;lines-and-arrows&quot;);
 diagram.palette = {
@@ -257,7 +256,7 @@ diagram.palette = {
   accent: &quot;var(--accent)&quot;,
   danger: &quot;var(--danger)&quot;,
 };
-diagram.canvasBackground = &quot;transparent&quot;;</code></pre>
+diagram.canvasBackground = &quot;solid&quot;;</code></pre>
       <p>
         The renderer derives its remaining colors. Optional
         <code>accentForeground</code> and <code>dangerForeground</code> values
