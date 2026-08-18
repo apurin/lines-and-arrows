@@ -66,6 +66,33 @@ test("keeps history buttons on by default and reflects the opt-out attribute", (
   assert.equal(element.historyControls, true);
 });
 
+test("uses a transparent canvas by default and reflects a solid override", () => {
+  const attributes = new Map();
+  const element = new LinesAndArrowsElement();
+  element.getAttribute = (name) => attributes.get(name) ?? null;
+  element.setAttribute = (name, value) => attributes.set(name, String(value));
+
+  assert.equal(
+    LinesAndArrowsElement.observedAttributes.includes("canvas-background"),
+    true,
+  );
+  assert.equal(element.canvasBackground, "transparent");
+
+  element.canvasBackground = "solid";
+  assert.equal(attributes.get("canvas-background"), "solid");
+  assert.equal(element.canvasBackground, "solid");
+
+  element.canvasBackground = "transparent";
+  assert.equal(attributes.get("canvas-background"), "transparent");
+  assert.equal(element.canvasBackground, "transparent");
+  assert.throws(
+    () => {
+      element.canvasBackground = "glass";
+    },
+    /canvasBackground must be either/,
+  );
+});
+
 test("opts into read-only actor selection and stores a pending actor name", () => {
   const attributes = new Map();
   const element = new LinesAndArrowsElement();

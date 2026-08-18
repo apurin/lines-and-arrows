@@ -131,9 +131,9 @@ export class LinesAndArrowsElement extends HTMLElementBase {
   }
 
   get canvasBackground() {
-    return this.getAttribute("canvas-background") === "transparent"
-      ? "transparent"
-      : "solid";
+    return this.getAttribute("canvas-background") === "solid"
+      ? "solid"
+      : "transparent";
   }
 
   set canvasBackground(value) {

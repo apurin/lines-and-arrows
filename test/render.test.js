@@ -5,6 +5,7 @@ import {
   renderDiagram,
   renderDiagramForEditor,
 } from "../src/render.js";
+import { parse } from "../src/parser.js";
 
 const SOURCE = `@A
   tag actor
@@ -209,7 +210,7 @@ function directChild(root, predicate) {
   return root.children.find(predicate);
 }
 
-function renderWithFakeDocument(render, source = SOURCE) {
+function renderWithFakeDocument(render, source = SOURCE, options = {}) {
   const previousDocument = globalThis.document;
   globalThis.document = new FakeDocument();
   try {
@@ -217,12 +218,173 @@ function renderWithFakeDocument(render, source = SOURCE) {
     const controller = render(target, source, {
       theme: "light",
       branding: false,
+      ...options,
     });
     return { target, controller };
   } finally {
     globalThis.document = previousDocument;
   }
 }
+
+test("renders a compact aligned header and copies attributed source", async () => {
+  const previousNavigator = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "navigator",
+  );
+  let copiedSource = null;
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: {
+      clipboard: {
+        async writeText(source) {
+          copiedSource = source;
+        },
+      },
+    },
+  });
+
+  let controller = null;
+  try {
+    const rendered = renderWithFakeDocument(
+      renderDiagram,
+      SOURCE,
+      { branding: true },
+    );
+    controller = rendered.controller;
+    const branding = byClass(rendered.target, "la-branding")[0];
+    const brandingText = byClass(
+      branding,
+      "la-branding-text",
+    )[0];
+    const copy = byClass(rendered.target, "la-copy-source")[0];
+    const title = copy.children.find(
+      (element) => element.localName === "title",
+    );
+
+    assert.equal(brandingText.textContent, "Powered by Lines & Arrows");
+    assert.equal(
+      Number(brandingText.getAttribute("x")),
+      controller.layout.width / 2,
+    );
+    assert.equal(brandingText.getAttribute("text-anchor"), "middle");
+    assert.equal(
+      copy.getAttribute("transform"),
+      `translate(${controller.layout.contentRight - 18} 5)`,
+    );
+    assert.equal(copy.getAttribute("aria-label"), "Copy source");
+    assert.equal(title.textContent, "Copy source");
+
+    const click = copy.listeners.get("click")[0];
+    await click({
+      preventDefault() {},
+      stopPropagation() {},
+    });
+
+    assert.equal(
+      copiedSource.startsWith(
+        "// Powered by https://lines-and-arrows.dev/\n",
+      ),
+      true,
+    );
+    assert.equal(
+      copiedSource.match(
+        /\/\/ Powered by https:\/\/lines-and-arrows\.dev\//g,
+      ).length,
+      1,
+    );
+    assert.deepEqual(
+      parse(copiedSource),
+      parse(`// Powered by https://lines-and-arrows.dev/\n${SOURCE}`),
+    );
+
+    controller.destroy();
+    copiedSource = null;
+    const attributed = renderWithFakeDocument(
+      renderDiagram,
+      `// Powered by https://lines-and-arrows.dev/\n${SOURCE}`,
+      { branding: true },
+    );
+    controller = attributed.controller;
+    const attributedCopy = byClass(
+      attributed.target,
+      "la-copy-source",
+    )[0];
+    await attributedCopy.listeners.get("click")[0]({
+      preventDefault() {},
+      stopPropagation() {},
+    });
+    assert.equal(
+      copiedSource.match(
+        /\/\/ Powered by https:\/\/lines-and-arrows\.dev\//g,
+      ).length,
+      1,
+    );
+  } finally {
+    controller?.destroy();
+    if (previousNavigator) {
+      Object.defineProperty(
+        globalThis,
+        "navigator",
+        previousNavigator,
+      );
+    } else {
+      delete globalThis.navigator;
+    }
+  }
+});
+
+test("keeps copy source available when attribution text is hidden", () => {
+  const { target, controller } = renderWithFakeDocument(renderDiagram);
+  assert.equal(byClass(target, "la-branding").length, 0);
+  assert.equal(byClass(target, "la-copy-source").length, 1);
+  controller.destroy();
+});
+
+test("uses a transparent canvas by default with a solid opt-in", () => {
+  const transparent = renderWithFakeDocument(renderDiagram);
+  const transparentFrame = transparent.target.children.find(
+    (element) => element.localName === "div",
+  );
+  assert.equal(
+    transparentFrame.style.values.get("--la-canvas"),
+    "transparent",
+  );
+  transparent.controller.destroy();
+
+  const solid = renderWithFakeDocument(renderDiagram, SOURCE, {
+    canvasBackground: "solid",
+  });
+  const solidFrame = solid.target.children.find(
+    (element) => element.localName === "div",
+  );
+  assert.equal(solidFrame.style.values.get("--la-canvas"), "#F6F7F9");
+  solid.controller.destroy();
+});
+
+test("renders quiet actor titles at the ends of lifelines", () => {
+  const { target, controller } = renderWithFakeDocument(renderDiagram);
+  const labels = byClass(target, "la-lifeline-label");
+
+  assert.deepEqual(
+    labels.map((label) => label.textContent),
+    ["A", "B"],
+  );
+  labels.forEach((label, index) => {
+    assert.equal(
+      Number(label.getAttribute("x")),
+      controller.layout.actors[index].centerX,
+    );
+    assert.equal(
+      Number(label.getAttribute("y")),
+      controller.layout.lifelineBottom + 14,
+    );
+    assert.equal(label.getAttribute("font-size"), "8");
+    assert.equal(label.getAttribute("opacity"), "0.48");
+    assert.equal(label.getAttribute("aria-hidden"), "true");
+    assert.equal(label.getAttribute("pointer-events"), "none");
+  });
+  controller.destroy();
+});
 
 function sectionGeometry(section) {
   const lines = section.children.filter((element) =>

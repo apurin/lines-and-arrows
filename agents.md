@@ -15,8 +15,8 @@ on authoring or validating a diagram, read the canonical
   handwritten `.d.ts` files; there is no TypeScript source or build.
 - UI output is SVG. View and edit rendering share the same layout and theme
   primitives, while edit-only interactions live in their own renderer.
-- The renderer owns the optional website attribution; it stays outside diagram
-  source and is enabled by default through the `branding` option.
+- The renderer owns the optional visible website attribution. It stays outside
+  diagram source and is enabled by default through the `branding` option.
 - Phosphor is the default icon provider. Its version and weight are pinned in
   `src/icons.js`; hosts can replace the resolver and catalog.
 
@@ -49,6 +49,8 @@ on authoring or validating a diagram, read the canonical
 - `lines-and-arrows/syntax` must remain usable without a DOM.
 - Importing `lines-and-arrows` is side-effect free. Only the `/auto` entry
   registers a custom element automatically.
+- Copy source prepends the website attribution as a top-level comment exactly
+  once, independently of visible branding.
 - `DiagramEditor` owns immutable snapshots. Mutations happen through commands
   and replace the snapshot atomically.
 - Layout overrides are compacting preferences; shared layout code must still
@@ -84,11 +86,10 @@ examples, tests, and third-party notice consistent.
 
 ## Verification
 
-Run the programmatic suite and browser build:
+Run the programmatic suite, type checks, and browser build:
 
 ```sh
-npm test
-npm run build
+npm run check
 npm pack --dry-run
 ```
 

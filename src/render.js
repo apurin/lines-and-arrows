@@ -18,7 +18,9 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const BRANDING_HREF = "https://lines-and-arrows.dev/";
 const BRANDING_LABEL = "Powered by Lines & Arrows";
 const BRANDING_FONT_SIZE = 7;
-const BRANDING_HEIGHT = 15;
+const SOURCE_ATTRIBUTION = `// Powered by ${BRANDING_HREF}`;
+const HEADER_CONTROL_SIZE = 18;
+const HEADER_CONTROL_GAP = 2;
 let tooltipSequence = 0;
 
 const VIEW_STYLES = `
@@ -197,10 +199,8 @@ const VIEW_STYLES = `
   }
 
   .la-branding-surface {
-    fill: var(--la-group-fill);
-    fill-opacity: 0.72;
-    stroke: var(--la-section-line);
-    stroke-opacity: 0.5;
+    fill: transparent;
+    stroke: transparent;
   }
 
   .la-branding-text {
@@ -209,7 +209,68 @@ const VIEW_STYLES = `
 
   .la-branding:focus-visible .la-branding-surface {
     stroke: var(--la-selection);
-    stroke-opacity: 0.72;
+    stroke-opacity: 0.55;
+  }
+
+  .la-header-control {
+    cursor: pointer;
+    outline: none;
+  }
+
+  .la-header-control-surface {
+    fill: transparent;
+    stroke: transparent;
+    transition:
+      fill 100ms ease,
+      stroke 100ms ease;
+  }
+
+  .la-header-control-icon,
+  .la-header-control-fallback {
+    opacity: 0.68;
+    transition: opacity 100ms ease;
+  }
+
+  .la-header-control-fallback {
+    fill: var(--la-muted-text);
+  }
+
+  .la-header-control:not([aria-disabled="true"]):hover
+    .la-header-control-surface,
+  .la-header-control:not([aria-disabled="true"]):focus-visible
+    .la-header-control-surface {
+    fill: var(--la-accent-soft);
+    stroke: color-mix(
+      in srgb,
+      var(--la-selection) 32%,
+      transparent
+    );
+  }
+
+  .la-header-control:not([aria-disabled="true"]):hover
+    .la-header-control-icon,
+  .la-header-control:not([aria-disabled="true"]):hover
+    .la-header-control-fallback,
+  .la-header-control:not([aria-disabled="true"]):focus-visible
+    .la-header-control-icon,
+  .la-header-control:not([aria-disabled="true"]):focus-visible
+    .la-header-control-fallback,
+  .la-header-control[data-copied="true"]
+    .la-header-control-icon,
+  .la-header-control[data-copied="true"]
+    .la-header-control-fallback {
+    opacity: 1;
+  }
+
+  .la-header-control[aria-disabled="true"] {
+    cursor: default;
+  }
+
+  .la-header-control[aria-disabled="true"]
+    .la-header-control-icon,
+  .la-header-control[aria-disabled="true"]
+    .la-header-control-fallback {
+    opacity: 0.26;
   }
 
   .la-group-hit.la-selectable:hover
@@ -243,7 +304,10 @@ const VIEW_STYLES = `
     .la-message-line,
     .la-gap-rule,
     .la-tooltip-trigger-shape,
-    .la-branding {
+    .la-branding,
+    .la-header-control-surface,
+    .la-header-control-icon,
+    .la-header-control-fallback {
       transition: none;
     }
   }
@@ -922,11 +986,11 @@ function renderActor(
   group.append(
     svgElement("rect", {
       class: "la-focus-ring",
-      x: -4,
-      y: -4,
-      width: actor.width + 8,
-      height: actor.height + 8,
-      rx: 17,
+      x: 1,
+      y: 1,
+      width: actor.width - 2,
+      height: actor.height - 2,
+      rx: 13,
       fill: "none",
       stroke: tokens.selection,
       "stroke-width": 2,
@@ -1301,6 +1365,20 @@ function renderLifelines(parent, layout, tokens) {
         "pointer-events": "none",
       }),
     );
+    const label = svgElement("text", {
+      class: "la-lifeline-label",
+      x: actor.centerX,
+      y: layout.lifelineBottom + 14,
+      "text-anchor": "middle",
+      "font-size": 8,
+      "font-weight": 650,
+      fill: tokens.mutedText,
+      opacity: 0.48,
+      "aria-hidden": "true",
+      "pointer-events": "none",
+    });
+    label.textContent = actor.name;
+    parent.append(label);
   }
 }
 
@@ -1669,13 +1747,10 @@ function renderGap(parent, row, layout, tokens, selection) {
 
 function renderBranding(parent, layout) {
   const width = Math.ceil(
-    textWidth(BRANDING_LABEL, BRANDING_FONT_SIZE) + 12,
+    textWidth(BRANDING_LABEL, BRANDING_FONT_SIZE),
   );
-  const left = (layout.width - width) / 2;
-  const top = Math.max(
-    0,
-    (layout.options.marginTop - BRANDING_HEIGHT) / 2,
-  );
+  const centerX = layout.width / 2;
+  const top = Math.max(2, (layout.options.marginTop - 16) / 2);
   const link = svgElement("a", {
     class: "la-branding",
     part: "branding",
@@ -1687,18 +1762,18 @@ function renderBranding(parent, layout) {
   link.append(
     svgElement("rect", {
       class: "la-branding-surface",
-      x: left,
+      x: centerX - width / 2 - 3,
       y: top,
-      width,
-      height: BRANDING_HEIGHT,
-      rx: BRANDING_HEIGHT / 2,
+      width: width + 6,
+      height: 16,
+      rx: 4,
       "stroke-width": 0.75,
     }),
   );
   const label = svgElement("text", {
     class: "la-branding-text",
-    x: left + width / 2,
-    y: top + 10,
+    x: centerX,
+    y: top + 10.5,
     "text-anchor": "middle",
     "font-size": BRANDING_FONT_SIZE,
     "font-weight": 600,
@@ -1711,6 +1786,215 @@ function renderBranding(parent, layout) {
     event.stopPropagation();
   });
   parent.append(link);
+}
+
+function sourceWithAttribution(source) {
+  const canonical = String(source ?? "").replace(/\r\n?/g, "\n");
+  if (
+    canonical === SOURCE_ATTRIBUTION ||
+    canonical.startsWith(`${SOURCE_ATTRIBUTION}\n`)
+  ) {
+    return canonical.endsWith("\n") ? canonical : `${canonical}\n`;
+  }
+  return `${SOURCE_ATTRIBUTION}\n${canonical.replace(/^\n+/, "")}`;
+}
+
+async function writeClipboardText(source) {
+  if (globalThis.navigator?.clipboard?.writeText) {
+    try {
+      await globalThis.navigator.clipboard.writeText(source);
+      return;
+    } catch {
+      // Continue with the DOM fallback for restricted clipboard contexts.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = source;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body?.append(textarea);
+  textarea.select?.();
+  const copied = document.execCommand?.("copy") === true;
+  textarea.remove();
+  if (!copied) {
+    throw new Error("Unable to copy the diagram source.");
+  }
+}
+
+function renderHeaderControl(
+  parent,
+  action,
+  x,
+  y,
+  tokens,
+  options,
+  cleanups,
+) {
+  const disabled = action.disabled === true;
+  const control = svgElement("g", {
+    class: ["la-header-control", action.className]
+      .filter(Boolean)
+      .join(" "),
+    transform: `translate(${x} ${y})`,
+    role: "button",
+    tabindex: disabled ? -1 : 0,
+    "aria-label": action.label,
+    "aria-disabled": String(disabled),
+    "aria-keyshortcuts": action.keyShortcuts,
+    "data-field": action.field,
+  });
+  const title = svgElement("title");
+  title.textContent = action.label;
+  control.append(
+    title,
+    svgElement("rect", {
+      class: "la-header-control-surface",
+      x: 0.5,
+      y: 0.5,
+      width: HEADER_CONTROL_SIZE - 1,
+      height: HEADER_CONTROL_SIZE - 1,
+      rx: 5,
+      "stroke-width": 1,
+      "pointer-events": "all",
+    }),
+  );
+
+  const fallback = svgElement("text", {
+    class: "la-header-control-fallback",
+    x: HEADER_CONTROL_SIZE / 2,
+    y: HEADER_CONTROL_SIZE / 2 + 3.4,
+    "text-anchor": "middle",
+    "font-size": action.fallbackFontSize ?? 11,
+    "font-weight": 700,
+    "pointer-events": "none",
+  });
+  fallback.textContent = action.fallback;
+  control.append(fallback);
+
+  let iconUrl = null;
+  try {
+    iconUrl = options.iconResolver?.(action.icon, tokens.name);
+  } catch {
+    iconUrl = null;
+  }
+  if (iconUrl) {
+    const image = svgElement("image", {
+      class: "la-header-control-icon",
+      href: iconUrl,
+      x: 3,
+      y: 3,
+      width: HEADER_CONTROL_SIZE - 6,
+      height: HEADER_CONTROL_SIZE - 6,
+      filter: options.tooltipIconFilter,
+      "pointer-events": "none",
+    });
+    image.addEventListener("load", () => {
+      fallback.setAttribute("display", "none");
+    });
+    image.addEventListener("error", () => {
+      image.remove();
+    });
+    control.append(image);
+  }
+
+  const activate = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (disabled) {
+      return;
+    }
+    try {
+      await action.onActivate?.(control, title);
+    } catch {
+      control.dataset.copyFailed = "true";
+      control.setAttribute("aria-label", "Copy failed");
+      title.textContent = "Copy failed";
+    }
+  };
+  control.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+  });
+  control.addEventListener("click", activate);
+  control.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      void activate(event);
+    }
+  });
+  parent.append(control);
+  cleanups.push(() => action.cleanup?.());
+}
+
+function renderHeader(
+  parent,
+  layout,
+  tokens,
+  options,
+  source,
+  branding,
+  cleanups,
+) {
+  const header = svgElement("g", {
+    class: "la-diagram-header",
+    role: "group",
+    "aria-label": "Diagram actions",
+  });
+  if (branding) {
+    renderBranding(header, layout);
+  }
+
+  const actions = [...(options.headerActions ?? [])];
+  let copyResetTimer = null;
+  actions.push({
+    label: "Copy source",
+    icon: "copy",
+    fallback: "⧉",
+    className: "la-copy-source",
+    field: "copy-source",
+    async onActivate(control, title) {
+      await writeClipboardText(sourceWithAttribution(source));
+      control.dataset.copied = "true";
+      control.setAttribute("aria-label", "Source copied");
+      title.textContent = "Source copied";
+      globalThis.clearTimeout?.(copyResetTimer);
+      copyResetTimer = globalThis.setTimeout?.(() => {
+        control.dataset.copied = "false";
+        control.setAttribute("aria-label", "Copy source");
+        title.textContent = "Copy source";
+      }, 1600);
+    },
+    cleanup() {
+      globalThis.clearTimeout?.(copyResetTimer);
+    },
+  });
+
+  const actionsWidth =
+    actions.length * HEADER_CONTROL_SIZE +
+    Math.max(0, actions.length - 1) * HEADER_CONTROL_GAP;
+  const top = Math.max(
+    2,
+    (layout.options.marginTop - HEADER_CONTROL_SIZE) / 2,
+  );
+  const actionsGroup = svgElement("g", {
+    class: "la-header-actions",
+    role: "group",
+    "aria-label": "Diagram controls",
+  });
+  actions.forEach((action, index) => {
+    renderHeaderControl(
+      actionsGroup,
+      action,
+      layout.contentRight - actionsWidth +
+        index * (HEADER_CONTROL_SIZE + HEADER_CONTROL_GAP),
+      top,
+      tokens,
+      options,
+      cleanups,
+    );
+  });
+  header.append(actionsGroup);
+  parent.append(header);
 }
 
 function indexSelectableModels(documentModel) {
@@ -1908,7 +2192,7 @@ function renderDiagramSurface(
   const baseTheme = resolveTheme(options.theme, globalThis);
   const usesPalette =
     options.palette !== null && options.palette !== undefined;
-  const canvasBackground = options.canvasBackground ?? "solid";
+  const canvasBackground = options.canvasBackground ?? "transparent";
   if (canvasBackground !== "solid" && canvasBackground !== "transparent") {
     throw new TypeError(
       'canvasBackground must be either "solid" or "transparent".',
@@ -2025,9 +2309,15 @@ function renderDiagramSurface(
       tooltipLayer,
     );
   }
-  if (branding) {
-    renderBranding(svg, layout);
-  }
+  renderHeader(
+    svg,
+    layout,
+    tokens,
+    renderOptions,
+    serialize(documentModel),
+    branding,
+    tooltipLayer.cleanups,
+  );
   if (selectionMode === "editor" && options.initialSelectedId) {
     selection.select(options.initialSelectedId, false);
   } else if (
