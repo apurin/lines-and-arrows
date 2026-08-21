@@ -39,7 +39,7 @@
       content="https://lines-and-arrows.dev/assets/social-card.png"
     />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20260818-3" />
+    <link rel="stylesheet" href="./styles.css?v=20260821-1" />
   </head>
   <body class="constructor-page is-loading">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -89,15 +89,10 @@
         <header class="constructor-intro">
           <p class="constructor-kicker">HTML embed constructor</p>
           <h1>Build the diagram.<br />Take the HTML.</h1>
-          <p class="constructor-lede">
-            Edit the preview, choose how the embed behaves, then copy a complete
-            snippet for your page.
-          </p>
-        </header>
-
-        <section class="constructor-controls" aria-label="Embed settings">
-          <div class="constructor-controls-toolbar">
-            <p>Your progress is saved.</p>
+          <div class="constructor-intro-row">
+            <p class="constructor-lede">
+              Edit the preview, choose the behavior, then copy the final HTML.
+            </p>
             <button
               type="button"
               class="button button-secondary constructor-reset-button"
@@ -106,6 +101,38 @@
               Reset constructor
             </button>
           </div>
+        </header>
+
+        <section
+          class="constructor-workbench"
+          aria-label="Editable diagram preview"
+        >
+          <div
+            class="constructor-stage"
+            data-constructor-stage
+            data-preview-theme="auto"
+          >
+            <div class="diagram-loading">Loading the editable preview</div>
+            <lines-and-arrows
+              id="constructor-diagram"
+              data-fixed-theme="auto"
+              theme="auto"
+              mode="edit"
+              branding="false"
+              copy-source="true"
+              canvas-background="transparent"
+              label="Editable sequence diagram"
+            ></lines-and-arrows>
+          </div>
+          <p
+            class="constructor-error"
+            id="constructor-error"
+            role="alert"
+            aria-live="polite"
+          ></p>
+        </section>
+
+        <section class="constructor-controls" aria-label="Embed settings">
           <fieldset class="constructor-fieldset constructor-behavior-fieldset">
             <legend>Behavior</legend>
             <div class="constructor-behavior-grid">
@@ -333,39 +360,10 @@
           </fieldset>
         </section>
 
-        <section
-          class="constructor-workbench"
-          aria-label="Editable diagram preview"
-        >
-          <div
-            class="constructor-stage"
-            data-constructor-stage
-            data-preview-theme="auto"
-          >
-            <div class="diagram-loading">Loading the editable preview</div>
-            <lines-and-arrows
-              id="constructor-diagram"
-              data-fixed-theme="auto"
-              theme="auto"
-              mode="edit"
-              branding="true"
-              copy-source="true"
-              canvas-background="transparent"
-              label="Editable sequence diagram"
-            ></lines-and-arrows>
-          </div>
-          <p
-            class="constructor-error"
-            id="constructor-error"
-            role="alert"
-            aria-live="polite"
-          ></p>
-        </section>
-
         <section class="constructor-code" aria-labelledby="constructor-code-title">
           <header class="constructor-code-heading">
             <div>
-              <h2 id="constructor-code-title">Paste this HTML.</h2>
+              <h2 id="constructor-code-title">Take this HTML.</h2>
               <p id="constructor-code-summary">
                 View initially, selectable actors off, copy source on, branding
                 on, auto theme.
@@ -376,7 +374,7 @@
               class="button button-primary constructor-copy-button"
               data-copy-embed
             >
-              Copy HTML
+              Copy
             </button>
           </header>
           <pre class="home-embed-code constructor-embed-code" tabindex="0"><code class="language-html" id="constructor-embed-code"></code></pre>
@@ -390,10 +388,6 @@
     </main>
 
     <footer class="site-footer section-shell">
-      <p>
-        <strong>Lines &amp; Arrows</strong>
-        <span>Build it visually. Keep it as text.</span>
-      </p>
       <div class="footer-links">
         <a href="./showcase.html">Showcase</a>
         <a href="./constructor.html">Constructor</a>
@@ -415,6 +409,6 @@
       integrity="sha384-HkMr0bZB9kBW4iVtXn6nd35kO/L/dQtkkUBkL9swzTEDMdIe5ExJChVDSnC79aNA"
       crossorigin="anonymous"
     ></script>
-    <script async type="module" src="./constructor.js?v=20260818-5"></script>
+    <script async type="module" src="./constructor.js?v=20260821-1"></script>
   </body>
 </html>

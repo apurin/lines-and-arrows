@@ -1,4 +1,4 @@
-import { CDN_VERSION } from "./runtime.js?v=20260818-2";
+import { CDN_VERSION } from "./runtime.js?v=20260821-1";
 import { initializeSiteTheme } from "./site.js?v=20260806-2";
 
 initializeSiteTheme();
@@ -267,15 +267,20 @@ const persistState = () => {
   }
 };
 
+const configurePreview = () => {
+  diagram.mode = "edit";
+  diagram.selectableActors = false;
+  diagram.canvasBackground = "transparent";
+  diagram.branding = false;
+  diagram.copySource = true;
+};
+
 const renderPreview = () => {
   const theme = themeOptions[state.theme];
   diagram.dataset.fixedTheme = theme.scheme;
   stage.dataset.previewTheme = state.theme;
   diagram.theme = theme.scheme;
   diagram.palette = theme.palette;
-  diagram.canvasBackground = state.transparent ? "transparent" : "solid";
-  diagram.branding = state.branding;
-  diagram.copySource = state.copySource;
 };
 
 const render = () => {
@@ -373,20 +378,20 @@ copyButton.addEventListener("click", async () => {
 resetButton.addEventListener("click", () => {
   Object.assign(state, defaultState);
   diagram.source = state.source;
-  diagram.mode = "edit";
+  configurePreview();
   error.textContent = "";
   copyStatus.textContent = "Constructor reset to its defaults.";
   render();
 });
 
 try {
+  configurePreview();
   try {
     diagram.source = state.source;
   } catch {
     Object.assign(state, defaultState);
     diagram.source = state.source;
   }
-  diagram.mode = "edit";
   render();
   stage.classList.add("is-ready");
   document.body.classList.remove("is-loading");

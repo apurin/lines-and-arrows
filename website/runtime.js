@@ -1,13 +1,6 @@
 export const CDN_VERSION = "0.12.0";
 
-const localDevelopment =
-  location.hostname === "127.0.0.1" || location.hostname === "localhost";
-const packageBase = localDevelopment
-  ? ".."
-  : `https://cdn.jsdelivr.net/npm/lines-and-arrows@${CDN_VERSION}`;
-const cacheKey = localDevelopment ? new URL(import.meta.url).search : "";
-const autoUrl =
-  `${packageBase}/dist/lines-and-arrows.auto.min.js${cacheKey}`;
+const autoUrl = `https://cdn.jsdelivr.net/npm/lines-and-arrows@${CDN_VERSION}/dist/lines-and-arrows.auto.min.js`;
 
 try {
   await import(autoUrl);

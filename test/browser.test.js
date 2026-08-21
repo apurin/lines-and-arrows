@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createReadStream, statSync } from "node:fs";
+import { createReadStream, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join } from "node:path";
 import test from "node:test";
@@ -46,6 +46,16 @@ async function stubCdn(page, requests = []) {
   await page.route("https://cdn.jsdelivr.net/**", (route) => {
     const url = route.request().url();
     requests.push(url);
+    if (url.includes("/lines-and-arrows@")) {
+      return route.fulfill({
+        status: 200,
+        contentType: "text/javascript",
+        body: readFileSync(
+          join(ROOT, "dist/lines-and-arrows.auto.min.js"),
+          "utf8",
+        ),
+      });
+    }
     if (url.includes("/prismjs@")) {
       return route.fulfill({
         status: 200,
@@ -60,6 +70,33 @@ async function stubCdn(page, requests = []) {
     });
   });
 }
+
+test("website pages load the exact public CDN runtime", async (testContext) => {
+  const expected =
+    "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.12.0/dist/lines-and-arrows.auto.min.js";
+
+  for (const path of [
+    "index.html",
+    "showcase.html",
+    "features.html",
+    "constructor.html",
+  ]) {
+    const context = await browser.newContext();
+    testContext.after(() => context.close());
+    const page = await context.newPage();
+    const requests = [];
+    await stubCdn(page, requests);
+    await page.goto(`${origin}/website/${path}`);
+    await page.waitForFunction(() =>
+      Boolean(customElements.get("lines-and-arrows")),
+    );
+    assert.equal(
+      requests.filter((url) => url.includes("/lines-and-arrows@")).at(-1),
+      expected,
+      path,
+    );
+  }
+});
 
 async function openPage(testContext) {
   const context = await browser.newContext();
@@ -587,16 +624,94 @@ test("constructor preserves diagram source in generated HTML", async (testContex
   await page.waitForFunction(
     () => !document.body.classList.contains("is-loading"),
   );
+
+  const previewSnapshot = () =>
+    page.locator("#constructor-diagram").evaluate((node) => ({
+      mode: node.mode,
+      selectableActors: node.selectableActors,
+      branding: node.branding,
+      copySource: node.copySource,
+      canvasBackground: node.canvasBackground,
+      theme: node.theme,
+      actions: [...node.shadowRoot.querySelectorAll(".la-header-control")].map(
+        (control) => control.getAttribute("aria-label"),
+      ),
+      brandingCount: node.shadowRoot.querySelectorAll(".la-branding").length,
+    }));
+  const initialPreview = await previewSnapshot();
+  const workbenchBeforeControls = await page.evaluate(() => {
+    const workbench = document.querySelector(".constructor-workbench");
+    const controls = document.querySelector(".constructor-controls");
+    return Boolean(
+      workbench.compareDocumentPosition(controls) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  await page.evaluate(() => {
+    for (const [selector, checked] of [
+      ["[data-option-selectable-actors]", true],
+      ["[data-option-branding]", false],
+      ["[data-option-copy-source]", false],
+      ["[data-option-transparent]", false],
+    ]) {
+      const input = document.querySelector(selector);
+      input.checked = checked;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    const theme = document.querySelector(
+      '[data-diagram-theme][value="default-dark"]',
+    );
+    theme.checked = true;
+    theme.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  const adjustedPreview = await previewSnapshot();
   const generated = await page.locator("#constructor-embed-code").textContent();
   const parsed = await page.evaluate((html) => {
     const document = new DOMParser().parseFromString(html, "text/html");
+    const diagram = document.querySelector("lines-and-arrows");
     return {
-      source: document.querySelector("lines-and-arrows")?.textContent.trim(),
+      source: diagram?.textContent.trim(),
       injectedScripts: [...document.querySelectorAll("script")].filter(
         (script) => script.textContent.includes("globalThis.injected"),
       ).length,
+      settings: {
+        mode: diagram?.getAttribute("mode"),
+        theme: diagram?.getAttribute("theme"),
+        selectableActors: diagram?.hasAttribute("selectable-actors"),
+        branding: diagram?.getAttribute("branding"),
+        copySource: diagram?.getAttribute("copy-source"),
+        canvasBackground: diagram?.getAttribute("canvas-background"),
+      },
     };
   }, generated);
 
-  assert.deepEqual(parsed, { source, injectedScripts: 0 });
+  assert.equal(workbenchBeforeControls, true);
+  assert.deepEqual(initialPreview, {
+    mode: "edit",
+    selectableActors: false,
+    branding: false,
+    copySource: true,
+    canvasBackground: "transparent",
+    theme: "auto",
+    actions: ["Undo", "Redo", "Copy source"],
+    brandingCount: 0,
+  });
+  assert.deepEqual(adjustedPreview, {
+    ...initialPreview,
+    theme: "dark",
+  });
+  assert.deepEqual(parsed, {
+    source,
+    injectedScripts: 0,
+    settings: {
+      mode: "view",
+      theme: "dark",
+      selectableActors: true,
+      branding: "false",
+      copySource: "false",
+      canvasBackground: "solid",
+    },
+  });
 });
