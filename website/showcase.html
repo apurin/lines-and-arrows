@@ -14,7 +14,7 @@
     <meta property="og:title" content="Showcase - Lines &amp; Arrows" />
     <meta
       property="og:description"
-      content="Explore twelve editable sequence diagrams spanning software, AI, markets, science, and civic systems."
+      content="Explore twelve sequence diagrams spanning software, AI, markets, science, and civic systems."
     />
     <meta property="og:url" content="https://lines-and-arrows.dev/showcase" />
     <meta
@@ -32,16 +32,16 @@
     <meta name="twitter:title" content="Showcase - Lines &amp; Arrows" />
     <meta
       name="twitter:description"
-      content="Twelve editable sequence diagrams across software, AI, markets, science, and civic systems."
+      content="Twelve sequence diagrams across software, AI, markets, science, and civic systems."
     />
     <meta
       name="twitter:image"
       content="https://lines-and-arrows.dev/assets/social-card.png"
     />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20260821-1" />
+    <link rel="stylesheet" href="./styles.css?v=20260821-5" />
   </head>
-  <body class="showcase-page is-loading">
+  <body class="showcase-page">
     <a class="skip-link" href="#main">Skip to content</a>
 
     <header class="site-header">
@@ -94,8 +94,8 @@
         <div class="showcase-contents-heading">
           <h2 id="showcase-contents-title">Choose a sequence.</h2>
           <p>
-            Start with interactive actors, then explore editable diagrams and
-            source.
+            Start with interactive actors, then explore twelve diagrams across
+            science, software, and public life.
           </p>
         </div>
 
@@ -212,7 +212,6 @@
           <div class="braided-shell">
             <aside
               class="braided-detail"
-              data-braided-detail
               aria-live="polite"
             >
               <p class="showcase-area braided-area">Paleoanthropology</p>
@@ -231,7 +230,6 @@
 
               <div class="braided-media" data-braided-media>
                 <img
-                  class="is-zoomed"
                   src="./assets/prehistory-tools-light.jpg"
                   alt="Prehistoric tools resting inside a daylight rock shelter"
                   width="768"
@@ -266,53 +264,26 @@
 
               <p class="braided-sources" data-braided-sources>
                 Further reading:
-                <a
-                  href="https://www.nature.com/articles/s41586-018-0455-x"
-                  target="_blank"
-                  rel="noreferrer"
-                >Nature: a Neanderthal-Denisovan child</a>,
-                <a
-                  href="https://www.nature.com/articles/s41586-021-03335-3"
-                  target="_blank"
-                  rel="noreferrer"
-                >Nature: recent Neanderthal ancestors</a>
+                <span data-braided-source-item><a href="https://www.nature.com/articles/s41586-018-0455-x" target="_blank" rel="noreferrer">Nature: a Neanderthal-Denisovan child</a></span><span data-braided-source-item>, <a href="https://www.nature.com/articles/s41586-021-03335-3" target="_blank" rel="noreferrer">Nature: recent Neanderthal ancestors</a></span><span data-braided-source-item hidden>, <a target="_blank" rel="noreferrer"></a></span>
               </p>
             </aside>
 
             <div class="braided-diagram-column">
-              <div class="showcase-toolbar braided-toolbar">
-                <p class="braided-instruction">
-                  <strong>Interactive diagram example. Click a species.</strong>
-                  <span>
-                    <code>selectable-actors</code> emits
-                    <code>la-actor-select</code>. This page uses that event to
-                    update the custom left panel.
-                  </span>
-                </p>
-                <div
-                  class="surface-switcher showcase-mode-switcher"
-                  role="group"
-                  aria-label="Human prehistory diagram mode"
-                >
-                  <button
-                    type="button"
-                    data-braided-surface="view"
-                    aria-pressed="true"
-                  >
-                    View
-                  </button>
-                  <button
-                    type="button"
-                    data-braided-surface="source"
-                    aria-pressed="false"
-                  >
-                    Source
-                  </button>
-                </div>
-              </div>
+              <p class="braided-instruction">
+                <span>
+                  An interactive example of the
+                  <code>la-actor-select</code> event.
+                </span>
+                <strong class="braided-prompt">
+                  Click a lineage
+                  <span
+                    class="control-icon icon-arrow-down"
+                    aria-hidden="true"
+                  ></span>
+                </strong>
+              </p>
 
-              <div class="braided-diagram-pane" data-braided-diagram-pane>
-                <div class="diagram-loading">Rendering human prehistory</div>
+              <div class="braided-diagram-pane">
                 <lines-and-arrows
                   id="braided-ancestry-diagram"
                   mode="view"
@@ -320,41 +291,338 @@
                   branding="false"
                   canvas-background="transparent"
                   label="Human prehistory among Neanderthals, Denisovans, and Homo sapiens"
-                ></lines-and-arrows>
-              </div>
+                >@Neanderthals
+  icon users-three
+  tag sister group
+  tooltip A close human lineage adapted to western Eurasia; ancient DNA records contact with both Homo sapiens and Denisovans.
+  tooltip-icon fingerprint
 
-              <div
-                class="showcase-source-editor braided-source-pane"
-                data-braided-source-pane
-                hidden
-              >
-                <label for="braided-ancestry-source">Diagram source</label>
-                <textarea
-                  id="braided-ancestry-source"
-                  data-braided-source
-                  spellcheck="false"
-                  aria-describedby="braided-ancestry-status"
-                  readonly
-                ></textarea>
+@Denisovans
+  icon mountains
+  tag DNA-defined
+  tooltip Discovered through DNA, then traced through a skull, jaws, teeth, and living genomes across Asia and Oceania.
+  tooltip-icon dna
+
+@Homo sapiens
+  icon globe-hemisphere-west
+  tag living
+  tooltip Our lineage originated in Africa, then dispersing populations met other human groups across Eurasia.
+  tooltip-icon globe-hemisphere-west
+
+parallel Encounters across Eurasia, ~100-45 ka
+  | Western Eurasia, ~60-45 ka
+    Neanderthals -&gt; Neanderthals: Build a life in Eurasia
+      tag deep roots
+      tooltip Neanderthals controlled fire, made clothing and sophisticated tools, and weathered immense climate swings across Europe and western Asia.
+      tooltip-icon campfire
+    Homo sapiens -&gt; Neanderthals: Meet and have children
+      tag gene flow
+      tooltip Ancient genomes record repeated contact rather than a single encounter.
+      tooltip-icon dna
+  | Denisova Cave, Siberia, ~90 ka
+    Neanderthals -&gt; Denisovans: Denisova 11 is born
+      tag F1 hybrid
+      tooltip Her genome shows a Neanderthal mother and a Denisovan father.
+      tooltip-icon identification-card
+  | Asia, several encounters
+    Homo sapiens -&gt; Denisovans: Populations meet
+      tag gene flow
+      tooltip Living genomes suggest contact with more than one Denisovan-related population.
+      tooltip-icon users-three
+
+gap Hundreds of generations pass
+
+legacy Living genomes
+  Neanderthals --&gt; Homo sapiens: Inherited fragments persist
+    tag widespread
+    tooltip Neanderthal-derived DNA is distributed across living populations in different proportions.
+    tooltip-icon fingerprint
+  Denisovans --&gt; Homo sapiens: EPAS1 crosses time
+    tag adaptation
+    tooltip A Denisovan-like EPAS1 haplotype contributes to high-altitude adaptation in Tibetan populations.
+    tooltip-icon mountains</lines-and-arrows>
               </div>
             </div>
           </div>
-          <p class="showcase-error braided-error" data-braided-error role="alert"></p>
-          <p
-            class="visually-hidden"
-            id="braided-ancestry-status"
-            data-braided-status
-            aria-live="polite"
-          >
-            View mode. Select an actor to see its evidence.
-          </p>
         </figure>
       </section>
 
+      <section class="showcase-case section-shell" id="compatible-migration">
+        <header class="showcase-case-header">
+          <p class="showcase-area">Software engineering</p>
+          <h2>Rename a column without waking the pager</h2>
+          <p>
+            An expand-and-contract migration keeps old and new application
+            versions compatible while a canary decides when the legacy column
+            can disappear.
+          </p>
+        </header>
+        <figure class="showcase-figure">
+          <div class="showcase-stage">
+            <lines-and-arrows
+              mode="view"
+              branding="false"
+              label="An application evolves a shared database column without breaking mixed versions"
+            >@Release
+  icon rocket-launch
+  tooltip Orchestrates flags and migration steps across releases
+  tooltip-icon git-branch
+@Application
+  icon app-window
+@Database
+  icon database
+  tag shared schema
+@Backfill Worker
+  icon arrows-clockwise
+@Telemetry
+  icon pulse
+
+Release -&gt; Database: Add nullable display_name
+  tooltip Expanding first keeps the old application compatible
+  tooltip-icon plus-circle
+Release -&gt; Application: Enable dual writes
+parallel Compatibility window
+  | live profile updates
+    repeat Every accepted write
+      Application -&gt; Database: Write name and display_name
+  | historical profiles
+    repeat Batches under load
+      Backfill Worker -&gt; Database: Copy name into display_name
+      Database --&gt; Backfill Worker: Batch committed
+Application -&gt; Telemetry: Report read mismatches
+choice Canary reads
+  | mismatch rate is zero
+    Telemetry --&gt; Release: New column is ready
+    Release -&gt; Application: Prefer display_name
+  | mismatches appear
+    Telemetry -&gt; Release: Hold the rollout
+      tag SLO guardrail
+      tooltip Keeps the compatible path while engineers inspect the cohort
+      tooltip-icon warning
+    Release -&gt; Application: Keep reading name
+gap One release after every old reader retires
+Release -&gt; Database: Require display_name
+Release -&gt; Database: Drop name</lines-and-arrows>
+          </div>
+        </figure>
+      </section>
+
+      <section class="showcase-case section-shell" id="checkout-saga">
+        <header class="showcase-case-header">
+          <p class="showcase-area">Service-oriented architecture</p>
+          <h2>A checkout that knows how to unwind</h2>
+          <p>
+            An order saga coordinates payment and stock, then compensates
+            earlier work when a later service cannot commit.
+          </p>
+        </header>
+        <figure class="showcase-figure">
+          <div class="showcase-stage">
+            <lines-and-arrows
+              mode="view"
+              branding="false"
+              label="An order saga compensates a payment hold when inventory cannot commit"
+            >@Storefront
+  icon storefront
+@Order Service
+  icon receipt
+  tag saga owner
+  tooltip Owns the saga state without sharing a database
+  tooltip-icon flow-arrow
+@Payment Service
+  icon credit-card
+@Inventory Service
+  icon warehouse
+@Delivery Service
+  icon truck
+
+Storefront -&gt; Order Service: Place order
+Order Service -&gt; Payment Service: Authorize payment
+choice Payment result
+  | authorized
+    Payment Service --&gt; Order Service: Hold approved
+    Order Service -&gt; Inventory Service: Reserve items
+    choice Stock result
+      | reserved
+        Inventory Service --&gt; Order Service: Reservation confirmed
+        Order Service -&gt; Delivery Service: Schedule shipment
+        Delivery Service --&gt; Order Service: Delivery window
+        Order Service --&gt; Storefront: Confirm order
+      | unavailable
+        Inventory Service --&gt; Order Service: Reservation rejected
+        critical Compensate prior work
+          Order Service -&gt; Payment Service: Release hold
+          Payment Service --&gt; Order Service: Hold released
+        Order Service --&gt; Storefront: Explain stock conflict
+  | declined
+    Payment Service --&gt; Order Service: Authorization declined
+    Order Service --&gt; Storefront: Request another payment method</lines-and-arrows>
+          </div>
+        </figure>
+      </section>
+
+      <section class="showcase-case section-shell" id="streaming-watermarks">
+        <header class="showcase-case-header">
+          <p class="showcase-area">Data flow and streaming</p>
+          <h2>The window waits for watermarks</h2>
+          <p>
+            A fraud pipeline joins live payments with recent behavior, emits
+            alerts, and revises evidence when late events cross the watermark.
+          </p>
+        </header>
+        <figure class="showcase-figure">
+          <div class="showcase-stage">
+            <lines-and-arrows
+              mode="view"
+              branding="false"
+              label="A streaming risk pipeline handles watermarks and late payment events"
+            >@Payment Edge
+  icon credit-card
+@Event Stream
+  icon queue
+  tooltip Partitioned by account to preserve local ordering
+  tooltip-icon info
+@Window Processor
+  icon funnel
+  tag event-time
+@Risk Model
+  icon gauge
+@Risk Desk
+  icon shield-warning
+
+Payment Edge -&gt; Event Stream: Publish payment
+repeat For each account partition
+  Event Stream -&gt; Window Processor: Deliver payment event
+  Window Processor -&gt; Window Processor: Update five-minute features
+  Window Processor -&gt; Risk Model: Score current window
+  choice Score result
+    | suspicious
+      Risk Model --&gt; Window Processor: High risk
+      Window Processor -&gt; Risk Desk: Emit alert
+    | routine
+      Risk Model --&gt; Window Processor: Below threshold
+gap Watermark advances
+choice Arrival timing
+  | within allowed lateness
+    Event Stream -&gt; Window Processor: Deliver late payment
+    Window Processor -&gt; Window Processor: Revise window
+    Window Processor -&gt; Risk Model: Rescore corrected features
+    Risk Model --&gt; Window Processor: Corrected score
+    Window Processor -&gt; Risk Desk: Amend alert evidence
+  | past retention
+    Event Stream -&gt;x Window Processor: Drop expired event
+      tooltip Window state has already been compacted
+      tooltip-icon clock-countdown</lines-and-arrows>
+          </div>
+        </figure>
+      </section>
+
+      <section class="showcase-case section-shell" id="grounded-diagnosis">
+        <header class="showcase-case-header">
+          <p class="showcase-area">LLM agents</p>
+          <h2>The diagnosis earns its citations</h2>
+          <p>
+            An investigation agent retrieves versioned evidence, cites every
+            diagnosis, and leaves the consequential rollback decision with a
+            human reviewer.
+          </p>
+        </header>
+        <figure class="showcase-figure">
+          <div class="showcase-stage">
+            <lines-and-arrows
+              mode="view"
+              branding="false"
+              label="An LLM investigation agent grounds a deployment diagnosis in cited evidence"
+            >@Engineer
+  icon terminal
+@Research Agent
+  icon robot
+  tag advisory only
+  tooltip Builds claims from retrieved evidence but cannot approve action
+  tooltip-icon shield-check
+@Search Index
+  icon magnifying-glass
+@Source Documents
+  icon books
+@Human Reviewer
+  icon user-check
+  tag approval gate
+
+Engineer -&gt; Research Agent: Investigate the failed deployment
+Research Agent -&gt; Search Index: Query errors and change history
+parallel Gather grounded context
+  Search Index --&gt; Research Agent: Return relevant records
+  Research Agent -&gt; Source Documents: Open exact passages
+  Source Documents --&gt; Research Agent: Return versioned evidence
+Research Agent -&gt; Research Agent: Draft a diagnosis with citations
+Research Agent -&gt; Human Reviewer: Propose cause and rollback
+  tag cited evidence
+  tooltip Every claim points to a retrieved passage
+  tooltip-icon file-text
+Human Reviewer -&gt; Source Documents: Verify cited passages
+choice Review outcome
+  | evidence holds
+    Human Reviewer --&gt; Engineer: Approve the rollback plan
+  | evidence conflicts
+    Human Reviewer --&gt; Research Agent: Request a narrower claim
+    Research Agent -&gt; Search Index: Search for the missing evidence</lines-and-arrows>
+          </div>
+        </figure>
+      </section>
+
+      <section class="showcase-case section-shell" id="opening-auction">
+        <header class="showcase-case-header">
+          <p class="showcase-area">Stock trading</p>
+          <h2>One bell, one opening price</h2>
+          <p>
+            An opening auction collects queued buy and sell orders, finds one
+            price that matches the most shares, then publishes the opening
+            trades.
+          </p>
+        </header>
+        <figure class="showcase-figure">
+          <div class="showcase-stage">
+            <lines-and-arrows
+              mode="view"
+              branding="false"
+              label="A stock exchange opening auction discovers one price for queued orders"
+            >@Investor
+  icon user
+@Broker
+  icon buildings
+@Opening Auction
+  icon arrows-left-right
+  tooltip Collects eligible orders before continuous trading begins
+  tooltip-icon chart-line-up
+@Market Data
+  icon chart-line-up
+@Trade Tape
+  icon broadcast
+
+Investor -&gt; Broker: Submit a market-on-open order
+Broker -&gt; Opening Auction: Route the eligible order
+repeat Until the opening cutoff
+  Opening Auction -&gt; Opening Auction: Add and cancel auction orders
+  Opening Auction -&gt; Market Data: Publish indicative price and imbalance
+  Market Data --&gt; Investor: Show the changing auction signal
+gap Opening auction cutoff
+Opening Auction -&gt; Opening Auction: Choose the price that matches the most shares
+choice Executable cross
+  | enough opposing volume
+    Opening Auction --&gt; Broker: Fill at one opening price
+      tooltip All matched auction orders execute at the same opening price
+      tooltip-icon scales
+    Broker --&gt; Investor: Confirm shares filled
+    Opening Auction -&gt; Trade Tape: Publish opening trades
+  | not enough opposing volume
+    Opening Auction --&gt; Broker: Report no opening execution
+    Broker --&gt; Investor: Report no opening fill</lines-and-arrows>
+          </div>
+        </figure>
+      </section>
       <section
         class="showcase-case section-shell"
         id="molecular-address"
-        data-showcase
       >
         <header class="showcase-case-header">
           <p class="showcase-area">Molecular biology</p>
@@ -365,55 +633,11 @@
           </p>
         </header>
         <figure class="showcase-figure">
-          <div class="showcase-toolbar">
-            <div
-              class="hero-segmented showcase-mode-switcher"
-              role="group"
-              aria-label="A molecular address check diagram mode"
-            >
-              <button
-                type="button"
-                data-showcase-surface="view"
-                aria-pressed="true"
-              >
-                View
-              </button>
-              <button
-                type="button"
-                data-showcase-surface="edit"
-                aria-pressed="false"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                data-showcase-surface="source"
-                aria-pressed="false"
-              >
-                Source
-              </button>
-            </div>
-          </div>
-          <div class="showcase-stage" data-showcase-diagram-pane>
-            <div class="diagram-loading">Rendering molecular search</div>
+          <div class="showcase-stage">
             <lines-and-arrows
-              data-showcase-diagram
-              theme="light"
               mode="view"
+              branding="false"
               label="Cas9 checks a DNA site before cutting"
-            ></lines-and-arrows>
-          </div>
-          <div
-            class="showcase-source-editor"
-            data-showcase-source-pane
-            hidden
-          >
-            <label for="molecular-address-source">Diagram source</label>
-            <textarea
-              id="molecular-address-source"
-              data-showcase-source
-              spellcheck="false"
-              aria-describedby="molecular-address-error"
             >@Guide RNA
   icon crosshair
   tooltip RNA sequence that steers Cas9 toward a matching DNA site
@@ -434,34 +658,14 @@ repeat Search the genome
       Target DNA -> Cell Repair: Signal a break
       Cell Repair --> Target DNA: Patch or rewrite
     | weak match
-      Cas9 --> Guide RNA: Release site and keep searching</textarea>
-            <div class="showcase-source-actions">
-              <button type="button" data-apply-showcase-source>
-                Apply source
-              </button>
-            </div>
+      Cas9 --> Guide RNA: Release site and keep searching</lines-and-arrows>
           </div>
-          <p
-            class="showcase-error"
-            id="molecular-address-error"
-            data-showcase-error
-            role="alert"
-            aria-live="polite"
-          ></p>
-          <p
-            class="visually-hidden"
-            data-showcase-status
-            aria-live="polite"
-          >
-            View mode. Read-only diagram.
-          </p>
         </figure>
       </section>
 
       <section
         class="showcase-case section-shell"
         id="immune-rehearsal"
-        data-showcase
       >
         <header class="showcase-case-header">
           <p class="showcase-area">Immunology</p>
@@ -472,55 +676,11 @@ repeat Search the genome
           </p>
         </header>
         <figure class="showcase-figure">
-          <div class="showcase-toolbar">
-            <div
-              class="hero-segmented showcase-mode-switcher"
-              role="group"
-              aria-label="The immune system's dress rehearsal diagram mode"
-            >
-              <button
-                type="button"
-                data-showcase-surface="view"
-                aria-pressed="true"
-              >
-                View
-              </button>
-              <button
-                type="button"
-                data-showcase-surface="edit"
-                aria-pressed="false"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                data-showcase-surface="source"
-                aria-pressed="false"
-              >
-                Source
-              </button>
-            </div>
-          </div>
-          <div class="showcase-stage" data-showcase-diagram-pane>
-            <div class="diagram-loading">Rendering immune memory</div>
+          <div class="showcase-stage">
             <lines-and-arrows
-              data-showcase-diagram
-              theme="light"
               mode="view"
+              branding="false"
               label="Vaccination prepares a faster immune response"
-            ></lines-and-arrows>
-          </div>
-          <div
-            class="showcase-source-editor"
-            data-showcase-source-pane
-            hidden
-          >
-            <label for="immune-rehearsal-source">Diagram source</label>
-            <textarea
-              id="immune-rehearsal-source"
-              data-showcase-source
-              spellcheck="false"
-              aria-describedby="immune-rehearsal-error"
             >@Vaccine
   icon syringe
   tooltip A simplified model of training immunity without reproducing the full disease
@@ -544,34 +704,14 @@ parallel Build adaptive protection
     Helper T Cell -> B Cell: Preserve memory cells
 gap Months or years later
 Pathogen -> B Cell: Matching antigen appears again
-B Cell --> Pathogen: Mount a faster response</textarea>
-            <div class="showcase-source-actions">
-              <button type="button" data-apply-showcase-source>
-                Apply source
-              </button>
-            </div>
+B Cell --> Pathogen: Mount a faster response</lines-and-arrows>
           </div>
-          <p
-            class="showcase-error"
-            id="immune-rehearsal-error"
-            data-showcase-error
-            role="alert"
-            aria-live="polite"
-          ></p>
-          <p
-            class="visually-hidden"
-            data-showcase-status
-            aria-live="polite"
-          >
-            View mode. Read-only diagram.
-          </p>
         </figure>
       </section>
 
       <section
         class="showcase-case section-shell"
         id="coral-recovery"
-        data-showcase
       >
         <header class="showcase-case-header">
           <p class="showcase-area">Marine ecology</p>
@@ -582,55 +722,11 @@ B Cell --> Pathogen: Mount a faster response</textarea>
           </p>
         </header>
         <figure class="showcase-figure">
-          <div class="showcase-toolbar">
-            <div
-              class="hero-segmented showcase-mode-switcher"
-              role="group"
-              aria-label="When a reef loses its solar partners diagram mode"
-            >
-              <button
-                type="button"
-                data-showcase-surface="view"
-                aria-pressed="true"
-              >
-                View
-              </button>
-              <button
-                type="button"
-                data-showcase-surface="edit"
-                aria-pressed="false"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                data-showcase-surface="source"
-                aria-pressed="false"
-              >
-                Source
-              </button>
-            </div>
-          </div>
-          <div class="showcase-stage" data-showcase-diagram-pane>
-            <div class="diagram-loading">Rendering reef response</div>
+          <div class="showcase-stage">
             <lines-and-arrows
-              data-showcase-diagram
-              theme="light"
               mode="view"
+              branding="false"
               label="A coral reef responds to sustained heat stress"
-            ></lines-and-arrows>
-          </div>
-          <div
-            class="showcase-source-editor"
-            data-showcase-source-pane
-            hidden
-          >
-            <label for="coral-recovery-source">Diagram source</label>
-            <textarea
-              id="coral-recovery-source"
-              data-showcase-source
-              spellcheck="false"
-              aria-describedby="coral-recovery-error"
             >@Warm Ocean
   icon thermometer-hot
 @Coral
@@ -651,34 +747,14 @@ choice Temperature trend
     Coral -> Reef Community: Habitat begins to erode
   | cools in time
     Symbiotic Algae -> Coral: Recolonize tissue
-    Coral --> Reef Community: Recovery becomes possible</textarea>
-            <div class="showcase-source-actions">
-              <button type="button" data-apply-showcase-source>
-                Apply source
-              </button>
-            </div>
+    Coral --> Reef Community: Recovery becomes possible</lines-and-arrows>
           </div>
-          <p
-            class="showcase-error"
-            id="coral-recovery-error"
-            data-showcase-error
-            role="alert"
-            aria-live="polite"
-          ></p>
-          <p
-            class="visually-hidden"
-            data-showcase-status
-            aria-live="polite"
-          >
-            View mode. Read-only diagram.
-          </p>
         </figure>
       </section>
 
       <section
         class="showcase-case section-shell"
         id="rover-relay"
-        data-showcase
       >
         <header class="showcase-case-header">
           <p class="showcase-area">Planetary exploration</p>
@@ -689,55 +765,11 @@ choice Temperature trend
           </p>
         </header>
         <figure class="showcase-figure">
-          <div class="showcase-toolbar">
-            <div
-              class="hero-segmented showcase-mode-switcher"
-              role="group"
-              aria-label="A rover drives between phone calls diagram mode"
-            >
-              <button
-                type="button"
-                data-showcase-surface="view"
-                aria-pressed="true"
-              >
-                View
-              </button>
-              <button
-                type="button"
-                data-showcase-surface="edit"
-                aria-pressed="false"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                data-showcase-surface="source"
-                aria-pressed="false"
-              >
-                Source
-              </button>
-            </div>
-          </div>
-          <div class="showcase-stage" data-showcase-diagram-pane>
-            <div class="diagram-loading">Rendering the rover's sol</div>
+          <div class="showcase-stage">
             <lines-and-arrows
-              data-showcase-diagram
-              theme="light"
               mode="view"
+              branding="false"
               label="A Mars rover navigates between relay windows"
-            ></lines-and-arrows>
-          </div>
-          <div
-            class="showcase-source-editor"
-            data-showcase-source-pane
-            hidden
-          >
-            <label for="rover-relay-source">Diagram source</label>
-            <textarea
-              id="rover-relay-source"
-              data-showcase-source
-              spellcheck="false"
-              aria-describedby="rover-relay-error"
             >@Mission Control
   icon globe
 @Relay Orbiter
@@ -768,34 +800,14 @@ repeat Autonomous drive segment
       Rover -> Rover: Plan a detour
 gap Next relay pass
 Rover -> Relay Orbiter: Send images and telemetry
-Relay Orbiter --> Mission Control: Downlink the science</textarea>
-            <div class="showcase-source-actions">
-              <button type="button" data-apply-showcase-source>
-                Apply source
-              </button>
-            </div>
+Relay Orbiter --> Mission Control: Downlink the science</lines-and-arrows>
           </div>
-          <p
-            class="showcase-error"
-            id="rover-relay-error"
-            data-showcase-error
-            role="alert"
-            aria-live="polite"
-          ></p>
-          <p
-            class="visually-hidden"
-            data-showcase-status
-            aria-live="polite"
-          >
-            View mode. Read-only diagram.
-          </p>
         </figure>
       </section>
 
       <section
         class="showcase-case section-shell"
         id="campaign-budget"
-        data-showcase
       >
         <header class="showcase-case-header">
           <p class="showcase-area">Marketing</p>
@@ -806,55 +818,11 @@ Relay Orbiter --> Mission Control: Downlink the science</textarea>
           </p>
         </header>
         <figure class="showcase-figure">
-          <div class="showcase-toolbar">
-            <div
-              class="hero-segmented showcase-mode-switcher"
-              role="group"
-              aria-label="The campaign earns its budget diagram mode"
-            >
-              <button
-                type="button"
-                data-showcase-surface="view"
-                aria-pressed="true"
-              >
-                View
-              </button>
-              <button
-                type="button"
-                data-showcase-surface="edit"
-                aria-pressed="false"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                data-showcase-surface="source"
-                aria-pressed="false"
-              >
-                Source
-              </button>
-            </div>
-          </div>
-          <div class="showcase-stage" data-showcase-diagram-pane>
-            <div class="diagram-loading">Rendering the creative test</div>
+          <div class="showcase-stage">
             <lines-and-arrows
-              data-showcase-diagram
-              theme="light"
               mode="view"
+              branding="false"
               label="A campaign test connects creative choices to qualified leads"
-            ></lines-and-arrows>
-          </div>
-          <div
-            class="showcase-source-editor"
-            data-showcase-source-pane
-            hidden
-          >
-            <label for="campaign-budget-source">Diagram source</label>
-            <textarea
-              id="campaign-budget-source"
-              data-showcase-source
-              spellcheck="false"
-              aria-describedby="campaign-budget-error"
             >@Strategist
   icon target
   tooltip Starts small enough to learn before spending at scale
@@ -885,34 +853,14 @@ choice Visit outcome
     Landing Page --> Ad Platform: Record bounce
 gap After the confidence interval closes
 Ad Platform --> Strategist: Compare cost per lead
-Strategist -> Ad Platform: Scale the winner</textarea>
-            <div class="showcase-source-actions">
-              <button type="button" data-apply-showcase-source>
-                Apply source
-              </button>
-            </div>
+Strategist -> Ad Platform: Scale the winner</lines-and-arrows>
           </div>
-          <p
-            class="showcase-error"
-            id="campaign-budget-error"
-            data-showcase-error
-            role="alert"
-            aria-live="polite"
-          ></p>
-          <p
-            class="visually-hidden"
-            data-showcase-status
-            aria-live="polite"
-          >
-            View mode. Read-only diagram.
-          </p>
         </figure>
       </section>
 
       <section
         class="showcase-case section-shell"
         id="ballot-review"
-        data-showcase
       >
         <header class="showcase-case-header">
           <p class="showcase-area">Civic operations</p>
@@ -923,55 +871,11 @@ Strategist -> Ad Platform: Scale the winner</textarea>
           </p>
         </header>
         <figure class="showcase-figure">
-          <div class="showcase-toolbar">
-            <div
-              class="hero-segmented showcase-mode-switcher"
-              role="group"
-              aria-label="When a ballot needs a second look diagram mode"
-            >
-              <button
-                type="button"
-                data-showcase-surface="view"
-                aria-pressed="true"
-              >
-                View
-              </button>
-              <button
-                type="button"
-                data-showcase-surface="edit"
-                aria-pressed="false"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                data-showcase-surface="source"
-                aria-pressed="false"
-              >
-                Source
-              </button>
-            </div>
-          </div>
-          <div class="showcase-stage" data-showcase-diagram-pane>
-            <div class="diagram-loading">Rendering ballot review</div>
+          <div class="showcase-stage">
             <lines-and-arrows
-              data-showcase-diagram
-              theme="light"
               mode="view"
+              branding="false"
               label="An ambiguous ballot moves through anonymous review"
-            ></lines-and-arrows>
-          </div>
-          <div
-            class="showcase-source-editor"
-            data-showcase-source-pane
-            hidden
-          >
-            <label for="ballot-review-source">Diagram source</label>
-            <textarea
-              id="ballot-review-source"
-              data-showcase-source
-              spellcheck="false"
-              aria-describedby="ballot-review-error"
             >@Voter
   icon person
 @Poll Worker
@@ -997,27 +901,8 @@ choice Machine reading
     Poll Worker -> Review Panel: Deliver sealed ballot
     Review Panel -> Review Panel: Apply published intent rules
     Review Panel -> Public Count: Add adjudicated vote
-Poll Worker --> Voter: Ballot deposited</textarea>
-            <div class="showcase-source-actions">
-              <button type="button" data-apply-showcase-source>
-                Apply source
-              </button>
-            </div>
+Poll Worker --> Voter: Ballot deposited</lines-and-arrows>
           </div>
-          <p
-            class="showcase-error"
-            id="ballot-review-error"
-            data-showcase-error
-            role="alert"
-            aria-live="polite"
-          ></p>
-          <p
-            class="visually-hidden"
-            data-showcase-status
-            aria-live="polite"
-          >
-            View mode. Read-only diagram.
-          </p>
         </figure>
       </section>
 
@@ -1034,6 +919,6 @@ Poll Worker --> Voter: Ballot deposited</textarea>
       </div>
     </footer>
 
-    <script async type="module" src="./showcase.js?v=20260821-1"></script>
+    <script async type="module" src="./showcase.js?v=20260821-6"></script>
   </body>
 </html>

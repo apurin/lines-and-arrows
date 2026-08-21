@@ -120,6 +120,93 @@ test("website CDN examples disable email address rewriting", () => {
   }
 });
 
+test("showcase uses static view-mode diagrams with source copy available", async (
+  testContext,
+) => {
+  const htmlSource = readFileSync(
+    join(ROOT, "website", "showcase.html"),
+    "utf8",
+  );
+  const scriptSource = readFileSync(
+    join(ROOT, "website", "showcase.js"),
+    "utf8",
+  );
+  assert.equal(
+    htmlSource.match(/<lines-and-arrows\b[^>]*>\s*@/g)?.length,
+    12,
+  );
+  assert.doesNotMatch(
+    scriptSource,
+    /technicalShowcases|IntersectionObserver|insertAdjacentHTML|data-showcase/,
+  );
+
+  const context = await browser.newContext();
+  testContext.after(() => context.close());
+  const page = await context.newPage();
+  await stubCdn(page);
+  await page.goto(`${origin}/website/showcase.html`);
+  await page.waitForFunction(
+    () => document.querySelectorAll("lines-and-arrows").length === 12,
+  );
+
+  assert.equal(
+    await page
+      .locator("[data-showcase-surface], [data-braided-surface]")
+      .count(),
+    0,
+  );
+
+  for (const diagram of await page.locator("lines-and-arrows").all()) {
+    await diagram.scrollIntoViewIfNeeded();
+    await diagram.getByRole("button", { name: "Copy source" }).waitFor();
+    assert.equal(await diagram.getAttribute("mode"), "view");
+  }
+
+  const lead = page.locator("#braided-ancestry");
+  const detailImage = lead.locator(".braided-media img");
+  const storyParagraphs = lead.locator("[data-braided-story] p");
+  await page.getByRole("button", { name: "Light theme" }).click();
+  await detailImage.evaluate((image) => {
+    image.dataset.testIdentity = "persistent";
+  });
+  await storyParagraphs.evaluateAll((paragraphs) => {
+    paragraphs.forEach((paragraph, index) => {
+      paragraph.dataset.testIdentity = `paragraph-${index}`;
+    });
+  });
+  await lead
+    .getByRole("button", { name: /^Actor Neanderthals/ })
+    .click();
+  await page.waitForFunction(() =>
+    document
+      .querySelector(".braided-media img")
+      ?.getAttribute("src")
+      ?.endsWith("/neanderthal-light.jpg"),
+  );
+  assert.equal(
+    await detailImage.getAttribute("data-test-identity"),
+    "persistent",
+  );
+  assert.deepEqual(
+    await storyParagraphs.evaluateAll((paragraphs) =>
+      paragraphs.map((paragraph) => paragraph.dataset.testIdentity),
+    ),
+    ["paragraph-0", "paragraph-1", "paragraph-2"],
+  );
+
+  await page.getByRole("button", { name: "Dark theme" }).click();
+  await page.waitForFunction(() =>
+    document
+      .querySelector(".braided-media img")
+      ?.getAttribute("src")
+      ?.endsWith("/neanderthal-dark.jpg"),
+  );
+  assert.equal(
+    await detailImage.getAttribute("data-test-identity"),
+    "persistent",
+  );
+});
+
 async function openPage(testContext) {
   const context = await browser.newContext();
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
