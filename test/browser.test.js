@@ -98,6 +98,17 @@ test("website pages load the exact public CDN runtime", async (testContext) => {
   }
 });
 
+test("website CDN examples disable email address rewriting", () => {
+  for (const path of ["index.html", "agents.html"]) {
+    const source = readFileSync(join(ROOT, "website", path), "utf8");
+    assert.doesNotMatch(
+      source,
+      /cdn\.jsdelivr\.net\/npm\/lines-and-arrows@/,
+      path,
+    );
+  }
+});
+
 async function openPage(testContext) {
   const context = await browser.newContext();
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
