@@ -90,9 +90,20 @@ test("website pages load the exact public CDN runtime", async (testContext) => {
     await page.waitForFunction(() =>
       Boolean(customElements.get("lines-and-arrows")),
     );
+    await page.waitForFunction(
+      () => !document.body.classList.contains("is-loading"),
+    );
     assert.equal(
       requests.filter((url) => url.includes("/lines-and-arrows@")).at(-1),
       expected,
+      path,
+    );
+    assert.deepEqual(
+      (await page
+        .locator(".constructor-error, .showcase-error, .feature-error")
+        .allTextContents())
+        .filter((text) => text.trim()),
+      [],
       path,
     );
   }

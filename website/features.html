@@ -227,11 +227,11 @@ choice Tool response
             Header comments explain the source. Gaps reserve visible time in both the
             document and the rendered sequence.
           </p>
-          <pre class="feature-source"><code>@Agent
+          <pre class="feature-source"><code>// Repeated work is summarized.
+@Agent
 @Worker
 
 Agent -> Worker: Start
-// Repeated work is summarized.
 repeat Until complete
   Worker -> Worker: Process step
   gap Next event loop
