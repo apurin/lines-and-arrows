@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { assignStructuralIds } from "../src/document.js";
 import { layoutDiagram, layoutDiagramWithoutHeader } from "../src/layout.js";
-import { selfMessageWidth } from "../src/metadata.js";
+import { messageLabelMetrics, selfMessageWidth } from "../src/metadata.js";
 import { parse } from "../src/parser.js";
 
 function layout(source, withoutHeader = false) {
@@ -63,6 +63,26 @@ test("header-free diagrams use the top edge", () => {
 
   assert.equal(withoutHeader.actors[0].y, 0);
   assert.ok(withHeader.actors[0].y > withoutHeader.actors[0].y);
+});
+
+test("message labels expand the space between lifelines", () => {
+  const label = "Confirm compatible migration";
+  const result = layout(`@Client
+@API
+
+Client -> API: ${label}`);
+  const client = result.actorByName.get("Client");
+  const api = result.actorByName.get("API");
+  const labelMetrics = messageLabelMetrics(label);
+
+  assert.deepEqual(labelMetrics.visibleLines, [label]);
+  assert.ok(
+    api.centerX - client.centerX >= labelMetrics.width,
+  );
+  assert.ok(
+    api.centerX - client.centerX >
+      result.options.actorWidth + result.options.actorGap,
+  );
 });
 
 test("message rows reserve space for their visible decorations", () => {

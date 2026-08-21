@@ -2,7 +2,6 @@ import {
   estimatedTextWidth,
   graphemes,
   textLines,
-  truncateTextToWidth,
 } from "./text.js";
 
 const TAG_MAX_LENGTH = 16;
@@ -11,6 +10,7 @@ const TAG_MIN_TEXT_WIDTH = 30;
 const TAG_HORIZONTAL_PADDING = 20;
 const ACTOR_LABEL_FONT_SIZE = 13;
 const MESSAGE_LABEL_FONT_SIZE = 11;
+const MESSAGE_LABEL_WIDTH_FACTOR = 0.56;
 const MESSAGE_LABEL_MIN_TEXT_WIDTH = 40;
 const MESSAGE_LABEL_HORIZONTAL_PADDING = 16;
 const SELF_MESSAGE_HORIZONTAL_PADDING = 16;
@@ -65,27 +65,35 @@ export function messageLabelMetrics(
   );
   const maximumTextWidth =
     availableWidth - MESSAGE_LABEL_HORIZONTAL_PADDING;
+  const characterWidth =
+    MESSAGE_LABEL_FONT_SIZE * MESSAGE_LABEL_WIDTH_FACTOR;
+  const maxTextCharacters = Math.max(
+    1,
+    Math.floor(maximumTextWidth / characterWidth),
+  );
   const visibleLines = label
-    ? textLines(text).map((line) =>
-        truncateTextToWidth(
-          line,
-          maximumTextWidth,
-          MESSAGE_LABEL_FONT_SIZE,
-        ),
-      )
+    ? textLines(text).map((line) => {
+        const characters = graphemes(line);
+        if (characters.length <= maxTextCharacters) {
+          return line;
+        }
+        return maxTextCharacters === 1
+          ? "…"
+          : `${characters
+              .slice(0, maxTextCharacters - 1)
+              .join("")}…`;
+      })
     : [];
-  const longestLineWidth = Math.max(
+  const longestLineLength = Math.max(
     0,
-    ...visibleLines.map((line) =>
-      estimatedTextWidth(line, MESSAGE_LABEL_FONT_SIZE),
-    ),
+    ...visibleLines.map((line) => graphemes(line).length),
   );
   const width = label
     ? Math.min(
         availableWidth,
         Math.max(
           MESSAGE_LABEL_MIN_TEXT_WIDTH,
-          longestLineWidth,
+          longestLineLength * characterWidth,
         ) + MESSAGE_LABEL_HORIZONTAL_PADDING,
       )
     : 0;
@@ -93,7 +101,7 @@ export function messageLabelMetrics(
   const textWidth = label
     ? Math.max(
         MESSAGE_LABEL_MIN_TEXT_WIDTH,
-        longestLineWidth,
+        longestLineLength * characterWidth,
       )
     : 0;
 

@@ -1608,20 +1608,30 @@ function renderMessage(
   }
 
   if (row.label) {
-    const {
-      visibleLines,
-      lineHeight,
-    } =
-      messageLabelMetrics(
-        row.label,
-        layout.options.messageLabelMaxWidth,
-      );
+    const fontSize = 11;
+    const fontWeight = 560;
+    const lineHeight = 13;
+    const labelSpan =
+      source.centerX === target.centerX
+        ? geometry.loopWidth
+        : Math.abs(target.centerX - source.centerX);
+    const availableTextWidth = Math.max(
+      1,
+      Math.min(
+        layout.options.messageLabelMaxWidth - 16,
+        labelSpan - 16,
+      ),
+    );
+    const measure = textMeasurer(fontSize, fontWeight);
+    const visibleLines = textLines(row.label).map((line) =>
+      truncateToWidth(line, availableTextWidth, measure),
+    );
     const label = svgElement("text", {
       class: "la-message-label",
       x: geometry.labelX,
       "text-anchor": "middle",
-      "font-size": 11,
-      "font-weight": 560,
+      "font-size": fontSize,
+      "font-weight": fontWeight,
       fill: tokens.text,
       "pointer-events": "none",
     });

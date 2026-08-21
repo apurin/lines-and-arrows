@@ -163,6 +163,10 @@ Use `\n` where a message label should break across visible lines:
 Client -> API: Submit report\nand supporting evidence
 ```
 
+We recommend keeping each visible line of a message label to 32 characters or
+fewer. A label may contain multiple lines; use `\n` wherever a line should
+break.
+
 A message may have one `tag`, one `tooltip`, and one `tooltip-icon`:
 
 ```lines-and-arrows
