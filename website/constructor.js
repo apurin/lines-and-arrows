@@ -137,11 +137,17 @@ const state = readSavedState();
 let generatedHtml = "";
 let copyResetTimer = null;
 
+const escapeHtmlText = (value) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+
 const formatSource = (source) =>
   source
     .trim()
     .split("\n")
-    .map((line) => `  ${line}`)
+    .map((line) => `  ${escapeHtmlText(line)}`)
     .join("\n");
 
 const buildEnhancementScript = (palette, actorSelectionExample) => {

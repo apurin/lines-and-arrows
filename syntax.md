@@ -4,8 +4,8 @@ Status: working definition
 
 Lines & Arrows is a small text format for sequence diagrams. The document
 captures the meaning and order of a sequence without depending on a particular
-visual engine. An SVG renderer, a canvas editor, a terminal renderer, and a
-future renderer should be able to read the same document.
+visual engine. The SVG renderer, visual editor, syntax API, and command-line
+validator all use the same portable source.
 
 The syntax is the source of truth. A visual editor reads and writes this format;
 it does not store a separate, richer diagram that cannot be represented as
@@ -75,11 +75,14 @@ API --> Customer: Job complete
 The format is UTF-8, line-oriented, and indentation-based.
 
 - One indentation level is two spaces.
-- Tabs are invalid on nonblank lines.
+- Tabs are invalid in actors, properties, and timeline constructs.
 - Blank lines, including lines containing only spaces or tabs, are ignored.
-- A line whose first non-space characters are `//` is a comment.
-- A comment's indentation places it in the same structural scope as the
-  surrounding actor, property, timeline item, group, or section.
+- Before the first actor or timeline construct, a line whose first
+  non-whitespace characters are `//` is a document header comment.
+- Header comments have no structural indentation. Canonical output writes
+  them at column zero.
+- After the first actor or timeline construct, comment lines are invalid with
+  `Comments are only allowed before the diagram.`
 - Inline comments are not supported. This keeps values such as URLs
   unambiguous.
 - Source values stay on one physical line; `\n` represents supported visible
@@ -130,6 +133,10 @@ Actor declarations are optional:
 - If the document has any declaration, every referenced actor must be declared.
   Declaration order is actor order.
 - Declarations must appear before the first timeline item.
+
+Canonical output writes declarations when they establish actor order, preserve
+actor metadata, or include actors unused by messages. Otherwise, actor order is
+represented by first use in the timeline.
 
 An unknown icon identifier does not invalidate a diagram. A renderer should use
 its generic actor treatment or the default tooltip information icon and
@@ -256,25 +263,21 @@ Gaps may appear inside groups and sections.
 
 ## Comments
 
-Comments occupy their own line and are ignored by the diagram:
+Comments form an optional document header before the first actor declaration or
+timeline construct. Blank lines may appear within the header:
 
 ```lines-and-arrows
-// Retry is deliberately outside the critical group.
+// Checkout request flow
+
+// Used by the operations guide
 API -> Worker: Start job
 ```
 
-Indent comments like the construct they describe. A comment before an actor,
-timeline item, or section is attached to that construct. A comment among actor
-or message properties stays after the same header or property. An indented
-comment after the final child of a group or section stays at the end of that
-body. Comments before the first construct or after the timeline belong to the
-document.
-
-This structural attachment avoids source line bookkeeping. Moving or grouping
-a construct moves its attached comments. Deleting a construct deletes its
-attached comments. Removing a group or section wrapper discards comments owned
-by that wrapper while retaining comments owned by the children that remain.
-Comments never become visible diagram controls.
+The parser stores header comment text in the document's `comments` array. Each
+entry represents one physical comment line. Canonical output writes the
+comments together at the top of the source, and visual edits preserve them.
+Comments stay outside the rendered diagram. Use tags and tooltips for context
+attached to actors and messages.
 
 ## Names and text
 
@@ -313,36 +316,36 @@ The grammar below describes tokens at the current indentation level.
 Indentation ownership is defined by the rules above.
 
 ```ebnf
-document         = comments, [ actors ], timeline, comments ;
-comments         = { comment | blank } ;
+document         = header, [ actors ], timeline ;
+header           = { comment | blank } ;
 
-actors           = actor, { comments, actor } ;
+actors           = actor, { actor | blank } ;
 actor            = "@", single-line-text, newline,
-                   { actor-property | comment } ;
+                   { actor-property | blank } ;
 actor-property   = indent, ( icon | tag | tooltip | tooltip-icon ), newline ;
 icon             = "icon", space, single-line-text ;
 tag              = "tag", space, single-line-text ;
 tooltip          = "tooltip", space, escaped-text ;
 tooltip-icon     = "tooltip-icon", space, single-line-text ;
 
-timeline         = { timeline-item | comment | blank } ;
+timeline         = timeline-item, { timeline-item | blank } ;
 timeline-item    = message | group | gap ;
 
 message          = single-line-text, space, arrow, space, single-line-text,
                    [ ":", [ space ], escaped-text ], newline,
-                   { message-property | comment } ;
+                   { message-property | blank } ;
 message-property = indent, ( tag | tooltip | tooltip-icon ), newline ;
 arrow            = "->" | "-->" | "->x" ;
 
 group            = group-type, [ space, escaped-text ], newline,
                    ( group-body | sections ) ;
 group-body       = indent, timeline-item,
-                   { indent, timeline-item | comment | blank } ;
+                   { indent, timeline-item | blank } ;
 sections         = section, { section } ;
 section          = indent, "|", space, escaped-text, newline, group-body ;
 
 gap              = "gap", space, escaped-text, newline ;
-comment          = [ indent ], "//", [ text ], newline ;
+comment          = { " " | "\t" }, "//", [ text ], newline ;
 blank            = newline ;
 group-type       = letter, { lowercase-letter | digit | "-" } ;
 escaped-text     = { unicode-character | "\n" | "\\" } ;
@@ -367,18 +370,19 @@ A parser must report, at minimum:
 - a section marker without separator whitespace;
 - use of the reserved `gap` keyword as a group type;
 - unsupported arrow forms;
-- actor declarations after the timeline begins.
+- actor declarations after the timeline begins;
+- a comment after the first actor or timeline construct.
 
 A parse-write round trip must preserve document meaning. A canonical writer may
 normalize indentation, blank lines, and property order, but must not change
 actor order, timeline order, hierarchy, text, arrow forms, actor or tooltip
-icon identifiers, tags, tooltips, or the structural placement and relative
-indentation of comments. Canonical output writes real line breaks inside values
-as `\n` and literal backslashes as `\\`.
+icon identifiers, tags, tooltips, or document header comments. Canonical output
+writes real line breaks inside values as `\n` and literal backslashes as `\\`.
 
 Programmatic documents follow the same grammar. `serialize(document)` validates
-the document before returning source and rejects structures that would lose
-meaning, including a group containing both direct items and sections.
+the document before returning source. A parsed group has one non-empty `body`
+containing either timeline items or sections; each section contains timeline
+items.
 
 ## Renderer contract
 

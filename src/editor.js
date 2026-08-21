@@ -2,11 +2,12 @@ import {
   assignStructuralIds,
   cloneDocument,
   descendantContainerIds,
+  findContainerItems,
   findGroup,
   findItemLocation,
   findSectionLocation,
   freezeDocument,
-  getContainer,
+  groupSections,
   visitMessages,
 } from "./document.js";
 import { parse } from "./parser.js";
@@ -109,8 +110,6 @@ function createMessage(document, allocator, properties = {}) {
       properties.tooltipIcon,
       "tooltipIcon",
     ),
-    leadingComments: [],
-    propertyComments: [],
   };
 }
 
@@ -123,7 +122,6 @@ function createTimelineItem(document, allocator, type) {
       type: "gap",
       id: allocator.next("item"),
       label: "Time passes",
-      leadingComments: [],
     };
   }
   if (type === "group") {
@@ -132,39 +130,38 @@ function createTimelineItem(document, allocator, type) {
       id: allocator.next("item"),
       groupType: "group",
       label: "New group",
-      items: [createMessage(document, allocator)],
-      sections: [],
-      leadingComments: [],
-      bodyTrailingComments: [],
+      body: [createMessage(document, allocator)],
     };
   }
   throw new Error(`Unsupported timeline item type "${type}".`);
 }
 
-function cleanupEmptyGroups(items) {
+function pruneTimeline(items, removal = {}) {
   const kept = [];
 
   for (const item of items) {
-    if (item.type !== "group") {
-      kept.push(item);
-      continue;
+    if (item.type === "group") {
+      const sections = groupSections(item);
+      if (sections) {
+        for (const section of sections) {
+          section.items = pruneTimeline(section.items, removal);
+        }
+        item.body = sections.filter(
+          (section) => section.items.length > 0,
+        );
+      } else {
+        item.body = pruneTimeline(item.body, removal);
+      }
     }
 
-    if (item.sections.length > 0) {
-      for (const section of item.sections) {
-        section.items = cleanupEmptyGroups(section.items);
-      }
-      item.sections = item.sections.filter(
-        (section) => section.items.length > 0,
-      );
-      if (item.sections.length > 0) {
-        kept.push(item);
-      }
-      continue;
-    }
-
-    item.items = cleanupEmptyGroups(item.items);
-    if (item.items.length > 0) {
+    const isRemoved =
+      removal.itemIds?.has(item.id) ||
+      (item.type === "message" &&
+        (item.source === removal.actorName ||
+          item.target === removal.actorName));
+    const isEmptyGroup =
+      item.type === "group" && item.body.length === 0;
+    if (!isRemoved && !isEmptyGroup) {
       kept.push(item);
     }
   }
@@ -203,7 +200,6 @@ export class DiagramEditor {
     const before = this.#snapshot;
     const draft = cloneDocument(before.document);
     const result = mutate(draft);
-    draft.explicitActors = true;
     const afterSource = serialize(draft);
 
     if (afterSource === before.source) {
@@ -247,12 +243,9 @@ export class DiagramEditor {
         tag: null,
         tooltip: null,
         tooltipIcon: null,
-        leadingComments: [],
-        propertyComments: [],
       };
       const target = Math.max(0, Math.min(index, document.actors.length));
       document.actors.splice(target, 0, actor);
-      document.explicitActors = true;
       return actor.id;
     });
   }
@@ -295,7 +288,6 @@ export class DiagramEditor {
               : optionalSingleLineText(patch[property], property);
         }
       }
-      document.explicitActors = true;
       return actor.id;
     });
   }
@@ -315,7 +307,6 @@ export class DiagramEditor {
       }
       target = Math.max(0, Math.min(target, document.actors.length));
       document.actors.splice(target, 0, actor);
-      document.explicitActors = true;
       return actor.id;
     });
   }
@@ -331,54 +322,35 @@ export class DiagramEditor {
       }
 
       const [actor] = document.actors.splice(index, 1);
-      const removeReferences = (items) =>
-        cleanupEmptyGroups(
-          items.filter((item) => {
-            if (item.type === "message") {
-              return (
-                item.source !== actor.name && item.target !== actor.name
-              );
-            }
-            if (item.type === "group") {
-              if (item.sections.length > 0) {
-                for (const section of item.sections) {
-                  section.items = removeReferences(section.items);
-                }
-              } else {
-                item.items = removeReferences(item.items);
-              }
-            }
-            return true;
-          }),
-        );
-      document.items = removeReferences(document.items);
-      document.explicitActors = true;
+      document.items = pruneTimeline(document.items, {
+        actorName: actor.name,
+      });
       return null;
     });
   }
 
   addItem(parentId, index, type = "message") {
     return this.#commit((document) => {
-      const container = getContainer(document, parentId);
-      if (!container) {
+      const items = findContainerItems(document, parentId);
+      if (!items) {
         throw new Error("Timeline insertion point no longer exists.");
       }
       const item = createTimelineItem(document, this.#ids, type);
-      const target = Math.max(0, Math.min(index, container.items.length));
-      container.items.splice(target, 0, item);
+      const target = Math.max(0, Math.min(index, items.length));
+      items.splice(target, 0, item);
       return item.id;
     });
   }
 
   addMessage(parentId, index, properties = {}) {
     return this.#commit((document) => {
-      const container = getContainer(document, parentId);
-      if (!container) {
+      const items = findContainerItems(document, parentId);
+      if (!items) {
         throw new Error("Timeline insertion point no longer exists.");
       }
       const item = createMessage(document, this.#ids, properties);
-      const target = Math.max(0, Math.min(index, container.items.length));
-      container.items.splice(target, 0, item);
+      const target = Math.max(0, Math.min(index, items.length));
+      items.splice(target, 0, item);
       return item.id;
     });
   }
@@ -438,12 +410,12 @@ export class DiagramEditor {
 
   removeItem(id) {
     return this.#commit((document) => {
-      const location = findItemLocation(document, id);
-      if (!location) {
+      if (!findItemLocation(document, id)) {
         throw new Error("Timeline item not found.");
       }
-      location.items.splice(location.index, 1);
-      document.items = cleanupEmptyGroups(document.items);
+      document.items = pruneTimeline(document.items, {
+        itemIds: new Set([id]),
+      });
       return null;
     });
   }
@@ -455,26 +427,9 @@ export class DiagramEditor {
         return null;
       }
 
-      const removeSelected = (items) =>
-        cleanupEmptyGroups(
-          items
-            .filter((item) => !selected.has(item.id))
-            .map((item) => {
-              if (item.type !== "group") {
-                return item;
-              }
-              if (item.sections.length > 0) {
-                for (const section of item.sections) {
-                  section.items = removeSelected(section.items);
-                }
-              } else {
-                item.items = removeSelected(item.items);
-              }
-              return item;
-            }),
-        );
-
-      document.items = removeSelected(document.items);
+      document.items = pruneTimeline(document.items, {
+        itemIds: selected,
+      });
       return null;
     });
   }
@@ -502,25 +457,25 @@ export class DiagramEditor {
         return item.id;
       }
 
-      document.items = cleanupEmptyGroups(document.items);
-      const destination = getContainer(document, targetParentId);
+      const destination = findContainerItems(document, targetParentId);
       if (!destination) {
         throw new Error("Timeline destination no longer exists.");
       }
-      target = Math.max(0, Math.min(target, destination.items.length));
-      destination.items.splice(target, 0, item);
+      target = Math.max(0, Math.min(target, destination.length));
+      destination.splice(target, 0, item);
+      document.items = pruneTimeline(document.items);
       return item.id;
     });
   }
 
   wrapItems(parentId, ids, groupType = "group", label = "New group") {
     return this.#commit((document) => {
-      const container = getContainer(document, parentId);
-      if (!container) {
+      const items = findContainerItems(document, parentId);
+      if (!items) {
         throw new Error("Selected items do not share a parent.");
       }
       const indices = ids
-        .map((id) => container.items.findIndex((item) => item.id === id))
+        .map((id) => items.findIndex((item) => item.id === id))
         .sort((a, b) => a - b);
       if (
         indices.length === 0 ||
@@ -534,18 +489,15 @@ export class DiagramEditor {
       }
 
       const first = indices[0];
-      const grouped = container.items.splice(first, indices.length);
+      const grouped = items.splice(first, indices.length);
       const group = {
         type: "group",
         id: this.#ids.next("item"),
         groupType: requiredGroupType(groupType),
         label: optionalText(label),
-        items: grouped,
-        sections: [],
-        leadingComments: [],
-        bodyTrailingComments: [],
+        body: grouped,
       };
-      container.items.splice(first, 0, group);
+      items.splice(first, 0, group);
       return group.id;
     });
   }
@@ -556,10 +508,10 @@ export class DiagramEditor {
       if (!location || location.item.type !== "group") {
         throw new Error("Group not found.");
       }
-      const contents =
-        location.item.sections.length > 0
-          ? location.item.sections.flatMap((section) => section.items)
-          : location.item.items;
+      const sections = groupSections(location.item);
+      const contents = sections
+        ? sections.flatMap((section) => section.items)
+        : location.item.body;
       location.items.splice(location.index, 1, ...contents);
       return contents[0]?.id ?? null;
     });
@@ -571,29 +523,25 @@ export class DiagramEditor {
       if (!group) {
         throw new Error("Group not found.");
       }
-      if (group.sections.length > 0) {
-        return group.sections[0].id;
+      const sections = groupSections(group);
+      if (sections) {
+        return sections[0].id;
       }
-      group.sections = [
+      group.body = [
         {
           type: "section",
           id: this.#ids.next("section"),
           label: "first",
-          items: group.items,
-          leadingComments: [],
-          bodyTrailingComments: [],
+          items: group.body,
         },
         {
           type: "section",
           id: this.#ids.next("section"),
           label: "second",
           items: [createMessage(document, this.#ids)],
-          leadingComments: [],
-          bodyTrailingComments: [],
         },
       ];
-      group.items = [];
-      return group.sections[1].id;
+      return group.body[1].id;
     });
   }
 
@@ -603,22 +551,21 @@ export class DiagramEditor {
       if (!group) {
         throw new Error("Group not found.");
       }
-      if (group.sections.length === 0) {
+      const sections = groupSections(group);
+      if (!sections) {
         throw new Error("Convert the group to sections first.");
       }
       const section = {
         type: "section",
         id: this.#ids.next("section"),
-        label: `section ${group.sections.length + 1}`,
+        label: `section ${sections.length + 1}`,
         items: [createMessage(document, this.#ids)],
-        leadingComments: [],
-        bodyTrailingComments: [],
       };
       const target = Math.max(
         0,
-        Math.min(index ?? group.sections.length, group.sections.length),
+        Math.min(index ?? sections.length, sections.length),
       );
-      group.sections.splice(target, 0, section);
+      sections.splice(target, 0, section);
       return section.id;
     });
   }
@@ -666,8 +613,7 @@ export class DiagramEditor {
       const [section] = location.sections.splice(location.index, 1);
 
       if (location.sections.length === 0) {
-        group.items = section.items;
-        group.sections = [];
+        group.body = section.items;
         return group.id;
       }
 

@@ -42,38 +42,48 @@ test("parses the language and writes stable, semantic source", () => {
   const document = parse(SOURCE);
   const canonical = serialize(document);
 
-  assert.equal(document.explicitActors, true);
   assert.deepEqual(
     document.actors.map(({ name }) => name),
     ["Customer", "API", "Worker"],
   );
   assert.equal(document.actors[0].tooltip, "Starts the request\nand reviews the result");
   assert.equal(document.items[1].type, "group");
-  assert.equal(document.items[1].items[1].sections.length, 2);
-  assert.equal(document.items[1].items[1].sections[1].items[1].arrow, "->x");
+  assert.equal(document.items[1].body[1].body.length, 2);
+  assert.equal(document.items[1].body[1].body[1].items[1].arrow, "->x");
   assert.deepEqual(parse(canonical), document);
 });
 
-test("infers actors and preserves comments with their constructs", () => {
-  const source = `// before message
-Client -> API: Start
-  // message detail
-  tooltip First line\\nSecond line
+test("round-trips document header comments", () => {
+  const source = `// Deployment context
 
-// before group
-review Work
-  // inside group
-  API --> Client`;
+  // Generated for review
+
+Client -> API: Start`;
   const document = parse(source);
   const canonical = serialize(document);
 
-  assert.equal(document.explicitActors, false);
+  assert.deepEqual(document.comments, [
+    "Deployment context",
+    "Generated for review",
+  ]);
   assert.deepEqual(document.actors.map(({ name }) => name), ["Client", "API"]);
-  assert.equal(document.leadingComments[0].text, "before message");
-  assert.equal(document.items[0].propertyComments[0].text, "message detail");
-  assert.equal(document.items[1].leadingComments[0].text, "before group");
-  assert.equal(document.items[1].items[0].leadingComments[0].text, "inside group");
+  assert.equal(
+    canonical,
+    "// Deployment context\n// Generated for review\n\nClient -> API: Start\n",
+  );
   assert.deepEqual(parse(canonical), document);
+  document.comments = ["Context\nClient -> API: Injected"];
+  assert.throws(() => serialize(document), /comments\[0\].*one line/i);
+});
+
+test("rejects comments after the diagram starts", () => {
+  assert.deepEqual(validate("Client -> API: Start\n// Later note"), {
+    valid: false,
+    error: {
+      message: "Comments are only allowed before the diagram.",
+      line: 2,
+    },
+  });
 });
 
 test("reports concise syntax and document validation errors", () => {
@@ -107,6 +117,12 @@ Client -> Missing: Start`);
     () => serialize({ actors: [], items: [] }),
     /must have type "diagram"/i,
   );
+  const emptyValue = parse("A -> B: Start");
+  emptyValue.items[0].label = "";
+  assert.throws(() => serialize(emptyValue), /items\[0\]\.label.*empty/i);
+  emptyValue.items[0].label = "Start";
+  emptyValue.actors[0].tag = " ";
+  assert.throws(() => serialize(emptyValue), /actors\[0\]\.tag.*empty/i);
 });
 
 test("validates files and stdin through the verb-less CLI", () => {

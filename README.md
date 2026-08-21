@@ -38,12 +38,19 @@ Load the registered web component from jsDelivr:
 </lines-and-arrows>
 ```
 
+Diagram source inside HTML is text content, so generated embeds must escape
+`&`, `<`, and `>`. The element's `source` property and `renderDiagram()` accept
+raw diagram source.
+
 Set `mode="edit"` to open the visual editor. The
 [Constructor](https://lines-and-arrows.dev/constructor) produces complete HTML
 for themes, editing controls, actor selection, branding, copy source, and canvas
 behavior. Set `copy-source="false"` to hide the Copy source action. When a view
 sets both `branding="false"` and `copy-source="false"`, the diagram starts at
 the top edge.
+
+Built-in icons load from the pinned Phosphor package on jsDelivr. Allow that
+origin in browser content policies, or omit icon properties for offline embeds.
 
 ## npm
 
@@ -107,7 +114,7 @@ API --> Customer: Job complete
 ```
 
 The [syntax reference](./syntax.md) defines actors, messages, arrow forms,
-groups, sections, gaps, comments, escaping, validation, and canonical
+groups, sections, gaps, header comments, escaping, validation, and canonical
 serialization. The [agent guide](https://lines-and-arrows.dev/agents) provides
 a compact authoring and embedding workflow.
 

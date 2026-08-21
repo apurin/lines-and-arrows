@@ -46,7 +46,7 @@ on authoring or validating a diagram, read the canonical
 ## Contracts that are easy to miss
 
 - `parse` followed by `serialize` must produce stable canonical source.
-- Comments belong structurally to their nearby construct and move with it.
+- Comments belong to the document header and remain there through visual edits.
 - Public syntax documents contain semantic source data. Renderer and editor IDs
   are private session details and are never serialized.
 - Source locations belong in syntax errors, not in persistent document objects.
@@ -72,7 +72,7 @@ on authoring or validating a diagram, read the canonical
 
 For a syntax change, keep these pieces aligned:
 
-1. Update the formal contract in `syntax.md` and its published website copy.
+1. Update the formal contract in `syntax.md`.
 2. Update `website/agents.html` when authoring guidance changes.
 3. Update parser, serializer, editor behavior, and public declarations as
    applicable.

@@ -1,5 +1,6 @@
 import {
   layoutDiagram,
+  layoutDiagramForEditor,
   layoutDiagramWithoutHeader,
 } from "./layout.js";
 import { phosphorIconResolver } from "./icons.js";
@@ -8,10 +9,15 @@ import {
   metadataMetrics,
   selfMessageWidth,
 } from "./metadata.js";
-import { assignStructuralIds, visitItems } from "./document.js";
+import { assignStructuralIds } from "./document.js";
 import { parse } from "./parser.js";
 import { serialize } from "./serialize.js";
-import { textLines } from "./text.js";
+import {
+  estimatedTextWidth,
+  graphemes,
+  textLines,
+  truncateTextToWidth,
+} from "./text.js";
 import { resolvePaletteTheme, resolveTheme } from "./theme.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -326,15 +332,8 @@ function svgElement(name, attributes = {}) {
   return element;
 }
 
-function truncate(text, length) {
-  if (text.length <= length) {
-    return text;
-  }
-  return `${text.slice(0, Math.max(1, length - 1))}…`;
-}
-
 function textWidth(text, fontSize = 12, minimum = 0) {
-  return Math.max(minimum, text.length * fontSize * 0.56);
+  return Math.max(minimum, estimatedTextWidth(text, fontSize));
 }
 
 function textMeasurer(fontSize, fontWeight) {
@@ -355,17 +354,21 @@ function truncateToWidth(text, maximumWidth, measure) {
     return text;
   }
 
+  const characters = graphemes(text);
   let lower = 0;
-  let upper = text.length;
+  let upper = characters.length;
   while (lower < upper) {
     const middle = Math.ceil((lower + upper) / 2);
-    if (measure(`${text.slice(0, middle)}…`) <= maximumWidth) {
+    if (
+      measure(`${characters.slice(0, middle).join("")}…`) <=
+      maximumWidth
+    ) {
       lower = middle;
     } else {
       upper = middle - 1;
     }
   }
-  return `${text.slice(0, lower)}…`;
+  return `${characters.slice(0, lower).join("")}…`;
 }
 
 function appendTextLines(
@@ -392,13 +395,13 @@ function groupHeaderGeometry(group) {
   const typeWidth = textWidth(group.groupType, 11);
   const headerTextGap = 8;
   const labelX = left + typeWidth + headerTextGap;
-  const availableLabelWidth = Math.max(36, right - labelX);
-  const labelCharacters = Math.max(
-    6,
-    Math.floor(availableLabelWidth / (11 * 0.56)),
+  const backplatePadding = 6;
+  const availableLabelWidth = Math.max(
+    36,
+    right - labelX - backplatePadding,
   );
   const visibleLines = textLines(group.label).map((line) =>
-    truncate(line, labelCharacters),
+    truncateTextToWidth(line, availableLabelWidth, 11),
   );
   const labelWidth = Math.max(
     0,
@@ -411,7 +414,7 @@ function groupHeaderGeometry(group) {
     labelX,
     visibleLines,
     labelWidth,
-    backplatePadding: 6,
+    backplatePadding,
   };
 }
 
@@ -668,7 +671,6 @@ function renderTooltipPopover(layer, tooltip) {
   popover.id = id;
   popover.className = "la-tooltip-popover";
   popover.dataset.visible = "false";
-  popover.setAttribute("part", "tooltip");
   popover.setAttribute("popover", "manual");
   popover.setAttribute("role", "tooltip");
   popover.textContent = tooltip;
@@ -959,12 +961,11 @@ function renderActor(
   options,
   selection,
   tooltipLayer,
+  editActivate,
 ) {
-  const activatePart =
-    selection.mode === "editor" &&
-    typeof options.actorPartActivatesSelection === "function"
-      ? (part) => options.actorPartActivatesSelection(actor.id, part)
-      : null;
+  const activatePart = editActivate
+    ? (part) => editActivate(actor.id, part)
+    : null;
   const group = svgElement("g", {
     class: "la-actor",
     transform: `translate(${actor.x} ${actor.y})`,
@@ -1049,7 +1050,7 @@ function renderActor(
       opacity: 0.72,
       "pointer-events": "none",
     });
-    fallback.textContent = actor.name.slice(0, 1).toUpperCase();
+    fallback.textContent = graphemes(actor.name)[0]?.toUpperCase() ?? "";
     iconParent.append(fallback);
 
     const iconUrl = options.iconResolver(actor.icon, tokens.name);
@@ -1162,14 +1163,11 @@ function renderGroupHeader(
   parent,
   group,
   tokens,
-  options,
-  selection,
+  editActivate,
 ) {
-  const activatePart =
-    selection.mode === "editor" &&
-    typeof options.groupPartActivatesSelection === "function"
-      ? (part) => options.groupPartActivatesSelection(group.id, part)
-      : null;
+  const activatePart = editActivate
+    ? (part) => editActivate(group.id, part)
+    : null;
   const {
     left,
     y,
@@ -1451,6 +1449,7 @@ function renderMessage(
   selection,
   tooltipLayer,
   options,
+  editActivate,
 ) {
   const source = layout.actorByName.get(row.source);
   const target = layout.actorByName.get(row.target);
@@ -1458,11 +1457,9 @@ function renderMessage(
     return;
   }
 
-  const activatePart =
-    selection.mode === "editor" &&
-    typeof options.messagePartActivatesSelection === "function"
-      ? (part) => options.messagePartActivatesSelection(row.id, part)
-      : null;
+  const activatePart = editActivate
+    ? (part) => editActivate(row.id, part)
+    : null;
 
   const group = svgElement("g", {
     class: "la-message",
@@ -1679,9 +1676,12 @@ function renderGap(parent, row, layout, tokens, selection) {
     `Gap: ${row.label}`,
   );
   const visibleLines = textLines(row.label).map((line) =>
-    truncate(line, 46),
+    truncateTextToWidth(
+      line,
+      layout.contentRight - layout.contentLeft - 20,
+      10,
+    ),
   );
-  const labelHeight = visibleLines.length * 12 + 12;
   const centerX = layout.width / 2;
   const topEdge = row.top + 8;
   const bottomEdge = row.top + row.height - 8;
@@ -1752,7 +1752,6 @@ function renderBranding(parent, layout) {
   const top = Math.max(2, (layout.options.marginTop - 16) / 2);
   const link = svgElement("a", {
     class: "la-branding",
-    part: "branding",
     href: BRANDING_HREF,
     target: "_blank",
     rel: "noopener noreferrer",
@@ -1904,11 +1903,12 @@ function renderHeader(
   layout,
   tokens,
   options,
+  headerActions,
   source,
   branding,
   cleanups,
 ) {
-  const actions = [...(options.headerActions ?? [])];
+  const actions = [...headerActions];
   let copyResetTimer = null;
   if (options.copySource !== false) {
     actions.push({
@@ -1978,16 +1978,6 @@ function renderHeader(
   parent.append(header);
 }
 
-function indexSelectableModels(documentModel) {
-  const models = new Map();
-
-  for (const actor of documentModel.actors) {
-    models.set(actor.id, actor);
-  }
-  visitItems(documentModel.items, (item) => models.set(item.id, item));
-  return models;
-}
-
 function actorDetails(actor) {
   return Object.freeze({
     name: actor.name,
@@ -1998,7 +1988,7 @@ function actorDetails(actor) {
   });
 }
 
-function createSelectionController(root, options) {
+function createViewSelection(root, options) {
   const mode = options.selectionMode;
   if (mode === "none") {
     return {
@@ -2008,41 +1998,12 @@ function createSelectionController(root, options) {
       selectActor() {
         throw new Error("Actor selection is not enabled.");
       },
-      enabled: false,
       mode,
     };
   }
-  const models = options.models;
-  if (mode === "editor") {
-    return {
-      select(id, emit = true) {
-        const selectedId = id ?? null;
-        const item = selectedId === null ? null : models.get(selectedId);
-        if (selectedId !== null && !item) {
-          throw new RangeError(
-            `No selectable diagram element has ID "${selectedId}".`,
-          );
-        }
-        if (emit) {
-          options.onSelect?.(
-            Object.freeze({
-              id: selectedId,
-              kind: item?.type ?? null,
-              item: item ?? null,
-            }),
-          );
-        }
-      },
-      clear(emit = true) {
-        this.select(null, emit);
-      },
-      canSelect() {
-        return true;
-      },
-      enabled: true,
-      mode,
-    };
-  }
+  const models = new Map(
+    options.actors.map((actor) => [actor.id, actor]),
+  );
 
   let selectedId = null;
 
@@ -2112,7 +2073,6 @@ function createSelectionController(root, options) {
     canSelect(item) {
       return item.type === "actor";
     },
-    enabled: true,
     mode,
   };
 }
@@ -2125,6 +2085,8 @@ function renderDiagramSurface(
   source,
   options,
   selectionMode,
+  onEditActivate = null,
+  headerActions = [],
 ) {
   if (!target?.replaceChildren) {
     throw new TypeError("renderDiagram requires a DOM container.");
@@ -2151,10 +2113,13 @@ function renderDiagramSurface(
   const hasHeader =
     branding ||
     copySource ||
-    (options.headerActions?.length ?? 0) > 0;
-  const layout = hasHeader
-    ? layoutDiagram(documentModel)
-    : layoutDiagramWithoutHeader(documentModel);
+    headerActions.length > 0;
+  const layout =
+    selectionMode === "editor"
+      ? layoutDiagramForEditor(documentModel)
+      : hasHeader
+        ? layoutDiagram(documentModel)
+        : layoutDiagramWithoutHeader(documentModel);
   const prefix = `la-${rendererSequence}`;
   rendererSequence += 1;
 
@@ -2163,13 +2128,11 @@ function renderDiagramSurface(
 
   const frame = document.createElement("div");
   frame.className = "la-frame";
-  frame.part = "frame";
   frame.dataset.theme = tokens.name;
   applyTokens(frame, tokens);
 
   const svg = svgElement("svg", {
     class: "la-canvas",
-    part: "canvas",
     viewBox: `0 0 ${layout.width} ${layout.height}`,
     role: "group",
     "aria-label": options.label || "Sequence diagram",
@@ -2189,6 +2152,8 @@ function renderDiagramSurface(
       "tooltip-icon-color",
     )})`,
   };
+  const editActivate =
+    selectionMode === "editor" ? onEditActivate : null;
   frame.style.setProperty(
     "--la-actor-icon-filter",
     renderOptions.actorIconFilter,
@@ -2197,14 +2162,22 @@ function renderDiagramSurface(
   tooltipLayer.className = "la-tooltip-layer";
   tooltipLayer.cleanups = [];
 
-  const selection = createSelectionController(svg, {
-    ...renderOptions,
-    models:
-      selectionMode === "none"
-        ? null
-        : indexSelectableModels(documentModel),
-    selectionMode,
-  });
+  const selection =
+    selectionMode === "editor"
+      ? {
+          canSelect() {
+            return true;
+          },
+          select(id) {
+            editActivate(id);
+          },
+          mode: "editor",
+        }
+      : createViewSelection(svg, {
+          ...renderOptions,
+          actors: documentModel.actors,
+          selectionMode,
+        });
 
   const gapMask = appendGapMask(svg, layout, prefix);
   const groupLayer = svgElement("g", { class: "la-group-layer" });
@@ -2223,8 +2196,7 @@ function renderDiagramSurface(
       headerLayer,
       group,
       tokens,
-      renderOptions,
-      selection,
+      editActivate,
     );
   }
   for (const section of layout.sections) {
@@ -2242,6 +2214,7 @@ function renderDiagramSurface(
         selection,
         tooltipLayer,
         renderOptions,
+        editActivate,
       );
     } else {
       renderGap(svg, row, layout, tokens, selection);
@@ -2256,6 +2229,7 @@ function renderDiagramSurface(
       renderOptions,
       selection,
       tooltipLayer,
+      editActivate,
     );
   }
   renderHeader(
@@ -2263,20 +2237,18 @@ function renderDiagramSurface(
     layout,
     tokens,
     renderOptions,
+    headerActions,
     source,
     branding,
     tooltipLayer.cleanups,
   );
-  if (selection.enabled) {
+  if (selectionMode === "actors") {
     svg.addEventListener("click", (event) => {
       if (
-        selectionMode === "actors" &&
         !event.target.closest(
           ".la-actor, .la-tooltip-trigger, .la-branding",
         )
       ) {
-        selection.clear();
-      } else if (selectionMode === "editor" && event.target === svg) {
         selection.clear();
       }
     });
@@ -2303,15 +2275,7 @@ function renderDiagramSurface(
   };
 
   if (selectionMode === "editor") {
-    return {
-      ...commonController,
-      select(id, emit = true) {
-        selection.select(id, emit);
-      },
-      clearSelection(emit = true) {
-        selection.clear(emit);
-      },
-    };
+    return commonController;
   }
 
   return {
@@ -2371,6 +2335,8 @@ export function renderDiagramForEditor(
   documentModel,
   source,
   options = {},
+  onActivate,
+  headerActions = [],
 ) {
   return renderDiagramSurface(
     target,
@@ -2378,5 +2344,7 @@ export function renderDiagramForEditor(
     source,
     options,
     "editor",
+    onActivate,
+    headerActions,
   );
 }

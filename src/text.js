@@ -1,3 +1,53 @@
+const graphemeSegmenter = new Intl.Segmenter(undefined, {
+  granularity: "grapheme",
+});
+const nonAsciiGrapheme = /[^\x00-\x7f]/u;
+const NORMAL_EM_WIDTH = 1;
+const WIDE_EM_WIDTH = 1.35;
+
+export function graphemes(value) {
+  return Array.from(
+    graphemeSegmenter.segment(String(value ?? "")),
+    ({ segment }) => segment,
+  );
+}
+
+function graphemeWidth(grapheme, fontSize) {
+  return (
+    fontSize *
+    (nonAsciiGrapheme.test(grapheme) || grapheme.length > 1
+      ? WIDE_EM_WIDTH
+      : NORMAL_EM_WIDTH)
+  );
+}
+
+export function estimatedTextWidth(value, fontSize) {
+  return graphemes(value).reduce(
+    (width, grapheme) => width + graphemeWidth(grapheme, fontSize),
+    0,
+  );
+}
+
+export function truncateTextToWidth(value, maximumWidth, fontSize) {
+  const text = String(value ?? "");
+  if (estimatedTextWidth(text, fontSize) <= maximumWidth) {
+    return text;
+  }
+
+  const ellipsis = "…";
+  let width = graphemeWidth(ellipsis, fontSize);
+  const visible = [];
+  for (const grapheme of graphemes(text)) {
+    const nextWidth = width + graphemeWidth(grapheme, fontSize);
+    if (nextWidth > maximumWidth) {
+      break;
+    }
+    visible.push(grapheme);
+    width = nextWidth;
+  }
+  return `${visible.join("")}${ellipsis}`;
+}
+
 export function decodeText(value) {
   const source = String(value ?? "");
   let result = "";

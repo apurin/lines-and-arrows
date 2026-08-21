@@ -7,6 +7,7 @@ import {
   metadataMetrics,
   selfMessageWidth,
 } from "./metadata.js";
+import { groupSections, visitMessages } from "./document.js";
 import { textLines } from "./text.js";
 
 const DEFAULTS = {
@@ -78,71 +79,35 @@ function collectMessageWidths(
   actorIndexes,
   messageLabelMaxWidth,
 ) {
-  for (const item of items) {
-    if (item.type === "message") {
-      if (item.source === item.target) {
-        selfWidths.set(
-          item.source,
+  visitMessages(items, (item) => {
+    if (item.source === item.target) {
+      selfWidths.set(
+        item.source,
+        Math.max(
+          selfWidths.get(item.source) ?? 0,
+          selfMessageWidth(item, messageLabelMaxWidth),
+        ),
+      );
+    } else if (item.label) {
+      const sourceIndex = actorIndexes.get(item.source);
+      const targetIndex = actorIndexes.get(item.target);
+      if (sourceIndex !== undefined && targetIndex !== undefined) {
+        const leftIndex = Math.min(sourceIndex, targetIndex);
+        const rightIndex = Math.max(sourceIndex, targetIndex);
+        const key = `${leftIndex}:${rightIndex}`;
+        labelWidths.set(
+          key,
           Math.max(
-            selfWidths.get(item.source) ?? 0,
-            selfMessageWidth(item, messageLabelMaxWidth),
+            labelWidths.get(key) ?? 0,
+            messageLabelMetrics(
+              item.label,
+              messageLabelMaxWidth,
+            ).width,
           ),
         );
-      } else if (item.label) {
-        const sourceIndex = actorIndexes.get(item.source);
-        const targetIndex = actorIndexes.get(item.target);
-        if (
-          sourceIndex !== undefined &&
-          targetIndex !== undefined
-        ) {
-          const leftIndex = Math.min(
-            sourceIndex,
-            targetIndex,
-          );
-          const rightIndex = Math.max(
-            sourceIndex,
-            targetIndex,
-          );
-          const key = `${leftIndex}:${rightIndex}`;
-          labelWidths.set(
-            key,
-            Math.max(
-              labelWidths.get(key) ?? 0,
-              messageLabelMetrics(
-                item.label,
-                messageLabelMaxWidth,
-              ).width,
-            ),
-          );
-        }
       }
-      continue;
     }
-
-    if (item.type !== "group") {
-      continue;
-    }
-
-    if (item.sections.length > 0) {
-      for (const section of item.sections) {
-        collectMessageWidths(
-          section.items,
-          selfWidths,
-          labelWidths,
-          actorIndexes,
-          messageLabelMaxWidth,
-        );
-      }
-    } else {
-      collectMessageWidths(
-        item.items,
-        selfWidths,
-        labelWidths,
-        actorIndexes,
-        messageLabelMaxWidth,
-      );
-    }
-  }
+  });
 }
 
 function layoutItems(
@@ -275,8 +240,9 @@ function layoutItems(
         GROUP_LABEL_LINE_HEIGHT;
     state.y += group.headerHeight;
 
-    if (item.sections.length > 0) {
-      for (const section of item.sections) {
+    const sections = groupSections(item);
+    if (sections) {
+      for (const [sectionIndex, section] of sections.entries()) {
         const sectionTop = state.y;
         const headerHeight =
           state.options.sectionHeaderHeight +
@@ -291,7 +257,7 @@ function layoutItems(
           left: group.left + GROUP_CONTENT_INSET,
           right: group.right - GROUP_CONTENT_INSET,
           parentId: group.id,
-          index: item.sections.indexOf(section),
+          index: sectionIndex,
         });
         state.y += headerHeight;
         layoutItems(
@@ -304,7 +270,7 @@ function layoutItems(
       }
     } else {
       layoutItems(
-        item.items,
+        item.body,
         state,
         depth + 1,
         item.id,
@@ -324,8 +290,12 @@ function layoutItems(
   }
 }
 
-function computeLayout(document, marginTop = DEFAULTS.marginTop) {
-  const options = { ...DEFAULTS, marginTop };
+function computeLayout(
+  document,
+  marginTop = DEFAULTS.marginTop,
+  marginX = DEFAULTS.marginX,
+) {
+  const options = { ...DEFAULTS, marginTop, marginX };
   reserveActorMetadata(document, options);
   const selfMessageWidths = new Map();
   const messageLabelWidths = new Map();
@@ -420,7 +390,7 @@ function computeLayout(document, marginTop = DEFAULTS.marginTop) {
     actorRight,
   );
   const baseWidth = Math.max(
-    420,
+    420 + (options.marginX - DEFAULTS.marginX) * 2,
     actorRight + options.marginX,
     selfMessageRight + options.marginX,
   );
@@ -476,4 +446,8 @@ export function layoutDiagram(document) {
 
 export function layoutDiagramWithoutHeader(document) {
   return computeLayout(document, 0);
+}
+
+export function layoutDiagramForEditor(document) {
+  return computeLayout(document, DEFAULTS.marginTop, 32);
 }

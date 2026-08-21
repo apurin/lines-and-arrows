@@ -23,6 +23,7 @@ class LinesAndArrowsElement extends HTMLElement {
   #editor = null;
   #selectedActorName = null;
   #mediaQuery = null;
+  #modeAnimationFrame = null;
   #handleThemeChange = () => this.#render();
 
   constructor() {
@@ -32,8 +33,10 @@ class LinesAndArrowsElement extends HTMLElement {
 
   connectedCallback() {
     const inlineSource = dedentInlineSource(this.textContent);
-    if (!this.#source && inlineSource) {
-      this.#source = inlineSource;
+    if (inlineSource) {
+      if (!this.#source) {
+        this.#source = inlineSource;
+      }
       this.textContent = "";
     }
     this.#syncThemeListener();
@@ -45,10 +48,15 @@ class LinesAndArrowsElement extends HTMLElement {
       "change",
       this.#handleThemeChange,
     );
+    this.#cancelModeTransition();
     this.#destroyController();
   }
 
   attributeChangedCallback(name) {
+    const previousFrame =
+      name === "mode" && this.isConnected
+        ? this.#currentCanvasFrame()
+        : null;
     if (
       (name === "selectable-actors" && !this.selectableActors) ||
       (name === "mode" && this.mode === "edit")
@@ -61,7 +69,7 @@ class LinesAndArrowsElement extends HTMLElement {
     if (name === "theme") {
       this.#syncThemeListener();
     }
-    this.#render();
+    this.#render(previousFrame);
   }
 
   get source() {
@@ -73,6 +81,7 @@ class LinesAndArrowsElement extends HTMLElement {
     if (source.trim()) {
       parse(source);
     }
+    this.textContent = "";
     if (source === this.source) {
       return;
     }
@@ -201,6 +210,13 @@ class LinesAndArrowsElement extends HTMLElement {
       this.#controller.selectActor(name);
       return;
     }
+    const source = this.source || dedentInlineSource(this.textContent);
+    const exists =
+      source.trim() &&
+      parse(source).actors.some((actor) => actor.name === name);
+    if (!exists) {
+      throw new RangeError(`No actor named "${name}" exists.`);
+    }
     this.#selectedActorName = name;
   }
 
@@ -235,6 +251,83 @@ class LinesAndArrowsElement extends HTMLElement {
     this.#controller = null;
   }
 
+  #cancelModeTransition() {
+    if (this.#modeAnimationFrame !== null) {
+      cancelAnimationFrame(this.#modeAnimationFrame);
+      this.#modeAnimationFrame = null;
+    }
+  }
+
+  #currentCanvasFrame() {
+    const canvas = this.shadowRoot.querySelector(".la-canvas");
+    if (!canvas) {
+      return null;
+    }
+    const { width, height } = canvas.viewBox.baseVal;
+    return { width, height };
+  }
+
+  #animateModeTransition(previousFrame) {
+    const canvas = this.shadowRoot.querySelector(".la-canvas");
+    if (
+      !canvas ||
+      !previousFrame ||
+      matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const finalFrame = {
+      x: canvas.viewBox.baseVal.x,
+      y: canvas.viewBox.baseVal.y,
+      width: canvas.viewBox.baseVal.width,
+      height: canvas.viewBox.baseVal.height,
+    };
+    const initialFrame = {
+      x: finalFrame.x + (finalFrame.width - previousFrame.width) / 2,
+      y: finalFrame.y + finalFrame.height - previousFrame.height,
+      width: previousFrame.width,
+      height: previousFrame.height,
+    };
+    if (
+      initialFrame.x === finalFrame.x &&
+      initialFrame.y === finalFrame.y &&
+      initialFrame.width === finalFrame.width &&
+      initialFrame.height === finalFrame.height
+    ) {
+      return;
+    }
+
+    const setFrame = ({ x, y, width, height }) => {
+      canvas.setAttribute("viewBox", `${x} ${y} ${width} ${height}`);
+      canvas.style.aspectRatio = `${width} / ${height}`;
+    };
+    setFrame(initialFrame);
+    const startedAt = performance.now();
+    const duration = 180;
+    const step = (time) => {
+      const progress = Math.min((time - startedAt) / duration, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      setFrame({
+        x: initialFrame.x + (finalFrame.x - initialFrame.x) * eased,
+        y: initialFrame.y + (finalFrame.y - initialFrame.y) * eased,
+        width:
+          initialFrame.width +
+          (finalFrame.width - initialFrame.width) * eased,
+        height:
+          initialFrame.height +
+          (finalFrame.height - initialFrame.height) * eased,
+      });
+      if (progress < 1) {
+        this.#modeAnimationFrame = requestAnimationFrame(step);
+      } else {
+        this.#modeAnimationFrame = null;
+        setFrame(finalFrame);
+      }
+    };
+    this.#modeAnimationFrame = requestAnimationFrame(step);
+  }
+
   #dispatch(type, detail) {
     this.dispatchEvent(
       new CustomEvent(type, {
@@ -254,7 +347,8 @@ class LinesAndArrowsElement extends HTMLElement {
     return error;
   }
 
-  #render() {
+  #render(previousFrame = null) {
+    this.#cancelModeTransition();
     if (!this.source.trim()) {
       this.#destroyController();
       this.shadowRoot.replaceChildren();
@@ -285,22 +379,22 @@ class LinesAndArrowsElement extends HTMLElement {
             onError: (error) => this.#dispatchError(error),
           },
         );
-        return;
-      }
-
-      this.#controller = renderDiagramForElement(
-        this.shadowRoot,
-        this.source,
-        {
-          ...options,
-          selectableActors: this.selectableActors,
-          onActorSelect: (actor) => {
-            this.#selectedActorName = actor?.name ?? null;
-            this.#dispatch("la-actor-select", actor);
+      } else {
+        this.#controller = renderDiagramForElement(
+          this.shadowRoot,
+          this.source,
+          {
+            ...options,
+            selectableActors: this.selectableActors,
+            onActorSelect: (actor) => {
+              this.#selectedActorName = actor?.name ?? null;
+              this.#dispatch("la-actor-select", actor);
+            },
           },
-        },
-        this.#selectedActorName,
-      );
+          this.#selectedActorName,
+        );
+      }
+      this.#animateModeTransition(previousFrame);
     } catch (problem) {
       const error = this.#dispatchError(problem);
       const style = document.createElement("style");
@@ -319,7 +413,6 @@ class LinesAndArrowsElement extends HTMLElement {
       `;
       const message = document.createElement("div");
       message.className = "error";
-      message.part = "error";
       message.setAttribute("role", "alert");
       message.textContent = error.message;
       this.shadowRoot.replaceChildren(style, message);

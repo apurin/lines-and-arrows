@@ -1,5 +1,9 @@
 export const ROOT_CONTAINER_ID = "root";
 
+export function groupSections(group) {
+  return group.body[0]?.type === "section" ? group.body : null;
+}
+
 export function cloneDocument(document) {
   return structuredClone(document);
 }
@@ -16,14 +20,15 @@ export function assignStructuralIds(document) {
       if (item.type !== "group") {
         return;
       }
-      if (item.sections.length > 0) {
-        item.sections.forEach((section, sectionIndex) => {
+      const sections = groupSections(item);
+      if (sections) {
+        sections.forEach((section, sectionIndex) => {
           const sectionPath = `${path}.${sectionIndex}`;
           section.id = `section:${sectionPath}`;
           assign(section.items, sectionPath);
         });
       } else {
-        assign(item.items, path);
+        assign(item.body, path);
       }
     });
   }
@@ -58,13 +63,14 @@ export function visitItems(
     if (item.type !== "group") {
       continue;
     }
-    if (item.sections.length > 0) {
-      for (const [sectionIndex, section] of item.sections.entries()) {
-        visitor(section, item.sections, sectionIndex, item.id);
+    const sections = groupSections(item);
+    if (sections) {
+      for (const [sectionIndex, section] of sections.entries()) {
+        visitor(section, sections, sectionIndex, item.id);
         visitItems(section.items, visitor, section.id);
       }
     } else {
-      visitItems(item.items, visitor, item.id);
+      visitItems(item.body, visitor, item.id);
     }
   }
 }
@@ -102,42 +108,26 @@ export function findGroup(document, id) {
   return item?.type === "group" ? item : null;
 }
 
-export function getContainer(document, id) {
+export function findContainerItems(document, id) {
   if (id === ROOT_CONTAINER_ID) {
-    return {
-      id,
-      items: document.items,
-      type: "root",
-      owner: document,
-    };
+    return document.items;
   }
 
-  let match = null;
+  let items = null;
   visitItems(document.items, (item) => {
-    if (match) {
+    if (items || item.id !== id) {
       return;
     }
-    if (item.type === "section" && item.id === id) {
-      match = {
-        id,
-        items: item.items,
-        type: "section",
-        owner: item,
-      };
+    if (item.type === "section") {
+      items = item.items;
     } else if (
       item.type === "group" &&
-      item.id === id &&
-      item.sections.length === 0
+      !groupSections(item)
     ) {
-      match = {
-        id,
-        items: item.items,
-        type: "group",
-        owner: item,
-      };
+      items = item.body;
     }
   });
-  return match;
+  return items;
 }
 
 export function descendantContainerIds(item, ids = new Set()) {
@@ -145,15 +135,16 @@ export function descendantContainerIds(item, ids = new Set()) {
     return ids;
   }
   ids.add(item.id);
-  if (item.sections.length > 0) {
-    for (const section of item.sections) {
+  const sections = groupSections(item);
+  if (sections) {
+    for (const section of sections) {
       ids.add(section.id);
       for (const child of section.items) {
         descendantContainerIds(child, ids);
       }
     }
   } else {
-    for (const child of item.items) {
+    for (const child of item.body) {
       descendantContainerIds(child, ids);
     }
   }

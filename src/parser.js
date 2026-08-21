@@ -21,12 +21,22 @@ function fail(message, line) {
 function makeLine(raw, index) {
   if (raw.trim() === "") {
     return {
-      raw,
       number: index + 1,
       indent: 0,
       content: "",
       blank: true,
       comment: false,
+    };
+  }
+
+  const trimmed = raw.trimStart();
+  if (trimmed.startsWith("//")) {
+    return {
+      number: index + 1,
+      indent: 0,
+      content: trimmed,
+      blank: false,
+      comment: true,
     };
   }
 
@@ -40,12 +50,11 @@ function makeLine(raw, index) {
   }
   const content = raw.slice(leading);
   return {
-    raw,
     number: index + 1,
     indent: leading / 2,
     content,
     blank: content.trim() === "",
-    comment: content.startsWith("//"),
+    comment: false,
   };
 }
 
@@ -88,20 +97,13 @@ function createCursor(source) {
   };
 }
 
-function consumeTrivia(cursor, minimumIndent = 0) {
+function consumeHeader(cursor) {
   const comments = [];
 
   while (cursor.index < cursor.lines.length) {
     const line = cursor.lines[cursor.index];
     if (line.comment) {
-      if (line.indent < minimumIndent) {
-        break;
-      }
-      comments.push({
-        type: "comment",
-        text: line.content.slice(2).trim(),
-        indent: line.indent,
-      });
+      comments.push(line.content.slice(2).trim());
       cursor.index += 1;
       continue;
     }
@@ -112,33 +114,25 @@ function consumeTrivia(cursor, minimumIndent = 0) {
     break;
   }
 
+  for (let index = cursor.index; index < cursor.lines.length; index += 1) {
+    const line = cursor.lines[index];
+    if (line.comment) {
+      fail("Comments are only allowed before the diagram.", line.number);
+    }
+  }
+
   return comments;
 }
 
-function relativeComments(comments, ownerIndent) {
-  return comments.map((comment) => ({
-    type: "comment",
-    text: comment.text,
-    indent: comment.indent - ownerIndent,
-  }));
+function skipBlankLines(cursor) {
+  while (cursor.lines[cursor.index]?.blank) {
+    cursor.index += 1;
+  }
 }
 
 function parseProperties(cursor, indent, allowed) {
   const properties = {};
-  const propertyComments = [];
-  const ownerIndent = indent - 1;
-  let after = "header";
-
-  function attach(comments) {
-    propertyComments.push(
-      ...relativeComments(comments, ownerIndent).map((comment) => ({
-        ...comment,
-        after,
-      })),
-    );
-  }
-
-  attach(consumeTrivia(cursor, indent));
+  skipBlankLines(cursor);
 
   while (cursor.index < cursor.lines.length) {
     const line = cursor.lines[cursor.index];
@@ -170,19 +164,18 @@ function parseProperties(cursor, indent, allowed) {
       },
     );
     cursor.index += 1;
-    after = key;
-    attach(consumeTrivia(cursor, indent));
+    skipBlankLines(cursor);
   }
 
-  return { properties, propertyComments };
+  return properties;
 }
 
-function parseActor(cursor, leadingComments = []) {
+function parseActor(cursor) {
   const line = cursor.lines[cursor.index];
   const name = assertActorName(line.content.slice(1), line.number);
   cursor.index += 1;
 
-  const { properties, propertyComments } = parseProperties(
+  const properties = parseProperties(
     cursor,
     1,
     new Set(["icon", "tag", "tooltip", "tooltip-icon"]),
@@ -196,12 +189,10 @@ function parseActor(cursor, leadingComments = []) {
     tooltip: properties.tooltip ?? null,
     tooltipIcon: properties["tooltip-icon"] ?? null,
     line: line.number,
-    leadingComments: relativeComments(leadingComments, line.indent),
-    propertyComments,
   };
 }
 
-function parseMessage(cursor, line, match, leadingComments = []) {
+function parseMessage(cursor, line, match) {
   const source = assertActorName(match[1], line.number);
   const arrow = match[2];
   const target = assertActorName(match[3], line.number);
@@ -211,7 +202,7 @@ function parseMessage(cursor, line, match, leadingComments = []) {
       : assertText(match[4], "Message label", line.number);
   cursor.index += 1;
 
-  const { properties, propertyComments } = parseProperties(
+  const properties = parseProperties(
     cursor,
     line.indent + 1,
     new Set(["tag", "tooltip", "tooltip-icon"]),
@@ -227,16 +218,10 @@ function parseMessage(cursor, line, match, leadingComments = []) {
     tooltip: properties.tooltip ?? null,
     tooltipIcon: properties["tooltip-icon"] ?? null,
     line: line.number,
-    leadingComments: relativeComments(leadingComments, line.indent),
-    propertyComments,
   };
 }
 
-function parseSection(
-  cursor,
-  indent,
-  leadingComments = [],
-) {
+function parseSection(cursor, indent) {
   const line = cursor.lines[cursor.index];
   if (line.indent !== indent || !line.content.startsWith("|")) {
     fail("Expected a group section.", line.number);
@@ -250,35 +235,21 @@ function parseSection(
 
   const label = assertText(line.content.slice(1), "Section label", line.number);
   cursor.index += 1;
-  const bodyComments = consumeTrivia(cursor, indent + 1);
-  const parsedBody = parseItems(
-    cursor,
-    indent + 1,
-    bodyComments,
-    indent,
-  );
+  const items = parseItems(cursor, indent + 1);
 
-  if (parsedBody.items.length === 0) {
+  if (items.length === 0) {
     fail("A section must contain at least one timeline item.", line.number);
   }
 
   return {
     type: "section",
     label,
-    items: parsedBody.items,
-    leadingComments: relativeComments(leadingComments, line.indent),
-    bodyTrailingComments: parsedBody.trailingComments,
+    items,
   };
 }
 
-function parseSections(
-  cursor,
-  indent,
-  initialComments,
-  ownerIndent,
-) {
+function parseSections(cursor, indent) {
   const sections = [];
-  let pendingComments = initialComments;
 
   while (cursor.index < cursor.lines.length) {
     const sectionLine = cursor.lines[cursor.index];
@@ -294,28 +265,18 @@ function parseSections(
         sectionLine.number,
       );
     }
-    sections.push(
-      parseSection(
-        cursor,
-        indent,
-        pendingComments,
-      ),
-    );
-    pendingComments = consumeTrivia(cursor, indent);
+    sections.push(parseSection(cursor, indent));
   }
 
-  return {
-    sections,
-    trailingComments: relativeComments(pendingComments, ownerIndent),
-  };
+  return sections;
 }
 
-function parseGroup(cursor, line, match, leadingComments = []) {
+function parseGroup(cursor, line, match) {
   const groupType = match[1];
   const label = optionalText(match[2]);
   cursor.index += 1;
   const bodyIndent = line.indent + 1;
-  const bodyComments = consumeTrivia(cursor, bodyIndent);
+  skipBlankLines(cursor);
 
   const next = cursor.lines[cursor.index];
   if (!next || next.indent <= line.indent) {
@@ -325,29 +286,13 @@ function parseGroup(cursor, line, match, leadingComments = []) {
     fail("Group contents must be indented by one level.", next.number);
   }
 
-  let sections = [];
-  let items = [];
-  let bodyTrailingComments = [];
+  let body;
 
   if (next.content.startsWith("|")) {
-    const parsedSections = parseSections(
-      cursor,
-      bodyIndent,
-      bodyComments,
-      line.indent,
-    );
-    sections = parsedSections.sections;
-    bodyTrailingComments = parsedSections.trailingComments;
+    body = parseSections(cursor, bodyIndent);
   } else {
-    const parsedBody = parseItems(
-      cursor,
-      bodyIndent,
-      bodyComments,
-      line.indent,
-    );
-    items = parsedBody.items;
-    bodyTrailingComments = parsedBody.trailingComments;
-    if (items.length === 0) {
+    body = parseItems(cursor, bodyIndent);
+    if (body.length === 0) {
       fail("A group must contain at least one timeline item.", line.number);
     }
     const nextLine = cursor.lines[cursor.index];
@@ -366,22 +311,16 @@ function parseGroup(cursor, line, match, leadingComments = []) {
     type: "group",
     groupType,
     label,
-    items,
-    sections,
-    leadingComments: relativeComments(leadingComments, line.indent),
-    bodyTrailingComments,
+    body,
   };
 }
 
-function parseGap(cursor, line, leadingComments = []) {
+function parseGap(cursor, line) {
   const label = assertText(line.content.slice(4), "Gap label", line.number);
   cursor.index += 1;
 
   let nextIndex = cursor.index;
-  while (
-    cursor.lines[nextIndex]?.blank ||
-    cursor.lines[nextIndex]?.comment
-  ) {
+  while (cursor.lines[nextIndex]?.blank) {
     nextIndex += 1;
   }
   if (cursor.lines[nextIndex]?.indent > line.indent) {
@@ -394,19 +333,12 @@ function parseGap(cursor, line, leadingComments = []) {
   return {
     type: "gap",
     label,
-    leadingComments: relativeComments(leadingComments, line.indent),
   };
 }
 
-function parseItems(
-  cursor,
-  indent,
-  initialComments,
-  ownerIndent = Math.max(0, indent - 1),
-) {
+function parseItems(cursor, indent) {
   const items = [];
-  let pendingComments =
-    initialComments ?? consumeTrivia(cursor, indent);
+  skipBlankLines(cursor);
 
   while (cursor.index < cursor.lines.length) {
     const line = cursor.lines[cursor.index];
@@ -424,8 +356,8 @@ function parseItems(
     }
 
     if (line.content.startsWith("gap ")) {
-      items.push(parseGap(cursor, line, pendingComments));
-      pendingComments = consumeTrivia(cursor, indent);
+      items.push(parseGap(cursor, line));
+      skipBlankLines(cursor);
       continue;
     }
     if (line.content === "gap") {
@@ -434,10 +366,8 @@ function parseItems(
 
     const messageMatch = line.content.match(ARROW_PATTERN);
     if (messageMatch) {
-      items.push(
-        parseMessage(cursor, line, messageMatch, pendingComments),
-      );
-      pendingComments = consumeTrivia(cursor, indent);
+      items.push(parseMessage(cursor, line, messageMatch));
+      skipBlankLines(cursor);
       continue;
     }
 
@@ -447,32 +377,27 @@ function parseItems(
 
     const groupMatch = line.content.trimEnd().match(GROUP_LINE_PATTERN);
     if (groupMatch) {
-      items.push(
-        parseGroup(cursor, line, groupMatch, pendingComments),
-      );
-      pendingComments = consumeTrivia(cursor, indent);
+      items.push(parseGroup(cursor, line, groupMatch));
+      skipBlankLines(cursor);
       continue;
     }
 
     fail("Expected a message, group, or gap.", line.number);
   }
 
-  return {
-    items,
-    trailingComments: relativeComments(pendingComments, ownerIndent),
-  };
+  return items;
 }
 
-function resolveActors(explicitActors, items) {
+function resolveActors(declaredActors, items) {
   const byName = new Map();
-  for (const actor of explicitActors) {
+  for (const actor of declaredActors) {
     if (byName.has(actor.name)) {
       fail(`Duplicate actor "${actor.name}".`, actor.line);
     }
     byName.set(actor.name, actor);
   }
 
-  if (explicitActors.length > 0) {
+  if (declaredActors.length > 0) {
     visitMessages(items, (message) => {
       for (const name of [message.source, message.target]) {
         if (!byName.has(name)) {
@@ -480,7 +405,7 @@ function resolveActors(explicitActors, items) {
         }
       }
     });
-    return explicitActors;
+    return declaredActors;
   }
 
   const inferred = [];
@@ -495,8 +420,6 @@ function resolveActors(explicitActors, items) {
           tooltip: null,
           tooltipIcon: null,
           line: message.line,
-          leadingComments: [],
-          propertyComments: [],
         };
         byName.set(name, actor);
         inferred.push(actor);
@@ -522,12 +445,14 @@ function publicItem(item) {
 
   return {
     ...result,
-    items: item.items.map(publicItem),
-    sections: item.sections.map((section) => {
-      const { line: _sectionLine, ...publicSection } = section;
+    body: item.body.map((child) => {
+      if (child.type !== "section") {
+        return publicItem(child);
+      }
+      const { line: _sectionLine, ...publicSection } = child;
       return {
         ...publicSection,
-        items: section.items.map(publicItem),
+        items: child.items.map(publicItem),
       };
     }),
   };
@@ -535,45 +460,34 @@ function publicItem(item) {
 
 export function parse(source) {
   const cursor = createCursor(source);
-  const explicitActors = [];
-  const leadingComments = relativeComments(
-    consumeTrivia(cursor, 0),
-    0,
-  );
-  let pendingComments = [];
+  const declaredActors = [];
+  const comments = consumeHeader(cursor);
 
   while (cursor.index < cursor.lines.length) {
     const line = cursor.lines[cursor.index];
     if (line.indent === 0 && line.content.startsWith("@")) {
-      explicitActors.push(parseActor(cursor, pendingComments));
-      pendingComments = consumeTrivia(cursor, 0);
+      declaredActors.push(parseActor(cursor));
+      skipBlankLines(cursor);
       continue;
     }
     break;
   }
 
-  const parsedTimeline = parseItems(
-    cursor,
-    0,
-    pendingComments,
-    0,
-  );
+  const items = parseItems(cursor, 0);
 
   if (cursor.index < cursor.lines.length) {
     const line = cursor.lines[cursor.index];
     fail("Unexpected content.", line.number);
   }
-  if (parsedTimeline.items.length === 0) {
+  if (items.length === 0) {
     fail("A diagram must contain at least one timeline item.", 1);
   }
 
-  const actors = resolveActors(explicitActors, parsedTimeline.items);
+  const actors = resolveActors(declaredActors, items);
   return {
     type: "diagram",
     actors: actors.map(publicActor),
-    items: parsedTimeline.items.map(publicItem),
-    leadingComments,
-    trailingComments: parsedTimeline.trailingComments,
-    explicitActors: explicitActors.length > 0,
+    items: items.map(publicItem),
+    comments,
   };
 }

@@ -6,13 +6,10 @@ import type {
 export type {
   Actor,
   Arrow,
-  Comment,
   DiagramDocument,
   Gap,
   Group,
   Message,
-  PropertyComment,
-  PropertyCommentAnchor,
   Section,
   TimelineItem,
   ValidationError,

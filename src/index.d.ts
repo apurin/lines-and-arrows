@@ -25,12 +25,15 @@ export interface RenderOptions {
   label?: string;
   branding?: boolean;
   copySource?: boolean;
+  /** Enables actor interaction, selection callbacks, and controller selection. */
   selectableActors?: boolean;
+  /** Receives immutable actor details after enabled selection changes. */
   onActorSelect?: (actor: ActorDetails | null) => void;
 }
 
 export interface DiagramController {
   readonly svg: SVGSVGElement;
+  /** Selects an existing actor or clears selection in an actor-selectable view. */
   selectActor(name: string | null): void;
   destroy(): void;
 }

@@ -1,4 +1,4 @@
-import { visitMessages } from "./document.js";
+import { groupSections, visitMessages } from "./document.js";
 import { parse } from "./parser.js";
 import { encodeText } from "./text.js";
 import { isGroupType } from "./grammar.js";
@@ -15,43 +15,17 @@ function requireString(value, path) {
   }
 }
 
-function requireOptionalString(value, path) {
-  if (value !== null && value !== undefined) {
-    requireString(value, path);
+function requireText(value, path) {
+  requireString(value, path);
+  if (!value.trim()) {
+    throw new TypeError(`${path} cannot be empty.`);
   }
 }
 
-function commentList(owner, property, path, options = {}) {
-  const value = owner[property];
-  if (value === undefined) {
-    return [];
+function requireOptionalText(value, path) {
+  if (value !== null && value !== undefined) {
+    requireText(value, path);
   }
-  requireArray(value, `${path}.${property}`);
-  value.forEach((comment, index) => {
-    const commentPath = `${path}.${property}[${index}]`;
-    if (
-      !comment ||
-      typeof comment !== "object" ||
-      comment.type !== "comment"
-    ) {
-      throw new TypeError(`${commentPath} must be a comment.`);
-    }
-    requireString(comment.text, `${commentPath}.text`);
-    if (
-      !Number.isInteger(comment.indent) ||
-      comment.indent < 0
-    ) {
-      throw new TypeError(
-        `${commentPath}.indent must be a non-negative integer.`,
-      );
-    }
-    if (options.anchors && !options.anchors.includes(comment.after)) {
-      throw new TypeError(
-        `${commentPath}.after must name a supported property anchor.`,
-      );
-    }
-  });
-  return value;
 }
 
 function assertTimelineStructure(items, path) {
@@ -63,25 +37,20 @@ function assertTimelineStructure(items, path) {
       throw new TypeError(`${itemPath} must be a timeline item.`);
     }
     if (item.type === "message") {
-      requireString(item.source, `${itemPath}.source`);
-      requireString(item.target, `${itemPath}.target`);
+      requireText(item.source, `${itemPath}.source`);
+      requireText(item.target, `${itemPath}.target`);
       requireString(item.arrow, `${itemPath}.arrow`);
-      requireOptionalString(item.label, `${itemPath}.label`);
-      requireOptionalString(item.tag, `${itemPath}.tag`);
-      requireOptionalString(item.tooltip, `${itemPath}.tooltip`);
-      requireOptionalString(
+      requireOptionalText(item.label, `${itemPath}.label`);
+      requireOptionalText(item.tag, `${itemPath}.tag`);
+      requireOptionalText(item.tooltip, `${itemPath}.tooltip`);
+      requireOptionalText(
         item.tooltipIcon,
         `${itemPath}.tooltipIcon`,
       );
-      commentList(item, "leadingComments", itemPath);
-      commentList(item, "propertyComments", itemPath, {
-        anchors: ["header", "tag", "tooltip", "tooltip-icon"],
-      });
       return;
     }
     if (item.type === "gap") {
-      requireString(item.label, `${itemPath}.label`);
-      commentList(item, "leadingComments", itemPath);
+      requireText(item.label, `${itemPath}.label`);
       return;
     }
     if (item.type !== "group") {
@@ -96,20 +65,26 @@ function assertTimelineStructure(items, path) {
         `${itemPath}.groupType must start with a lowercase letter, contain only lowercase letters, numbers, or hyphens, and cannot be the reserved "gap" keyword.`,
       );
     }
-    requireOptionalString(item.label, `${itemPath}.label`);
-    commentList(item, "leadingComments", itemPath);
-    commentList(item, "bodyTrailingComments", itemPath);
-    requireArray(item.items, `${itemPath}.items`);
-    requireArray(item.sections, `${itemPath}.sections`);
-    if (item.items.length > 0 && item.sections.length > 0) {
+    requireOptionalText(item.label, `${itemPath}.label`);
+    requireArray(item.body, `${itemPath}.body`);
+    if (item.body.length === 0) {
       throw new TypeError(
-        `${itemPath} cannot contain both direct items and sections.`,
+        `${itemPath}.body must contain at least one item or section.`,
       );
     }
 
-    assertTimelineStructure(item.items, `${itemPath}.items`);
-    item.sections.forEach((section, sectionIndex) => {
-      const sectionPath = `${itemPath}.sections[${sectionIndex}]`;
+    const sections = groupSections(item);
+    if (!sections) {
+      if (item.body.some((child) => child?.type === "section")) {
+        throw new TypeError(
+          `${itemPath}.body cannot mix timeline items and sections.`,
+        );
+      }
+      assertTimelineStructure(item.body, `${itemPath}.body`);
+      return;
+    }
+    sections.forEach((section, sectionIndex) => {
+      const sectionPath = `${itemPath}.body[${sectionIndex}]`;
       if (
         !section ||
         typeof section !== "object" ||
@@ -117,9 +92,12 @@ function assertTimelineStructure(items, path) {
       ) {
         throw new TypeError(`${sectionPath} must be a section.`);
       }
-      requireString(section.label, `${sectionPath}.label`);
-      commentList(section, "leadingComments", sectionPath);
-      commentList(section, "bodyTrailingComments", sectionPath);
+      requireText(section.label, `${sectionPath}.label`);
+      if (!Array.isArray(section.items) || section.items.length === 0) {
+        throw new TypeError(
+          `${sectionPath}.items must contain at least one timeline item.`,
+        );
+      }
       assertTimelineStructure(
         section.items,
         `${sectionPath}.items`,
@@ -137,10 +115,15 @@ function assertDocumentStructure(document) {
     throw new TypeError('A document must have type "diagram".');
   }
 
+  requireArray(document.comments, "document.comments");
+  document.comments.forEach((comment, index) => {
+    const path = `document.comments[${index}]`;
+    requireString(comment, path);
+    if (/[\r\n]/.test(comment)) {
+      throw new TypeError(`${path} must stay on one line.`);
+    }
+  });
   requireArray(document.actors, "document.actors");
-  if (typeof document.explicitActors !== "boolean") {
-    throw new TypeError("document.explicitActors must be a boolean.");
-  }
   const actorNames = new Set();
   document.actors.forEach((actor, index) => {
     if (
@@ -152,34 +135,22 @@ function assertDocumentStructure(document) {
         `document.actors[${index}] must be an actor.`,
       );
     }
-    requireString(actor.name, `document.actors[${index}].name`);
+    requireText(actor.name, `document.actors[${index}].name`);
     if (actorNames.has(actor.name)) {
       throw new TypeError(`Duplicate actor "${actor.name}".`);
     }
     actorNames.add(actor.name);
-    requireOptionalString(actor.icon, `document.actors[${index}].icon`);
-    requireOptionalString(actor.tag, `document.actors[${index}].tag`);
-    requireOptionalString(
+    requireOptionalText(actor.icon, `document.actors[${index}].icon`);
+    requireOptionalText(actor.tag, `document.actors[${index}].tag`);
+    requireOptionalText(
       actor.tooltip,
       `document.actors[${index}].tooltip`,
     );
-    requireOptionalString(
+    requireOptionalText(
       actor.tooltipIcon,
       `document.actors[${index}].tooltipIcon`,
     );
-    commentList(actor, "leadingComments", `document.actors[${index}]`);
-    commentList(actor, "propertyComments", `document.actors[${index}]`, {
-      anchors: [
-        "header",
-        "icon",
-        "tag",
-        "tooltip",
-        "tooltip-icon",
-      ],
-    });
   });
-  commentList(document, "leadingComments", "document");
-  commentList(document, "trailingComments", "document");
   assertTimelineStructure(document.items, "document.items");
 
   const inferredNames = [];
@@ -193,70 +164,23 @@ function assertDocumentStructure(document) {
     }
   });
 
-  if (document.explicitActors) {
-    if (document.actors.length === 0) {
+  for (const name of inferredNames) {
+    if (!actorNames.has(name)) {
       throw new TypeError(
-        "document.actors must contain at least one actor when document.explicitActors is true.",
+        `Unknown actor "${name}".`,
       );
     }
-    for (const name of inferredNames) {
-      if (!actorNames.has(name)) {
-        throw new TypeError(
-          `Unknown actor "${name}" while document.explicitActors is true.`,
-        );
-      }
-    }
-    return;
   }
-
-  const actualNames = document.actors.map((actor) => actor.name);
-  if (
-    actualNames.length !== inferredNames.length ||
-    actualNames.some((name, index) => name !== inferredNames[index])
-  ) {
-    throw new TypeError(
-      "document.actors must exactly match first-use actor order when document.explicitActors is false.",
-    );
-  }
-  document.actors.forEach((actor, index) => {
-    if (
-      actor.icon ||
-      actor.tag ||
-      actor.tooltip ||
-      actor.tooltipIcon ||
-      actor.leadingComments?.length > 0 ||
-      actor.propertyComments?.length > 0
-    ) {
-      throw new TypeError(
-        `document.actors[${index}] has declaration-only data; set document.explicitActors to true to preserve it.`,
-      );
-    }
-  });
+  return inferredNames;
 }
 
 function sourceText(value) {
   return encodeText(String(value ?? "").trim());
 }
 
-function commentLines(comments, ownerIndent) {
-  return comments.map((comment) => {
-    const prefix = "  ".repeat(ownerIndent + comment.indent);
-    return `${prefix}//${comment.text ? ` ${comment.text}` : ""}`;
-  });
-}
-
 function propertyLines(item, names, indent) {
   const prefix = "  ".repeat(indent);
   const lines = [];
-  const ownerIndent = indent - 1;
-  const comments = item.propertyComments ?? [];
-
-  lines.push(
-    ...commentLines(
-      comments.filter((comment) => comment.after === "header"),
-      ownerIndent,
-    ),
-  );
 
   for (const name of names) {
     const property =
@@ -265,12 +189,6 @@ function propertyLines(item, names, indent) {
     if (value !== null && value !== undefined && String(value).trim()) {
       lines.push(`${prefix}${name} ${sourceText(value)}`);
     }
-    lines.push(
-      ...commentLines(
-        comments.filter((comment) => comment.after === name),
-        ownerIndent,
-      ),
-    );
   }
 
   return lines;
@@ -281,10 +199,6 @@ function timelineLines(items, indent) {
   const lines = [];
 
   for (const item of items) {
-    lines.push(
-      ...commentLines(item.leadingComments ?? [], indent),
-    );
-
     if (item.type === "message") {
       const label = sourceText(item.label);
       lines.push(
@@ -311,58 +225,47 @@ function timelineLines(items, indent) {
     lines.push(
       `${prefix}${item.groupType}${label ? ` ${label}` : ""}`,
     );
-    if (item.sections.length > 0) {
-      for (const section of item.sections) {
-        lines.push(
-          ...commentLines(
-            section.leadingComments ?? [],
-            indent + 1,
-          ),
-        );
+    const sections = groupSections(item);
+    if (sections) {
+      for (const section of sections) {
         lines.push(
           `${"  ".repeat(indent + 1)}| ${sourceText(section.label)}`,
         );
         lines.push(...timelineLines(section.items, indent + 2));
-        lines.push(
-          ...commentLines(
-            section.bodyTrailingComments ?? [],
-            indent + 1,
-          ),
-        );
       }
     } else {
-      lines.push(...timelineLines(item.items, indent + 1));
+      lines.push(...timelineLines(item.body, indent + 1));
     }
-    lines.push(
-      ...commentLines(item.bodyTrailingComments ?? [], indent),
-    );
   }
 
   return lines;
 }
 
 export function serialize(document) {
-  assertDocumentStructure(document);
+  const referencedActorNames = assertDocumentStructure(document);
   const blocks = [];
-  const leadingComments = commentLines(
-    document.leadingComments ?? [],
-    0,
-  ).join("\n");
+  const comments = document.comments
+    .map((comment) => {
+      const text = comment.trim();
+      return `//${text ? ` ${text}` : ""}`;
+    })
+    .join("\n");
 
-  if (leadingComments) {
-    blocks.push(leadingComments);
+  if (comments) {
+    blocks.push(comments);
   }
 
   const needsDeclarations =
-    document.explicitActors ||
+    document.actors.length !== referencedActorNames.length ||
+    document.actors.some(
+      (actor, index) => actor.name !== referencedActorNames[index],
+    ) ||
     document.actors.some(
       (actor) =>
         actor.icon ||
         actor.tag ||
         actor.tooltip ||
-        actor.tooltipIcon ||
-        actor.leadingComments?.length > 0 ||
-        actor.propertyComments?.length > 0,
+        actor.tooltipIcon,
     );
 
   if (needsDeclarations) {
@@ -370,7 +273,6 @@ export function serialize(document) {
       document.actors
         .map((actor) =>
           [
-            ...commentLines(actor.leadingComments ?? [], 0),
             `@${sourceText(actor.name)}`,
             ...propertyLines(
               actor,
@@ -384,13 +286,6 @@ export function serialize(document) {
   }
 
   blocks.push(timelineLines(document.items, 0).join("\n"));
-  const trailingComments = commentLines(
-    document.trailingComments ?? [],
-    0,
-  ).join("\n");
-  if (trailingComments) {
-    blocks.push(trailingComments);
-  }
   const source = `${blocks.filter(Boolean).join("\n\n")}\n`;
 
   // Programmatic ASTs must round-trip through the same grammar as source.

@@ -30,7 +30,21 @@ function run(command, args, options = {}) {
 
 try {
   const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-  assert.equal(packageJson.dependencies, undefined, "runtime dependencies must stay empty");
+  for (const field of [
+    "dependencies",
+    "optionalDependencies",
+    "peerDependencies",
+    "bundledDependencies",
+    "bundleDependencies",
+  ]) {
+    assert.equal(packageJson[field], undefined, `${field} must stay empty`);
+  }
+  assert.deepEqual(Object.keys(packageJson.exports).sort(), [
+    ".",
+    "./auto",
+    "./element",
+    "./syntax",
+  ]);
   const bundle = "./dist/lines-and-arrows.auto.min.js";
   assert.equal(packageJson.jsdelivr, bundle);
   assert.equal(packageJson.unpkg, bundle);
@@ -76,7 +90,17 @@ try {
   const smoke = `
     const root = await import("lines-and-arrows");
     const syntax = await import("lines-and-arrows/syntax");
-    if (Object.keys(root).join() !== "renderDiagram") throw new Error("root exports drifted");
+    const rootExports = Object.keys(root);
+    if (JSON.stringify(rootExports) !== JSON.stringify(["renderDiagram"])) {
+      throw new Error(\`unexpected root exports: \${rootExports.join(", ")}\`);
+    }
+    const syntaxExports = Object.keys(syntax);
+    const expectedSyntax = ["LinesAndArrowsSyntaxError", "parse", "serialize", "validate"];
+    if (JSON.stringify(syntaxExports) !== JSON.stringify(expectedSyntax)) {
+      throw new Error(\`unexpected syntax exports: \${syntaxExports.join(", ")}\`);
+    }
+    import.meta.resolve("lines-and-arrows/element");
+    import.meta.resolve("lines-and-arrows/auto");
     if (!syntax.validate("A -> B").valid) throw new Error("syntax import failed");
   `;
   run("node", ["--input-type=module", "--eval", smoke], { cwd: consumer });

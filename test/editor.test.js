@@ -7,9 +7,10 @@ import {
   visitMessages,
 } from "../src/document.js";
 import { DiagramEditor } from "../src/editor.js";
-import { parse } from "../src/parser.js";
 
-const SOURCE = `@Client
+const SOURCE = `// Request workflow
+
+@Client
 @API
 @Worker
 
@@ -37,6 +38,7 @@ test("editor snapshots are immutable, canonical, and undoable", () => {
   assert.match(editor.source, /Client -> Gateway: Start/);
   assert.match(editor.source, /Gateway -> Worker: Dispatch/);
   assert.match(editor.source, /  tooltip Public edge/);
+  assert.deepEqual(editor.document.comments, ["Request workflow"]);
   assert.equal(editor.canUndo, true);
   assert.equal(editor.undo(), true);
   assert.equal(editor.document, originalDocument);
@@ -65,9 +67,9 @@ test("timeline commands preserve structure through grouping and sections", () =>
 
   const group = findItemLocation(editor.document, groupId).item;
   assert.equal(group.type, "group");
-  assert.equal(group.sections[0].id, addedSectionId);
+  assert.equal(group.body[0].id, addedSectionId);
   assert.equal(
-    group.sections.find(({ id }) => id === sectionId).label,
+    group.body.find(({ id }) => id === sectionId).label,
     "fallback",
   );
   assert.match(editor.source, /Worker ->x Client: Delivery failed/);
@@ -112,23 +114,4 @@ test("invalid commands leave the current snapshot and history unchanged", () => 
   assert.throws(() => editor.moveItem(group.id, group.id, 0), /cannot be moved into itself/);
   assert.equal(editor.document, beforeDocument);
   assert.equal(editor.canUndo, false);
-});
-
-test("comments move and disappear with their timeline item", () => {
-  const editor = new DiagramEditor(`@A
-@B
-
-// first note
-A -> B: First
-// second note
-B --> A: Second`);
-  const secondId = editor.document.items[1].id;
-
-  editor.moveItem(secondId, ROOT_CONTAINER_ID, 0);
-  assert.equal(editor.document.items[0].leadingComments[0].text, "second note");
-  assert.match(editor.source, /\/\/ second note\nB --> A: Second/);
-
-  editor.removeItem(secondId);
-  assert.doesNotMatch(editor.source, /second note|Second/);
-  assert.match(editor.source, /\/\/ first note\nA -> B: First/);
 });

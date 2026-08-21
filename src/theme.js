@@ -87,54 +87,6 @@ function normalizePalette(palette) {
   return normalized;
 }
 
-function parseHexColor(value) {
-  const match = /^#([\da-f]{3}|[\da-f]{6})$/i.exec(value);
-  if (!match) {
-    return null;
-  }
-  const hex =
-    match[1].length === 3
-      ? [...match[1]].map((digit) => `${digit}${digit}`).join("")
-      : match[1];
-  return [0, 2, 4].map((offset) =>
-    Number.parseInt(hex.slice(offset, offset + 2), 16),
-  );
-}
-
-function relativeLuminance(color) {
-  const rgb = parseHexColor(color);
-  if (!rgb) {
-    return null;
-  }
-  const channels = rgb.map((channel) => {
-    const value = channel / 255;
-    return value <= 0.04045
-      ? value / 12.92
-      : ((value + 0.055) / 1.055) ** 2.4;
-  });
-  return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
-}
-
-function contrastRatio(first, second) {
-  const firstLuminance = relativeLuminance(first);
-  const secondLuminance = relativeLuminance(second);
-  if (firstLuminance === null || secondLuminance === null) {
-    return null;
-  }
-  const lighter = Math.max(firstLuminance, secondLuminance);
-  const darker = Math.min(firstLuminance, secondLuminance);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
-function contrastingColor(fill, first, second, fallback) {
-  const firstRatio = contrastRatio(fill, first);
-  const secondRatio = contrastRatio(fill, second);
-  if (firstRatio === null || secondRatio === null) {
-    return fallback;
-  }
-  return firstRatio >= secondRatio ? first : second;
-}
-
 function overlay(color, percentage) {
   return `color-mix(in oklab, ${color} ${percentage}%, transparent)`;
 }
@@ -164,20 +116,10 @@ export function resolvePaletteTheme(
   const danger = normalized.danger ?? baseTheme.danger;
   const accentForeground =
     normalized.accentForeground ??
-    contrastingColor(
-      accent,
-      foreground,
-      background,
-      baseTheme.actorText,
-    );
+    `contrast-color(${accent})`;
   const dangerForeground =
     normalized.dangerForeground ??
-    contrastingColor(
-      danger,
-      foreground,
-      background,
-      baseTheme.dangerText,
-    );
+    `contrast-color(${danger})`;
 
   return {
     name: baseTheme.name,

@@ -126,6 +126,13 @@
   &lt;/body&gt;
 &lt;/html&gt;</code></pre>
       <p>
+        Diagram source inside HTML is text content. Generated embeds escape
+        <code>&amp;</code> as <code>&amp;amp;</code>, <code>&lt;</code> as
+        <code>&amp;lt;</code>, and <code>&gt;</code> as <code>&amp;gt;</code>.
+        Assigning the element's <code>source</code> property or calling
+        <code>renderDiagram()</code> accepts raw diagram source.
+      </p>
+      <p>
         The major-minor CDN URL accepts compatible patch releases. Use a full
         <code>X.Y.Z</code> version when an embed must remain pinned to one exact
         release.
@@ -163,6 +170,12 @@ API --&gt; Client: Complete`;
         <code>renderDiagram(target, source, options)</code> accepts Lines &amp;
         Arrows text directly. Keep the exact <code>X.Y.Z</code> version in
         constrained or generated embeds.
+      </p>
+      <p>
+        Enable <code>selectableActors: true</code> to receive
+        <code>onActorSelect</code> callbacks or call the returned controller's
+        <code>selectActor(name)</code>. Pass an existing actor name to select it
+        or <code>null</code> to clear selection.
       </p>
 
       <h2>Configure the web component</h2>
@@ -230,7 +243,11 @@ API --&gt; Client: Complete`;
         </tbody>
       </table>
       <p>
-        Copy source places canonical diagram text on the clipboard with
+        Copy source uses the browser Clipboard API in a secure context such as
+        HTTPS or localhost. Keep <code>clipboard-write</code> enabled in the
+        page's Permissions Policy. A cross-origin <code>&lt;iframe&gt;</code> also
+        delegates it with <code>allow=&quot;clipboard-write&quot;</code>. It places
+        canonical diagram text on the clipboard with
         <code>// Powered by https://lines-and-arrows.dev/</code> as its first line.
         The source stays ready to paste into the Constructor. Set
         <code>copy-source=&quot;false&quot;</code> when the host provides its own source
@@ -330,7 +347,9 @@ if (!result.valid) {
       </ol>
 
       <h2>Syntax</h2>
-      <pre><code class="language-lines-and-arrows">@Actor Name
+      <pre><code class="language-lines-and-arrows">// Document context
+
+@Actor Name
   icon catalog-identifier
   tag short visible text
   tooltip Additional detail\non another line
@@ -349,14 +368,14 @@ choice Visible label
   | second outcome
     Source -&gt;x Target: Lost message
 
-gap Visible discontinuity
-// Source-only comment</code></pre>
+gap Visible discontinuity</code></pre>
       <p>Core rules:</p>
       <ul>
         <li>
           Actor declarations are optional. Without them, actors appear in
           first-use order. If any actor is declared, declare every referenced
-          actor.
+          actor. Canonical source includes declarations for actor order,
+          metadata, and actors unused by messages.
         </li>
         <li>
           <code>-&gt;</code>, <code>--&gt;</code>, and <code>-&gt;x</code> preserve
@@ -373,7 +392,8 @@ gap Visible discontinuity
           Icon identifiers use Phosphor names such as <code>robot</code>,
           <code>user</code>, <code>cloud</code>, <code>database</code>,
           <code>gear-six</code>, and <code>tray</code>. An unknown name remains
-          valid but may render without an icon.
+          valid but may render without an icon. Built-in icons load from the
+          pinned Phosphor package on jsDelivr.
         </li>
         <li>
           Any lowercase group type is valid except the reserved word
@@ -390,6 +410,11 @@ gap Visible discontinuity
         <li>
           Use <code>gap TEXT</code> when time passes or part of the sequence is
           omitted.
+        </li>
+        <li>
+          Place <code>//</code> document comments before the first actor or
+          timeline construct. Use tags and tooltips for context tied to an actor
+          or message.
         </li>
         <li>
           Use <code>\n</code> for a visible line break and <code>\\</code> for a

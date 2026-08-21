@@ -1,9 +1,10 @@
 import {
   ROOT_CONTAINER_ID,
   descendantContainerIds,
+  findContainerItems,
   findItemLocation,
   findSectionLocation,
-  getContainer,
+  groupSections,
 } from "./document.js";
 import {
   phosphorIconCatalog,
@@ -17,11 +18,13 @@ import {
   selfMessageWidth,
 } from "./metadata.js";
 import { renderDiagramForEditor } from "./render.js";
+import { estimatedTextWidth, graphemes } from "./text.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const TIMELINE_INSERTION_CONTROL_OFFSET = 12;
 const TIMELINE_INSERTION_CONTROL_RADIUS = 8;
 const ACTOR_INSERTION_CONTROL_HALF_WIDTH = 13;
+const SIDE_INSERTION_CONTROL_OFFSET = 20;
 const REORDER_HANDLE_RADIUS = 11;
 const GROUP_REORDER_HANDLE_RADIUS = 9;
 const GROUP_EDITOR_HANDLE_GAP = 1;
@@ -31,6 +34,7 @@ const GROUP_EDITOR_RIGHT_INSET = 10;
 
 const EDIT_STYLES = `
   .la-frame[data-mode="edit"] {
+    --la-inline-scale: 1;
     position: relative;
   }
 
@@ -179,8 +183,12 @@ const EDIT_STYLES = `
 
   .la-inline-delete-control {
     box-sizing: border-box;
-    width: var(--la-inline-delete-size, 20px);
-    height: var(--la-inline-delete-size, 20px);
+    width: calc(
+      var(--la-inline-delete-size, 20px) * var(--la-inline-scale)
+    );
+    height: calc(
+      var(--la-inline-delete-size, 20px) * var(--la-inline-scale)
+    );
     margin: 0;
     padding: 0;
     cursor: pointer;
@@ -197,7 +205,10 @@ const EDIT_STYLES = `
     top: 50%;
     left: 50%;
     width: 48%;
-    height: var(--la-inline-delete-cross-thickness, 1.5px);
+    height: calc(
+      var(--la-inline-delete-cross-thickness, 1.5px) *
+        var(--la-inline-scale)
+    );
     border-radius: 999px;
     background: currentColor;
     content: "";
@@ -253,16 +264,16 @@ const EDIT_STYLES = `
   .la-inline-actor-editor .la-inline-actor-icon-picker {
     position: absolute;
     z-index: 7;
-    top: var(--la-inline-actor-icon-top, 4px);
+    top: calc(4px * var(--la-inline-scale));
     left: 50%;
     pointer-events: auto;
     transform: translateX(-50%);
   }
 
   .la-inline-actor-icon-picker .la-icon-picker-trigger {
-    width: var(--la-inline-actor-icon-size, 18px);
-    min-width: var(--la-inline-actor-icon-size, 18px);
-    height: var(--la-inline-actor-icon-size, 18px);
+    width: calc(18px * var(--la-inline-scale));
+    min-width: calc(18px * var(--la-inline-scale));
+    height: calc(18px * var(--la-inline-scale));
     padding: 0;
     border: 0;
     border-radius: 0;
@@ -272,9 +283,9 @@ const EDIT_STYLES = `
 
   .la-inline-actor-icon-picker[data-empty="true"]
     .la-icon-picker-trigger {
-    width: var(--la-inline-actor-icon-placeholder-size, 20px);
-    min-width: var(--la-inline-actor-icon-placeholder-size, 20px);
-    height: var(--la-inline-actor-icon-placeholder-size, 20px);
+    width: calc(20px * var(--la-inline-scale));
+    min-width: calc(20px * var(--la-inline-scale));
+    height: calc(20px * var(--la-inline-scale));
     padding: 0;
     border: 1px dashed color-mix(
       in srgb,
@@ -292,8 +303,8 @@ const EDIT_STYLES = `
   .la-inline-actor-icon-picker[data-empty="true"]
     > .la-icon-picker-trigger
     .la-icon-visual {
-    width: var(--la-inline-actor-icon-placeholder-glyph-size, 14px);
-    height: var(--la-inline-actor-icon-placeholder-glyph-size, 14px);
+    width: calc(14px * var(--la-inline-scale));
+    height: calc(14px * var(--la-inline-scale));
   }
 
   .la-inline-actor-icon-picker:not([data-empty="true"])
@@ -302,8 +313,8 @@ const EDIT_STYLES = `
   .la-inline-actor-icon-picker:not([data-empty="true"])
     > .la-icon-picker-trigger
     .la-icon-visual {
-    width: var(--la-inline-actor-icon-size, 18px);
-    height: var(--la-inline-actor-icon-size, 18px);
+    width: calc(18px * var(--la-inline-scale));
+    height: calc(18px * var(--la-inline-scale));
     opacity: 1;
   }
 
@@ -335,11 +346,11 @@ const EDIT_STYLES = `
 
   .la-inline-actor-name {
     position: absolute;
-    right: var(--la-inline-actor-name-inset, 4px);
-    bottom: var(--la-inline-actor-name-bottom, 5px);
-    left: var(--la-inline-actor-name-inset, 4px);
+    right: calc(4px * var(--la-inline-scale));
+    bottom: calc(5px * var(--la-inline-scale));
+    left: calc(4px * var(--la-inline-scale));
     width: auto;
-    height: var(--la-inline-actor-name-height, 18px);
+    height: calc(18px * var(--la-inline-scale));
     margin: 0;
     padding: 0;
     pointer-events: auto;
@@ -347,7 +358,7 @@ const EDIT_STYLES = `
     outline: none;
     background: transparent;
     color: var(--la-actor-text);
-    font: 700 var(--la-inline-actor-name-font-size, 13px)/1.1 var(
+    font: 700 calc(13px * var(--la-inline-scale))/1.1 var(
       --la-font-family,
       ui-sans-serif,
       system-ui,
@@ -359,10 +370,10 @@ const EDIT_STYLES = `
 
   .la-inline-actor-metadata {
     position: absolute;
-    top: calc(100% + var(--la-inline-actor-metadata-gap, 6px));
+    top: calc(100% + 6px * var(--la-inline-scale));
     left: 50%;
     display: flex;
-    gap: var(--la-inline-actor-pill-gap, 4px);
+    gap: calc(4px * var(--la-inline-scale));
     align-items: center;
     pointer-events: auto;
     transform: translateX(
@@ -375,16 +386,16 @@ const EDIT_STYLES = `
   .la-inline-actor-pill {
     width: auto;
     min-width: var(--la-inline-actor-pill-min-width, 38px);
-    height: var(--la-inline-actor-pill-height, 20px);
+    height: calc(20px * var(--la-inline-scale));
     margin: 0;
     padding: 0
-      calc(var(--la-inline-actor-pill-padding, 10px) - 2px);
+      calc(10px * var(--la-inline-scale) - 2px);
     border: 1px solid transparent;
-    border-radius: var(--la-inline-actor-pill-radius, 10px);
+    border-radius: calc(10px * var(--la-inline-scale));
     outline: none;
     background: var(--la-tag-fill);
     color: var(--la-tag-text);
-    font: 650 var(--la-inline-actor-pill-font-size, 10px)/1 var(
+    font: 650 calc(10px * var(--la-inline-scale))/1 var(
       --la-font-family,
       ui-sans-serif,
       system-ui,
@@ -413,7 +424,7 @@ const EDIT_STYLES = `
     position: absolute;
     z-index: 9;
     top: 50%;
-    right: calc(0px - var(--la-inline-delete-size, 20px) / 2);
+    right: calc(-10px * var(--la-inline-scale));
     pointer-events: auto;
     transform: translateY(-50%);
   }
@@ -421,8 +432,8 @@ const EDIT_STYLES = `
   .la-inline-actor-tooltip-control {
     position: relative;
     flex: none;
-    width: var(--la-inline-actor-tooltip-size, 20px);
-    height: var(--la-inline-actor-tooltip-size, 20px);
+    width: calc(20px * var(--la-inline-scale));
+    height: calc(20px * var(--la-inline-scale));
   }
 
   .la-inline-actor-tooltip-trigger {
@@ -455,12 +466,12 @@ const EDIT_STYLES = `
 
   .la-inline-actor-tooltip-trigger .la-icon-glyph,
   .la-inline-actor-tooltip-trigger .la-icon-visual {
-    width: var(--la-inline-actor-tooltip-icon-size, 14px);
-    height: var(--la-inline-actor-tooltip-icon-size, 14px);
+    width: calc(14px * var(--la-inline-scale));
+    height: calc(14px * var(--la-inline-scale));
   }
 
   .la-inline-actor-tooltip-trigger .la-icon-fallback {
-    font-size: var(--la-inline-actor-tooltip-font-size, 11px);
+    font-size: calc(11px * var(--la-inline-scale));
     font-weight: 750;
   }
 
@@ -582,7 +593,7 @@ const EDIT_STYLES = `
 
   .la-inline-actor-editor .la-edit-error {
     position: absolute;
-    top: calc(100% + var(--la-inline-actor-metadata-gap, 6px) + 24px);
+    top: calc(100% + 6px * var(--la-inline-scale) + 24px);
     left: 50%;
     width: max-content;
     max-width: 220px;
@@ -616,7 +627,7 @@ const EDIT_STYLES = `
   .la-inline-group-row {
     position: absolute;
     display: flex;
-    gap: var(--la-inline-group-gap, 5px);
+    gap: calc(5px * var(--la-inline-scale));
     align-items: center;
     pointer-events: auto;
   }
@@ -624,8 +635,8 @@ const EDIT_STYLES = `
   .la-inline-group-field {
     display: flex;
     min-width: 0;
-    height: var(--la-inline-group-control-height, 20px);
-    gap: var(--la-inline-group-field-gap, 4px);
+    height: calc(20px * var(--la-inline-scale));
+    gap: calc(4px * var(--la-inline-scale));
     align-items: center;
     flex: none;
   }
@@ -636,7 +647,7 @@ const EDIT_STYLES = `
 
   .la-inline-group-field-name {
     color: var(--la-muted-text);
-    font-size: var(--la-inline-group-caption-font-size, 9px);
+    font-size: calc(9px * var(--la-inline-scale));
     font-weight: 650;
     line-height: 1;
     white-space: nowrap;
@@ -645,11 +656,11 @@ const EDIT_STYLES = `
   .la-inline-group-type,
   .la-inline-group-label,
   .la-inline-group-action {
-    height: var(--la-inline-group-control-height, 20px);
+    height: calc(20px * var(--la-inline-scale));
     margin: 0;
     outline: none;
     color: var(--la-text);
-    font: 650 var(--la-inline-group-font-size, 11px)/1 var(
+    font: 650 calc(11px * var(--la-inline-scale))/1 var(
       --la-font-family,
       ui-sans-serif,
       system-ui,
@@ -659,10 +670,10 @@ const EDIT_STYLES = `
 
   .la-inline-group-type {
     flex: none;
-    padding: 0 var(--la-inline-group-pill-padding, 8px);
+    padding: 0 calc(8px * var(--la-inline-scale));
     appearance: none;
     border: 0;
-    border-radius: var(--la-inline-group-pill-radius, 10px);
+    border-radius: calc(10px * var(--la-inline-scale));
     background: color-mix(
       in srgb,
       var(--la-surface) 76%,
@@ -676,17 +687,17 @@ const EDIT_STYLES = `
     min-width: 0;
     padding: calc(
         (
-            var(--la-inline-group-control-height, 20px) -
-              var(--la-inline-group-font-size, 11px)
+            20px * var(--la-inline-scale) -
+              11px * var(--la-inline-scale)
           ) /
           2
       )
-      var(--la-inline-group-pill-padding, 8px);
+      calc(8px * var(--la-inline-scale));
     overflow: hidden;
     flex: 1 1 auto;
     appearance: none;
     border: 0;
-    border-radius: var(--la-inline-group-pill-radius, 10px);
+    border-radius: calc(10px * var(--la-inline-scale));
     resize: none;
     background: color-mix(
       in srgb,
@@ -699,21 +710,21 @@ const EDIT_STYLES = `
 
   .la-inline-group-actions {
     display: flex;
-    gap: var(--la-inline-group-action-gap, 4px);
+    gap: calc(4px * var(--la-inline-scale));
     align-items: center;
     margin-left: auto;
     flex: none;
   }
 
   .la-inline-group-action {
-    padding: 0 var(--la-inline-group-action-padding, 9px);
+    padding: 0 calc(9px * var(--la-inline-scale));
     cursor: pointer;
     border: 1px solid color-mix(
       in srgb,
       var(--la-selection) 34%,
       var(--la-section-line)
     );
-    border-radius: var(--la-inline-group-pill-radius, 10px);
+    border-radius: calc(10px * var(--la-inline-scale));
     background: color-mix(
       in srgb,
       var(--la-accent-soft) 58%,
@@ -757,7 +768,7 @@ const EDIT_STYLES = `
     position: fixed;
     z-index: 5;
     display: flex;
-    gap: var(--la-inline-section-gap, 4px);
+    gap: calc(4px * var(--la-inline-scale));
     align-items: center;
     overflow: visible;
     pointer-events: none;
@@ -779,14 +790,14 @@ const EDIT_STYLES = `
     min-width: 0;
     height: 100%;
     margin: 0;
-    padding: var(--la-inline-section-padding-y, 4px)
-      var(--la-inline-section-padding-x, 8px);
+    padding: calc(4px * var(--la-inline-scale))
+      calc(8px * var(--la-inline-scale));
     overflow: hidden;
     flex: none;
     pointer-events: auto;
     appearance: none;
     border: 0;
-    border-radius: var(--la-inline-section-radius, 10px);
+    border-radius: calc(10px * var(--la-inline-scale));
     outline: none;
     resize: none;
     background: color-mix(
@@ -795,9 +806,8 @@ const EDIT_STYLES = `
       var(--la-group-fill)
     );
     color: var(--la-text);
-    font: 650 var(--la-inline-section-font-size, 10px)/var(
-        --la-inline-section-line-height,
-        12px
+    font: 650 calc(10px * var(--la-inline-scale))/calc(
+        12px * var(--la-inline-scale)
       ) var(
         --la-font-family,
         ui-sans-serif,
@@ -859,9 +869,8 @@ const EDIT_STYLES = `
     resize: none;
     background: transparent;
     color: var(--la-text);
-    font: 560 var(--la-inline-message-label-font-size, 11px)/var(
-        --la-inline-message-label-line-height,
-        13px
+    font: 560 calc(11px * var(--la-inline-scale))/calc(
+        13px * var(--la-inline-scale)
       ) var(
         --la-font-family,
         ui-sans-serif,
@@ -877,6 +886,8 @@ const EDIT_STYLES = `
   }
 
   .la-inline-message-delete {
+    --la-inline-delete-size: 16px;
+    --la-inline-delete-cross-thickness: 1.25px;
     position: absolute;
     z-index: 9;
     pointer-events: auto;
@@ -886,7 +897,7 @@ const EDIT_STYLES = `
   .la-inline-message-metadata {
     position: absolute;
     display: flex;
-    gap: var(--la-inline-message-pill-gap, 4px);
+    gap: calc(4px * var(--la-inline-scale));
     align-items: center;
     pointer-events: auto;
     transform: translateX(
@@ -900,7 +911,7 @@ const EDIT_STYLES = `
     position: absolute;
     z-index: 6;
     display: flex;
-    gap: var(--la-inline-message-arrow-gap, 3px);
+    gap: calc(3px * var(--la-inline-scale));
     align-items: center;
     pointer-events: auto;
     transform: translateY(-50%);
@@ -908,9 +919,9 @@ const EDIT_STYLES = `
 
   .la-inline-message-arrow-style {
     display: grid;
-    width: var(--la-inline-message-arrow-size, 18px);
-    min-width: var(--la-inline-message-arrow-size, 18px);
-    height: var(--la-inline-message-arrow-size, 18px);
+    width: calc(18px * var(--la-inline-scale));
+    min-width: calc(18px * var(--la-inline-scale));
+    height: calc(18px * var(--la-inline-scale));
     margin: 0;
     padding: 0;
     place-items: center;
@@ -935,8 +946,8 @@ const EDIT_STYLES = `
   }
 
   .la-inline-message-arrow-style svg {
-    width: var(--la-inline-message-arrow-icon-width, 14px);
-    height: var(--la-inline-message-arrow-icon-height, 12px);
+    width: calc(14px * var(--la-inline-scale));
+    height: calc(12px * var(--la-inline-scale));
     overflow: visible;
   }
 
@@ -1108,7 +1119,9 @@ const EDIT_STYLES = `
   }
 
   .la-edit-popover[data-variant="insert"] {
-    --la-insertion-control-size: 16px;
+    --la-insertion-control-size: calc(
+      16px * var(--la-inline-scale)
+    );
     width: max-content;
     padding:
       5px
@@ -1438,8 +1451,8 @@ function timelineEntries(layout) {
 
 function containerBounds(layout, parentId) {
   const controlX = Math.max(
-    TIMELINE_INSERTION_CONTROL_RADIUS + 2,
-    layout.contentLeft - TIMELINE_INSERTION_CONTROL_OFFSET,
+    ACTOR_INSERTION_CONTROL_HALF_WIDTH,
+    layout.contentLeft - SIDE_INSERTION_CONTROL_OFFSET,
   );
   if (parentId === ROOT_CONTAINER_ID) {
     return {
@@ -1476,7 +1489,7 @@ function containerBounds(layout, parentId) {
   return null;
 }
 
-function timelineSlots(document, layout) {
+function timelineSlots(layout) {
   const byParent = new Map();
   for (const entry of timelineEntries(layout)) {
     if (!byParent.has(entry.parentId)) {
@@ -1487,9 +1500,8 @@ function timelineSlots(document, layout) {
 
   const slots = [];
   for (const [parentId, entries] of byParent) {
-    const container = getContainer(document, parentId);
     const bounds = containerBounds(layout, parentId);
-    if (!container || !bounds || entries.length === 0) {
+    if (!bounds || entries.length === 0) {
       continue;
     }
     entries.sort((first, second) => first.index - second.index);
@@ -1518,7 +1530,7 @@ function timelineSlots(document, layout) {
 }
 
 function actorSlots(layout) {
-  const { actors, options } = layout;
+  const { actors } = layout;
   if (actors.length === 0) {
     return [];
   }
@@ -1527,10 +1539,10 @@ function actorSlots(layout) {
   for (let index = 0; index <= actors.length; index += 1) {
     let x;
     if (index === 0) {
-      x = actors[0].x - options.actorGap / 2;
+      x = actors[0].x - SIDE_INSERTION_CONTROL_OFFSET;
     } else if (index === actors.length) {
       const last = actors[actors.length - 1];
-      x = last.x + last.width + options.actorGap / 2;
+      x = last.x + last.width + SIDE_INSERTION_CONTROL_OFFSET;
     } else {
       const previous = actors[index - 1];
       x = (previous.x + previous.width + actors[index].x) / 2;
@@ -1660,8 +1672,8 @@ function positionPopover(popover, frame, layout, anchor) {
   if (popover.dataset.variant === "insert") {
     const diagramScale = svgRect.width / layout.width;
     popover.style.setProperty(
-      "--la-insertion-control-size",
-      `${TIMELINE_INSERTION_CONTROL_RADIUS * 2 * diagramScale}px`,
+      "--la-inline-scale",
+      String(diagramScale),
     );
   }
   const popoverRect = popover.getBoundingClientRect();
@@ -1822,7 +1834,6 @@ function addPopover(
   removePopover(frame);
   const popover = document.createElement("div");
   popover.className = "la-edit-popover";
-  popover.part = "editor";
   popover.setAttribute("popover", "manual");
   popover.dataset.placement =
     popoverOptions.placement ?? "vertical";
@@ -2004,7 +2015,7 @@ function createIconSelector(
       iconVisual(
         icon.name,
         theme,
-        icon.label.slice(0, 1).toUpperCase(),
+        graphemes(icon.label)[0]?.toUpperCase() ?? "",
       ),
     );
     button.addEventListener("click", (event) => {
@@ -2294,7 +2305,7 @@ function createIconPicker(
       triggerIconName,
       theme,
       currentName
-        ? currentName.slice(0, 1).toUpperCase()
+        ? graphemes(currentName)[0]?.toUpperCase() ?? ""
         : options.defaultText,
     ),
   );
@@ -2875,6 +2886,42 @@ export function renderEditor(target, editor, options = {}) {
     }
   }
 
+  function cancelInlineEditor(event, frame) {
+    event.preventDefault();
+    event.stopPropagation();
+    pendingFocus = null;
+    transient = null;
+    selectedIds = [];
+    removeContextualEditor(frame);
+    applySelectedVisuals(baseController.svg, selectedIds);
+    frame.focus();
+  }
+
+  function activateModel(id, focusField = null) {
+    const model = selectedModel(editor.document, id);
+    if (!model) {
+      return;
+    }
+    transient = null;
+    selectedIds = [id];
+    pendingFocus =
+      focusField ??
+      (model.type === "gap"
+        ? "gap-label"
+        : model.type === "actor"
+          ? "actor-name"
+          : model.type === "group"
+            ? "group-label"
+            : model.type === "section"
+              ? "section-label"
+              : "message-label");
+    const { svg, layout } = baseController;
+    applySelectedVisuals(svg, selectedIds);
+    const frame = svg.closest(".la-frame");
+    contextualEditor(frame, layout);
+    focusPendingField(frame, true);
+  }
+
   function scheduleInlineDraw(frame) {
     if (pendingInlineDraw !== null) {
       clearTimeout(pendingInlineDraw);
@@ -2963,12 +3010,12 @@ export function renderEditor(target, editor, options = {}) {
 
     const dirtyFields = new Set();
 
-    let metadataScale = 1;
     const sizeMetadataPills = () => {
       const width = tagControl.value
         ? metadataMetrics(tagControl.value, false).tagWidth
         : 50;
-      tagControl.style.width = `${width * metadataScale}px`;
+      tagControl.style.width =
+        `calc(${width}px * var(--la-inline-scale))`;
     };
     sizeMetadataPills();
     nameControl.addEventListener("input", () => {
@@ -3081,91 +3128,17 @@ export function renderEditor(target, editor, options = {}) {
       }
       const rect = actorShape.getBoundingClientRect();
       const scale = rect.height / actor.height;
-      metadataScale = scale;
-      sizeMetadataPills();
       inlineEditor.style.left = `${rect.left}px`;
       inlineEditor.style.top = `${rect.top}px`;
       inlineEditor.style.width = `${rect.width}px`;
       inlineEditor.style.height = `${rect.height}px`;
       inlineEditor.style.setProperty(
-        "--la-inline-actor-metadata-gap",
-        `${layout.options.actorMetadataGap * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-pill-gap",
-        `${4 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-pill-height",
-        `${20 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-pill-padding",
-        `${10 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-pill-radius",
-        `${10 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-pill-font-size",
-        `${10 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-name-inset",
-        `${4 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-name-bottom",
-        `${5 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-name-height",
-        `${18 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-name-font-size",
-        `${13 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-delete-size",
-        `${20 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-delete-cross-thickness",
-        `${1.5 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-tooltip-size",
-        `${20 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-tooltip-icon-size",
-        `${14 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-tooltip-font-size",
-        `${11 * scale}px`,
+        "--la-inline-scale",
+        String(scale),
       );
       inlineEditor.style.setProperty(
         "--la-inline-actor-metadata-shift",
         "0px",
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-icon-size",
-        `${18 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-icon-placeholder-size",
-        `${20 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-icon-placeholder-glyph-size",
-        `${14 * scale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-icon-top",
-        `${4 * scale}px`,
       );
       const metadataRect = metadata.getBoundingClientRect();
       const frameRect = frame.getBoundingClientRect();
@@ -3221,15 +3194,8 @@ export function renderEditor(target, editor, options = {}) {
     for (const control of [nameControl, tagControl]) {
       control.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
-          event.preventDefault();
-          event.stopPropagation();
           cancelled = true;
-          pendingFocus = null;
-          selectedIds = [];
-          removeInlineActorEditor(frame);
-          applySelectedVisuals(baseController.svg, selectedIds);
-          contextualEditor(frame, layout);
-          frame.focus();
+          cancelInlineEditor(event, frame);
           return;
         }
         if (event.key === "Enter") {
@@ -3349,14 +3315,14 @@ export function renderEditor(target, editor, options = {}) {
     frame.append(inlineEditor);
 
     const dirtyFields = new Set();
-    let diagramScale = 1;
     const sizeTypePill = () => {
       const content = typeControl.value || typeControl.placeholder;
       const width = Math.min(
         120,
-        Math.max(52, Array.from(content).length * 6.2 + 18),
+        Math.max(52, estimatedTextWidth(content, 11) + 18),
       );
-      typeControl.style.width = `${width * diagramScale}px`;
+      typeControl.style.width =
+        `calc(${width}px * var(--la-inline-scale))`;
     };
     sizeTypePill();
 
@@ -3428,7 +3394,7 @@ export function renderEditor(target, editor, options = {}) {
       const current = findItemLocation(editor.document, model.id)?.item;
       run(
         () =>
-          current?.sections.length > 0
+          current && groupSections(current)
             ? editor.addSection(model.id)
             : editor.convertGroupToSections(model.id),
         [model.id],
@@ -3452,20 +3418,10 @@ export function renderEditor(target, editor, options = {}) {
       run(() => editor.removeItem(model.id), []);
     });
 
-    const cancelInlineEdit = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      cancelled = true;
-      pendingFocus = null;
-      selectedIds = [];
-      removeInlineGroupEditor(frame);
-      applySelectedVisuals(baseController.svg, selectedIds);
-      contextualEditor(frame, layout);
-      frame.focus();
-    };
     typeControl.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        cancelInlineEdit(event);
+        cancelled = true;
+        cancelInlineEditor(event, frame);
         return;
       }
       if (event.key === "Enter") {
@@ -3478,7 +3434,8 @@ export function renderEditor(target, editor, options = {}) {
     });
     labelControl.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        cancelInlineEdit(event);
+        cancelled = true;
+        cancelInlineEditor(event, frame);
         return;
       }
       if (event.key === "Enter" && !event.shiftKey) {
@@ -3495,8 +3452,7 @@ export function renderEditor(target, editor, options = {}) {
         return;
       }
       const svgRect = svg.getBoundingClientRect();
-      diagramScale = svgRect.width / layout.width;
-      sizeTypePill();
+      const diagramScale = svgRect.width / layout.width;
       inlineEditor.style.left = `${
         svgRect.left +
         (group.left + GROUP_EDITOR_LEFT_INSET) * diagramScale
@@ -3514,48 +3470,8 @@ export function renderEditor(target, editor, options = {}) {
       inlineEditor.style.height = `${20 * diagramScale}px`;
       row.style.inset = "0";
       inlineEditor.style.setProperty(
-        "--la-inline-group-gap",
-        `${5 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-group-action-gap",
-        `${4 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-group-field-gap",
-        `${4 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-group-control-height",
-        `${20 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-group-font-size",
-        `${11 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-group-caption-font-size",
-        `${9 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-group-pill-padding",
-        `${8 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-group-action-padding",
-        `${9 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-group-pill-radius",
-        `${10 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-delete-size",
-        `${20 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-delete-cross-thickness",
-        `${1.5 * diagramScale}px`,
+        "--la-inline-scale",
+        String(diagramScale),
       );
     };
 
@@ -3630,15 +3546,14 @@ export function renderEditor(target, editor, options = {}) {
 
     let dirty = false;
     let cancelled = false;
-    let diagramScale = 1;
     const labelLeft = section.left + 10;
     const ruleGap = 4;
     const sizeLabel = () => {
-      const longestLine = Math.max(
-        1,
+      const longestLineWidth = Math.max(
+        5.6,
         ...labelControl.value
           .split("\n")
-          .map((line) => Array.from(line).length),
+          .map((line) => estimatedTextWidth(line, 10)),
       );
       const availableWidth = Math.max(
         20,
@@ -3646,14 +3561,16 @@ export function renderEditor(target, editor, options = {}) {
       );
       const labelWidth = Math.min(
         availableWidth,
-        Math.max(52, longestLine * 5.6 + 16),
+        Math.max(52, longestLineWidth + 16),
       );
-      labelControl.style.width = `${labelWidth * diagramScale}px`;
+      labelControl.style.width =
+        `calc(${labelWidth}px * var(--la-inline-scale))`;
       rightRule?.setAttribute(
         "x1",
         String(labelLeft + labelWidth + ruleGap),
       );
     };
+    sizeLabel();
     labelControl.addEventListener("input", () => {
       dirty = true;
       sizeLabel();
@@ -3691,20 +3608,10 @@ export function renderEditor(target, editor, options = {}) {
       }
     };
 
-    const cancelInlineEdit = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      cancelled = true;
-      pendingFocus = null;
-      selectedIds = [];
-      removeInlineSectionEditor(frame);
-      applySelectedVisuals(baseController.svg, selectedIds);
-      contextualEditor(frame, layout);
-      frame.focus();
-    };
     labelControl.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        cancelInlineEdit(event);
+        cancelled = true;
+        cancelInlineEditor(event, frame);
         return;
       }
       if (event.key === "Enter" && !event.shiftKey) {
@@ -3731,9 +3638,8 @@ export function renderEditor(target, editor, options = {}) {
         return;
       }
       const svgRect = svg.getBoundingClientRect();
-      diagramScale = svgRect.width / layout.width;
+      const diagramScale = svgRect.width / layout.width;
       const editorHeight = section.headerHeight - 7;
-      sizeLabel();
       inlineEditor.style.left = `${
         svgRect.left + (section.left + 10) * diagramScale
       }px`;
@@ -3745,36 +3651,8 @@ export function renderEditor(target, editor, options = {}) {
       }px`;
       inlineEditor.style.height = `${editorHeight * diagramScale}px`;
       inlineEditor.style.setProperty(
-        "--la-inline-section-gap",
-        `${4 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-section-padding-y",
-        `${4 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-section-padding-x",
-        `${8 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-section-radius",
-        `${10 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-section-font-size",
-        `${10 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-section-line-height",
-        `${12 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-delete-size",
-        `${20 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-delete-cross-thickness",
-        `${1.5 * diagramScale}px`,
+        "--la-inline-scale",
+        String(diagramScale),
       );
     };
 
@@ -3878,12 +3756,12 @@ export function renderEditor(target, editor, options = {}) {
     } = tooltip;
 
     const dirtyFields = new Set();
-    let diagramScale = 1;
     const sizeTagPill = () => {
       const width = tagControl.value
         ? metadataMetrics(tagControl.value, false).tagWidth
         : 50;
-      tagControl.style.width = `${width * diagramScale}px`;
+      tagControl.style.width =
+        `calc(${width}px * var(--la-inline-scale))`;
     };
     sizeTagPill();
 
@@ -4052,12 +3930,15 @@ export function renderEditor(target, editor, options = {}) {
         return;
       }
       const svgRect = svg.getBoundingClientRect();
-      diagramScale = svgRect.width / layout.width;
-      sizeTagPill();
+      const diagramScale = svgRect.width / layout.width;
       inlineEditor.style.left = `${svgRect.left}px`;
       inlineEditor.style.top = `${svgRect.top}px`;
       inlineEditor.style.width = `${svgRect.width}px`;
       inlineEditor.style.height = `${svgRect.height}px`;
+      inlineEditor.style.setProperty(
+        "--la-inline-scale",
+        String(diagramScale),
+      );
 
       const selfMessage = source.centerX === target.centerX;
       const loopWidth = selfMessage
@@ -4087,23 +3968,6 @@ export function renderEditor(target, editor, options = {}) {
       labelControl.style.top = `${labelTop * diagramScale}px`;
       labelControl.style.width = `${labelWidth * diagramScale}px`;
       labelControl.style.height = `${labelHeight * diagramScale}px`;
-      labelControl.style.setProperty(
-        "--la-inline-message-label-font-size",
-        `${11 * diagramScale}px`,
-      );
-      labelControl.style.setProperty(
-        "--la-inline-message-label-line-height",
-        `${13 * diagramScale}px`,
-      );
-
-      inlineEditor.style.setProperty(
-        "--la-inline-delete-size",
-        `${16 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-delete-cross-thickness",
-        `${1.25 * diagramScale}px`,
-      );
       const deleteSize = 16;
       const deleteGap = 12;
       const arrowRight = selfMessage
@@ -4114,38 +3978,6 @@ export function renderEditor(target, editor, options = {}) {
       }px`;
       deleteControl.style.top = `${row.y * diagramScale}px`;
 
-      inlineEditor.style.setProperty(
-        "--la-inline-message-pill-gap",
-        `${4 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-pill-height",
-        `${20 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-pill-padding",
-        `${10 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-pill-radius",
-        `${10 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-pill-font-size",
-        `${10 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-tooltip-size",
-        `${20 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-tooltip-icon-size",
-        `${14 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-tooltip-font-size",
-        `${11 * diagramScale}px`,
-      );
       metadata.style.left = `${labelX * diagramScale}px`;
       metadata.style.top = `${
         (row.y + (selfMessage ? 20 : 7)) * diagramScale
@@ -4155,22 +3987,6 @@ export function renderEditor(target, editor, options = {}) {
         "0px",
       );
 
-      inlineEditor.style.setProperty(
-        "--la-inline-message-arrow-size",
-        `${18 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-message-arrow-gap",
-        `${3 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-message-arrow-icon-width",
-        `${14 * diagramScale}px`,
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-message-arrow-icon-height",
-        `${12 * diagramScale}px`,
-      );
       const arrowControlsWidth = 60 * diagramScale;
       const arrowControlsLeft =
         labelX * diagramScale - arrowControlsWidth / 2;
@@ -4225,20 +4041,10 @@ export function renderEditor(target, editor, options = {}) {
       commit({}, null, true);
     });
 
-    const cancelInlineEdit = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      cancelled = true;
-      pendingFocus = null;
-      selectedIds = [];
-      removeInlineMessageEditor(frame);
-      applySelectedVisuals(baseController.svg, selectedIds);
-      contextualEditor(frame, layout);
-      frame.focus();
-    };
     labelControl.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        cancelInlineEdit(event);
+        cancelled = true;
+        cancelInlineEditor(event, frame);
         return;
       }
       if (event.key === "Enter" && !event.shiftKey) {
@@ -4251,7 +4057,8 @@ export function renderEditor(target, editor, options = {}) {
     });
     tagControl.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        cancelInlineEdit(event);
+        cancelled = true;
+        cancelInlineEditor(event, frame);
         return;
       }
       if (event.key === "Enter") {
@@ -4305,11 +4112,7 @@ export function renderEditor(target, editor, options = {}) {
       56,
       layout.contentRight - layout.contentLeft - 20,
     );
-    let measuredWidth =
-      Math.max(...lines.map((line) => Math.min(46, line.length))) *
-        5.5 +
-      22;
-    measuredWidth = Math.max(measuredWidth, label.getBBox().width + 22);
+    const measuredWidth = label.getBBox().width + 22;
     const width = Math.min(
       availableWidth,
       Math.max(88, measuredWidth),
@@ -4343,7 +4146,6 @@ export function renderEditor(target, editor, options = {}) {
     control.value = model.label;
     control.style.height = `${labelHeight}px`;
 
-    const deleteSize = 20;
     const deleteControl = document.createElement("button");
     deleteControl.type = "button";
     deleteControl.className =
@@ -4360,12 +4162,8 @@ export function renderEditor(target, editor, options = {}) {
       const screenPoint = point.matrixTransform(svg.getScreenCTM());
       const scale = svg.getBoundingClientRect().width / layout.width;
       deleteControl.style.setProperty(
-        "--la-inline-delete-size",
-        `${deleteSize * scale}px`,
-      );
-      deleteControl.style.setProperty(
-        "--la-inline-delete-cross-thickness",
-        `${1.5 * scale}px`,
+        "--la-inline-scale",
+        String(scale),
       );
       deleteControl.style.left = `${screenPoint.x}px`;
       deleteControl.style.top = `${screenPoint.y}px`;
@@ -4442,15 +4240,8 @@ export function renderEditor(target, editor, options = {}) {
     });
     control.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
         cancelled = true;
-        pendingFocus = null;
-        selectedIds = [];
-        removeInlineGapEditor(frame);
-        applySelectedVisuals(baseController.svg, selectedIds);
-        contextualEditor(frame, layout);
-        frame.focus();
+        cancelInlineEditor(event, frame);
         return;
       }
       if (event.key === "Enter" && !event.shiftKey) {
@@ -4556,17 +4347,16 @@ export function renderEditor(target, editor, options = {}) {
     }
 
     if (selectedIds.length > 1) {
-      const locations = selectedIds
-        .map((id) => findItemLocation(editor.document, id))
-        .filter(Boolean);
-      const first = locations[0];
+      const first = findItemLocation(editor.document, selectedIds[0]);
+      const entriesById = new Map(
+        timelineEntries(layout).map((entry) => [entry.id, entry]),
+      );
       const anchor = {
         x: layout.width / 2,
         y: Math.max(
           ...selectedIds.map(
             (id) =>
-              timelineEntries(layout).find((entry) => entry.id === id)
-                ?.bottom ?? 0,
+              entriesById.get(id)?.bottom ?? 0,
           ),
         ),
       };
@@ -4685,7 +4475,7 @@ export function renderEditor(target, editor, options = {}) {
         return;
       }
       moved = true;
-      candidate = move(point, start, svg);
+      candidate = move(point, start);
     };
 
     const onUp = () => {
@@ -4811,7 +4601,7 @@ export function renderEditor(target, editor, options = {}) {
       );
     }
 
-    const timelineInsertionSlots = timelineSlots(editor.document, layout);
+    const timelineInsertionSlots = timelineSlots(layout);
     const insertionLayer = svgElement("g", {
       class: "la-insertion-layer",
     });
@@ -4827,6 +4617,9 @@ export function renderEditor(target, editor, options = {}) {
       hoverTarget,
     ) => {
       const close = () => {
+        if (destroyed) {
+          return;
+        }
         if (
           transient?.type !== "insert" ||
           transient.trigger !== trigger ||
@@ -4941,14 +4734,14 @@ export function renderEditor(target, editor, options = {}) {
             startDrag(
               origin,
               event,
-              (point, _start, activeSvg) => {
+              (point) => {
                 const target = nearestActor(layout, point.x);
                 setConnectionOriginDirection(
                   origin,
                   point.x < source.centerX ? "left" : "right",
                 );
                 showConnectionPreview(
-                  activeSvg,
+                  svg,
                   source,
                   target,
                   slot.y,
@@ -4989,7 +4782,7 @@ export function renderEditor(target, editor, options = {}) {
         startDrag(
           element,
           event,
-          (point, _start, activeSvg) => {
+          (point) => {
             const slots = actorSlots(layout);
             const slot = slots.reduce((best, current) =>
               !best ||
@@ -4999,7 +4792,7 @@ export function renderEditor(target, editor, options = {}) {
                 : best,
             null);
             showDragLine(
-              activeSvg,
+              svg,
               {
                 x: slot.x,
                 top: actor.y - 8,
@@ -5055,7 +4848,7 @@ export function renderEditor(target, editor, options = {}) {
           startDrag(
             handle,
             event,
-            (point, start, activeSvg) => {
+            (point, start) => {
               const desiredDepth = Math.max(
                 0,
                 entry.depth + Math.round((point.x - start.x) / 38),
@@ -5073,7 +4866,7 @@ export function renderEditor(target, editor, options = {}) {
                 return best;
               }, null);
               if (slot) {
-                showDragLine(activeSvg, slot);
+                showDragLine(svg, slot);
               }
               return slot;
             },
@@ -5114,14 +4907,14 @@ export function renderEditor(target, editor, options = {}) {
               startDrag(
                 endpointHandle,
                 event,
-                (point, _start, activeSvg) => {
+                (point) => {
                   const candidate = nearestActor(layout, point.x);
                   const previewSource =
                     endpoint === "source" ? candidate : source;
                   const previewTarget =
                     endpoint === "target" ? candidate : target;
                   showConnectionPreview(
-                    activeSvg,
+                    svg,
                     previewSource,
                     previewTarget,
                     entry.y,
@@ -5136,7 +4929,7 @@ export function renderEditor(target, editor, options = {}) {
                     }),
                   ),
               ),
-            () => baseController.select(entry.id),
+            () => activateModel(entry.id),
           );
           handleLayer.append(endpointHandle);
         }
@@ -5158,7 +4951,7 @@ export function renderEditor(target, editor, options = {}) {
           startDrag(
             handle,
             event,
-            (point, _start, activeSvg) => {
+            (point) => {
               const slots = sectionSlots(layout, section.parentId);
               const slot = slots.reduce((best, current) =>
                 !best ||
@@ -5168,7 +4961,7 @@ export function renderEditor(target, editor, options = {}) {
                   : best,
               null);
               if (slot) {
-                showDragLine(activeSvg, slot);
+                showDragLine(svg, slot);
               }
               return slot;
             },
@@ -5229,7 +5022,9 @@ export function renderEditor(target, editor, options = {}) {
         }
 
         transient = null;
-        baseController.clearSelection();
+        selectedIds = [];
+        applySelectedVisuals(svg, selectedIds);
+        contextualEditor(frame, layout);
       },
       true,
     );
@@ -5317,20 +5112,20 @@ export function renderEditor(target, editor, options = {}) {
           return;
         }
 
-        const container = getContainer(
+        const items = findContainerItems(
           editor.document,
           candidate.entries[0].parentId,
         );
         const indices = candidate.entries
           .map((entry) =>
-            container.items.findIndex((item) => item.id === entry.id),
+            items.findIndex((item) => item.id === entry.id),
           )
           .filter((index) => index >= 0)
           .sort((first, second) => first - second);
         if (indices.length === 0) {
           return;
         }
-        selectedIds = container.items
+        selectedIds = items
           .slice(indices[0], indices[indices.length - 1] + 1)
           .map((item) => item.id);
         transient = null;
@@ -5446,76 +5241,43 @@ export function renderEditor(target, editor, options = {}) {
       target,
       editor.document,
       options.copySource === false ? "" : editor.source,
-      {
-        ...options,
-        headerActions: [
-          {
-            label: "Undo",
-            icon: "arrow-counter-clockwise",
-            fallback: "↶",
-            className: "la-history-control",
-            field: "history-undo",
-            keyShortcuts: "Control+Z Meta+Z",
-            disabled: !editor.canUndo,
-            onActivate: () =>
-              run(
-                () => editor.undo(),
-                [],
-                null,
-                "history-undo",
-              ),
-          },
-          {
-            label: "Redo",
-            icon: "arrow-clockwise",
-            fallback: "↷",
-            className: "la-history-control",
-            field: "history-redo",
-            keyShortcuts:
-              "Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y",
-            disabled: !editor.canRedo,
-            onActivate: () =>
-              run(
-                () => editor.redo(),
-                [],
-                null,
-                "history-redo",
-              ),
-          },
-        ],
-        actorPartActivatesSelection(actorId, field) {
-          pendingFocus = field;
-          baseController.select(actorId);
+      options,
+      activateModel,
+      [
+        {
+          label: "Undo",
+          icon: "arrow-counter-clockwise",
+          fallback: "↶",
+          className: "la-history-control",
+          field: "history-undo",
+          keyShortcuts: "Control+Z Meta+Z",
+          disabled: !editor.canUndo,
+          onActivate: () =>
+            run(
+              () => editor.undo(),
+              [],
+              null,
+              "history-undo",
+            ),
         },
-        groupPartActivatesSelection(groupId, field) {
-          pendingFocus = field;
-          baseController.select(groupId);
+        {
+          label: "Redo",
+          icon: "arrow-clockwise",
+          fallback: "↷",
+          className: "la-history-control",
+          field: "history-redo",
+          keyShortcuts:
+            "Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y",
+          disabled: !editor.canRedo,
+          onActivate: () =>
+            run(
+              () => editor.redo(),
+              [],
+              null,
+              "history-redo",
+            ),
         },
-        messagePartActivatesSelection(messageId, field) {
-          pendingFocus = field;
-          baseController.select(messageId);
-        },
-        onSelect(detail) {
-          transient = null;
-          selectedIds = detail.id ? [detail.id] : [];
-          pendingFocus ??=
-            detail.kind === "gap"
-              ? "gap-label"
-              : detail.kind === "actor"
-                ? "actor-name"
-                : detail.kind === "group"
-                  ? "group-label"
-                  : detail.kind === "section"
-                    ? "section-label"
-                    : detail.kind === "message"
-                      ? "message-label"
-                      : null;
-          applySelectedVisuals(baseController.svg, selectedIds);
-          const frame = baseController.svg.closest(".la-frame");
-          contextualEditor(frame, baseController.layout);
-          focusPendingField(frame, true);
-        },
-      },
+      ],
     );
 
     const frame = baseController.svg.closest(".la-frame");
@@ -5530,6 +5292,7 @@ export function renderEditor(target, editor, options = {}) {
   return {
     destroy() {
       destroyed = true;
+      transient = null;
       activeCancel?.();
       if (pendingInlineDraw !== null) {
         clearTimeout(pendingInlineDraw);

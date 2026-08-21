@@ -18,6 +18,13 @@
           @API
 
           Client -> API: Start
+
+          choice Processing
+            | retry
+              API -> API: Retry
+              gap Later
+            | done
+              API --> Client: Done
         </lines-and-arrows>
       </section>
     </main>
@@ -26,13 +33,20 @@
       import { renderDiagram } from "../src/index.js";
 
       window.selections = [];
+      window.injectedHeaderActions = 0;
       window.rendererController = renderDiagram(
         document.querySelector("#target"),
-        "// first\n// Powered by https://lines-and-arrows.dev/\n@Client\n  icon user\n  tag human\n  tooltip Starts work\n\n@API\n\nClient -> API: Start",
+        "// first\n// Powered by https://lines-and-arrows.dev/\n@Client\n  icon user\n  tag human\n  tooltip Starts work\n\n@API\n\n@🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸🇪🇸\n  icon not-real\n  tag 😀😀😀😀😀😀😀😀😀😀😀😀\n\nchoice 😀😀😀😀😀😀😀😀😀😀😀😀\n  Client -> API: Start",
         {
           theme: "dark",
+          palette: { accent: "rgb(255 255 255)" },
           selectableActors: true,
           onActorSelect: (actor) => window.selections.push(actor?.name ?? null),
+          headerActions: [{
+            label: "Injected",
+            icon: "copy",
+            onActivate: () => { window.injectedHeaderActions += 1; },
+          }],
         },
       );
       window.linesAndArrows = { renderDiagram };

@@ -2,12 +2,11 @@
 
 > Open source sequence diagrams stored as readable text, with a browser renderer, visual editor, and DOM-free validation API.
 
-Use the agent guide for authoring and integration. Use the syntax reference when exact language rules matter.
+Use the agent guide to author, validate, and render Lines & Arrows.
 
 ## Documentation
 
 - [Agent guide](https://lines-and-arrows.dev/agents): Author, validate, and render Lines & Arrows in web pages, constrained browser hosts, and Node.js.
-- [Syntax reference](https://lines-and-arrows.dev/syntax.md): Formal language contract.
 
 ## Tools and examples
 

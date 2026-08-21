@@ -1,13 +1,16 @@
-import { textLines } from "./text.js";
+import {
+  estimatedTextWidth,
+  graphemes,
+  textLines,
+  truncateTextToWidth,
+} from "./text.js";
 
 const TAG_MAX_LENGTH = 16;
 const TAG_FONT_SIZE = 10;
 const TAG_MIN_TEXT_WIDTH = 30;
 const TAG_HORIZONTAL_PADDING = 20;
 const ACTOR_LABEL_FONT_SIZE = 13;
-const ACTOR_LABEL_WIDTH_FACTOR = 0.56;
 const MESSAGE_LABEL_FONT_SIZE = 11;
-const MESSAGE_LABEL_WIDTH_FACTOR = 0.56;
 const MESSAGE_LABEL_MIN_TEXT_WIDTH = 40;
 const MESSAGE_LABEL_HORIZONTAL_PADDING = 16;
 const SELF_MESSAGE_HORIZONTAL_PADDING = 16;
@@ -18,23 +21,20 @@ export const MESSAGE_LABEL_MAX_WIDTH = 220;
 export const SELF_MESSAGE_MIN_WIDTH = 82;
 
 export function actorLabelWidth(name) {
-  return (
-    Array.from(String(name ?? "")).length *
-    ACTOR_LABEL_FONT_SIZE *
-    ACTOR_LABEL_WIDTH_FACTOR
-  );
+  return estimatedTextWidth(name, ACTOR_LABEL_FONT_SIZE);
 }
 
 export function metadataMetrics(tag, tooltip) {
   const text = String(tag ?? "");
+  const characters = graphemes(text);
   const visibleTag =
-    text.length <= TAG_MAX_LENGTH
+    characters.length <= TAG_MAX_LENGTH
       ? text
-      : `${text.slice(0, TAG_MAX_LENGTH - 1)}…`;
+      : `${characters.slice(0, TAG_MAX_LENGTH - 1).join("")}…`;
   const tagWidth = tag
-    ? Math.max(
+      ? Math.max(
         TAG_MIN_TEXT_WIDTH,
-        visibleTag.length * TAG_FONT_SIZE * 0.56,
+        estimatedTextWidth(visibleTag, TAG_FONT_SIZE),
       ) + TAG_HORIZONTAL_PADDING
     : 0;
   const triggerSize = tooltip ? 20 : 0;
@@ -54,8 +54,6 @@ export function messageLabelMetrics(
   maxWidth = MESSAGE_LABEL_MAX_WIDTH,
 ) {
   const text = String(label ?? "");
-  const characterWidth =
-    MESSAGE_LABEL_FONT_SIZE * MESSAGE_LABEL_WIDTH_FACTOR;
   const minimumWidth =
     MESSAGE_LABEL_MIN_TEXT_WIDTH +
     MESSAGE_LABEL_HORIZONTAL_PADDING;
@@ -65,37 +63,29 @@ export function messageLabelMetrics(
       ? maxWidth
       : MESSAGE_LABEL_MAX_WIDTH,
   );
-  const maxTextCharacters = Math.max(
-    1,
-    Math.floor(
-      (availableWidth - MESSAGE_LABEL_HORIZONTAL_PADDING) /
-        characterWidth,
-    ),
-  );
+  const maximumTextWidth =
+    availableWidth - MESSAGE_LABEL_HORIZONTAL_PADDING;
   const visibleLines = label
-    ? textLines(text).map((line) => {
-        const characters = Array.from(line);
-        if (characters.length <= maxTextCharacters) {
-          return line;
-        }
-        return maxTextCharacters === 1
-          ? "…"
-          : `${characters
-              .slice(0, maxTextCharacters - 1)
-              .join("")}…`;
-      })
+    ? textLines(text).map((line) =>
+        truncateTextToWidth(
+          line,
+          maximumTextWidth,
+          MESSAGE_LABEL_FONT_SIZE,
+        ),
+      )
     : [];
-  const visibleLabel = visibleLines.join("\n");
-  const longestLineLength = Math.max(
+  const longestLineWidth = Math.max(
     0,
-    ...visibleLines.map((line) => Array.from(line).length),
+    ...visibleLines.map((line) =>
+      estimatedTextWidth(line, MESSAGE_LABEL_FONT_SIZE),
+    ),
   );
   const width = label
     ? Math.min(
         availableWidth,
         Math.max(
           MESSAGE_LABEL_MIN_TEXT_WIDTH,
-          longestLineLength * characterWidth,
+          longestLineWidth,
         ) + MESSAGE_LABEL_HORIZONTAL_PADDING,
       )
     : 0;
@@ -103,12 +93,11 @@ export function messageLabelMetrics(
   const textWidth = label
     ? Math.max(
         MESSAGE_LABEL_MIN_TEXT_WIDTH,
-        longestLineLength * characterWidth,
+        longestLineWidth,
       )
     : 0;
 
   return {
-    visibleLabel,
     visibleLines,
     lineHeight: 13,
     height: visibleLines.length * 13,
