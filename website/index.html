@@ -87,32 +87,45 @@
     <main id="main">
       <section class="home-hero section-shell" id="top">
         <div class="hero-copy">
-          <h1>Sequence diagrams.<br />Cool as shit.</h1>
-          <p class="hero-lede">
-            Open source sequence diagrams with a visual editor and concise text.
-            Boil 'em, mash 'em, stick 'em in a stew.
-          </p>
-          <div class="hero-actions">
-            <a class="button button-primary" href="./showcase.html">
-              See the showcase
-              <span
-                class="control-icon icon-arrow-up-right"
-                aria-hidden="true"
-              ></span>
-            </a>
-            <a class="button button-secondary" href="./constructor.html">
-              Create!
-              <span
-                class="control-icon icon-arrow-right"
-                aria-hidden="true"
-              ></span>
-            </a>
+          <div class="hero-intro">
+            <h1>Sequence diagrams.<br />Cool as shit.</h1>
+            <p class="hero-lede">
+              Open source sequence diagrams with a visual editor and concise text.
+              Boil 'em, mash 'em, stick 'em in a stew.
+            </p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="./showcase.html">
+                See the showcase
+                <span
+                  class="control-icon icon-arrow-up-right"
+                  aria-hidden="true"
+                ></span>
+              </a>
+              <a class="button button-secondary" href="./constructor.html">
+                Create!
+                <span
+                  class="control-icon icon-arrow-right"
+                  aria-hidden="true"
+                ></span>
+              </a>
+            </div>
           </div>
-          <ul class="hero-facts" aria-label="Project facts">
-            <li>Best for AI agents</li>
-            <li>Runs in the browser</li>
-            <li>Free and MIT</li>
-          </ul>
+          <div class="hero-proof">
+            <p class="hero-use-cases">
+              Use it in the documentation, AI-interviews, or your website.
+            </p>
+            <ul class="hero-facts" aria-label="Project facts">
+              <li>AI edits diagrams as text, and you edit visually.</li>
+              <li>Free and open source under the MIT.</li>
+              <li>Zero dependencies. Just 45 kB.</li>
+              <li>
+                <span>
+                  Use it from a CDN or install it as an
+                  <a href="https://www.npmjs.com/package/lines-and-arrows">npm module</a>.
+                </span>
+              </li>
+            </ul>
+          </div>
         </div>
 
         <figure class="hero-workbench">
@@ -192,48 +205,6 @@
             View mode. Read-only diagram.
           </p>
         </figure>
-      </section>
-
-      <section
-        class="home-principles-section section-shell"
-        id="benefits"
-        aria-label="How Lines and Arrows works"
-      >
-        <dl class="home-principles">
-          <div>
-            <dt>Same source</dt>
-            <dd>Edit the diagram visually or change the text. Both stay in sync.</dd>
-          </div>
-          <div>
-            <dt>For agents</dt>
-            <dd>Agents can write and check the text without opening the visual editor.</dd>
-          </div>
-          <div>
-            <dt>Automatic layout</dt>
-            <dd>
-              Describe the order. Lines &amp; Arrows places the actors, messages,
-              groups, and gaps.
-            </dd>
-          </div>
-          <div>
-            <dt>Drawn in the browser</dt>
-            <dd>The page draws the diagram. Its source is not sent to a rendering service.</dd>
-          </div>
-          <div>
-            <dt>Dependency-free runtime</dt>
-            <dd>
-              The renderer uses browser-native JavaScript with no runtime
-              package dependencies or rendering server.
-            </dd>
-          </div>
-          <div>
-            <dt>Add it to a page</dt>
-            <dd>
-              Use the CDN, host it yourself, or install the package. No
-              framework is required.
-            </dd>
-          </div>
-        </dl>
       </section>
 
       <section class="home-embed-section section-shell" id="embed">
