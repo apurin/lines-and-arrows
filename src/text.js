@@ -2,7 +2,9 @@ const graphemeSegmenter = new Intl.Segmenter(undefined, {
   granularity: "grapheme",
 });
 const nonAsciiGrapheme = /[^\x00-\x7f]/u;
+const wideAsciiGrapheme = /[MW@#%&]/u;
 const NORMAL_EM_WIDTH = 1;
+const WIDE_ASCII_EM_WIDTH = 1.2;
 const WIDE_EM_WIDTH = 1.35;
 
 export function graphemes(value) {
@@ -13,12 +15,13 @@ export function graphemes(value) {
 }
 
 function graphemeWidth(grapheme, fontSize) {
-  return (
-    fontSize *
-    (nonAsciiGrapheme.test(grapheme) || grapheme.length > 1
+  const width =
+    nonAsciiGrapheme.test(grapheme) || grapheme.length > 1
       ? WIDE_EM_WIDTH
-      : NORMAL_EM_WIDTH)
-  );
+      : wideAsciiGrapheme.test(grapheme)
+        ? WIDE_ASCII_EM_WIDTH
+        : NORMAL_EM_WIDTH;
+  return fontSize * width;
 }
 
 export function estimatedTextWidth(value, fontSize) {
