@@ -3950,7 +3950,7 @@ export function renderEditor(target, editor, options = {}) {
       const labelX = selfMessage
         ? source.centerX + loopWidth / 2
         : (source.centerX + target.centerX) / 2;
-      const labelY = selfMessage ? row.y - 22 : row.y - 9;
+      const labelY = selfMessage ? row.y - 20 : row.y - 7;
       const labelMetrics = messageLabelMetrics(
         model.label,
         layout.options.messageLabelMaxWidth,
@@ -3980,7 +3980,7 @@ export function renderEditor(target, editor, options = {}) {
 
       metadata.style.left = `${labelX * diagramScale}px`;
       metadata.style.top = `${
-        (row.y + (selfMessage ? 20 : 7)) * diagramScale
+        (row.y + (selfMessage ? 18 : 5)) * diagramScale
       }px`;
       metadata.style.setProperty(
         "--la-inline-message-metadata-shift",

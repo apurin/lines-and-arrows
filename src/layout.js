@@ -19,8 +19,6 @@ const DEFAULTS = {
   marginX: 2,
   marginTop: 28,
   timelineTopGap: 36,
-  messageHeight: 54,
-  messageMetadataHeight: 16,
   messageLabelMaxWidth: MESSAGE_LABEL_MAX_WIDTH,
   gapHeight: 60,
   groupHeaderHeight: 30,
@@ -30,11 +28,13 @@ const DEFAULTS = {
   bottomPadding: 36,
 };
 
-const ACTOR_METADATA_TIMELINE_GAP = 4;
-const MESSAGE_LABEL_TOP_EXTENT = 21;
-const SELF_MESSAGE_LABEL_TOP_EXTENT = 34;
-const SELF_MESSAGE_TOP_PADDING = 13;
-const SELF_MESSAGE_METADATA_BOTTOM_EXTENT = 40;
+const MESSAGE_LABEL_TOP_EXTENT = 19;
+const SELF_MESSAGE_LABEL_TOP_EXTENT = 32;
+const MESSAGE_LINE_EXTENT = 12;
+const SELF_MESSAGE_LINE_EXTENT = 25;
+const MESSAGE_METADATA_BOTTOM_EXTENT = 25;
+const SELF_MESSAGE_METADATA_BOTTOM_EXTENT = 38;
+const MESSAGE_DECORATION_PADDING = 4;
 const SELF_MESSAGE_LIFELINE_GAP = 18;
 const GROUP_DEPTH_INSET = 9;
 const GROUP_CONTENT_INSET = 14;
@@ -44,32 +44,35 @@ const SECTION_LABEL_LINE_HEIGHT = 12;
 const GAP_LABEL_LINE_HEIGHT = 12;
 const LIFELINE_END_OFFSET = 8;
 
-function firstItemLabelAdjustment(document, options) {
-  const item = document.items[0];
-  if (item?.type !== "message" || !item.label) {
-    return 0;
-  }
-
+function messageRowGeometry(item, labelMetrics) {
   const selfMessage = item.source === item.target;
-  const topExtent = selfMessage
-    ? SELF_MESSAGE_LABEL_TOP_EXTENT
-    : MESSAGE_LABEL_TOP_EXTENT;
-  const topPadding = selfMessage ? SELF_MESSAGE_TOP_PADDING : 0;
-  return topExtent - options.messageHeight / 2 - topPadding;
-}
-
-function reserveActorMetadata(document, options) {
-  if (!document.actors.some((actor) => actor.tag || actor.tooltip)) {
-    return;
-  }
-
-  options.timelineTopGap = Math.max(
-    options.timelineTopGap,
-    options.actorMetadataGap +
-      options.actorMetadataHeight +
-      ACTOR_METADATA_TIMELINE_GAP +
-      firstItemLabelAdjustment(document, options),
+  const labelAllowance = Math.max(
+    0,
+    labelMetrics.height - labelMetrics.lineHeight,
   );
+  const topExtent = item.label
+    ? (selfMessage
+        ? SELF_MESSAGE_LABEL_TOP_EXTENT
+        : MESSAGE_LABEL_TOP_EXTENT) +
+      labelAllowance +
+      MESSAGE_DECORATION_PADDING
+    : selfMessage
+      ? SELF_MESSAGE_LINE_EXTENT
+      : MESSAGE_LINE_EXTENT;
+  const bottomExtent =
+    item.tag || item.tooltip
+      ? (selfMessage
+          ? SELF_MESSAGE_METADATA_BOTTOM_EXTENT
+          : MESSAGE_METADATA_BOTTOM_EXTENT) +
+        MESSAGE_DECORATION_PADDING
+      : selfMessage
+        ? SELF_MESSAGE_LINE_EXTENT
+        : MESSAGE_LINE_EXTENT;
+
+  return {
+    height: topExtent + bottomExtent,
+    yOffset: topExtent,
+  };
 }
 
 function collectMessageWidths(
@@ -120,39 +123,16 @@ function layoutItems(
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index];
     if (item.type === "message") {
-      const selfMessage = item.source === item.target;
-      const topPadding = selfMessage
-        ? SELF_MESSAGE_TOP_PADDING
-        : 0;
       const labelMetrics = messageLabelMetrics(
         item.label,
         state.options.messageLabelMaxWidth,
       );
-      const labelAllowance = Math.max(
-        0,
-        labelMetrics.height - labelMetrics.lineHeight,
+      const { height, yOffset } = messageRowGeometry(
+        item,
+        labelMetrics,
       );
-      const metadataAllowance =
-        item.tag || item.tooltip
-          ? selfMessage
-            ? Math.max(
-                state.options.messageMetadataHeight,
-                SELF_MESSAGE_METADATA_BOTTOM_EXTENT -
-                  state.options.messageHeight / 2,
-              )
-            : state.options.messageMetadataHeight
-          : 0;
-      const height =
-        state.options.messageHeight +
-        topPadding +
-        labelAllowance +
-        metadataAllowance;
       const top = state.y;
-      const y =
-        top +
-        state.options.messageHeight / 2 +
-        topPadding +
-        labelAllowance;
+      const y = top + yOffset;
       state.rows.push({
         ...item,
         top,
@@ -296,7 +276,6 @@ function computeLayout(
   marginX = DEFAULTS.marginX,
 ) {
   const options = { ...DEFAULTS, marginTop, marginX };
-  reserveActorMetadata(document, options);
   const selfMessageWidths = new Map();
   const messageLabelWidths = new Map();
   const actorIndexes = new Map(

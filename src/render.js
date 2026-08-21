@@ -1389,7 +1389,7 @@ function messagePath(
     return {
       d: `M ${sourceX} ${row.y} L ${targetX} ${row.y}`,
       labelX: (sourceX + targetX) / 2,
-      labelY: row.y - 9,
+      labelY: row.y - 7,
       endX: targetX,
       endY: row.y,
       direction: Math.sign(targetX - sourceX),
@@ -1410,7 +1410,7 @@ function messagePath(
       `L ${sourceX} ${bottom}`,
     ].join(" "),
     labelX: sourceX + loopWidth / 2,
-    labelY: top - 9,
+    labelY: top - 7,
     endX: sourceX,
     endY: bottom,
     direction: -1,
@@ -1493,9 +1493,9 @@ function renderMessage(
   group.append(
     svgElement("rect", {
       x: hitLeft,
-      y: row.y - 26,
+      y: row.top,
       width: hitWidth,
-      height: 50,
+      height: row.height,
       fill: "transparent",
       "pointer-events": selectable ? "all" : "none",
     }),
@@ -1644,7 +1644,7 @@ function renderMessage(
     row.tooltip,
     row.tooltipIcon,
     geometry.labelX,
-    row.y + (isSelfMessage ? 20 : 7),
+    row.y + (isSelfMessage ? 18 : 5),
     tokens,
     {
       anchor: "middle",

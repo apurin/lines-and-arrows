@@ -64,3 +64,27 @@ test("header-free diagrams use the top edge", () => {
   assert.equal(withoutHeader.actors[0].y, 0);
   assert.ok(withHeader.actors[0].y > withoutHeader.actors[0].y);
 });
+
+test("message rows reserve space for their visible decorations", () => {
+  const result = layout(`A -> B
+A -> B: Label
+A -> B
+  tag tagged
+A -> B
+  tooltip More detail
+A -> B: Label
+  tag tagged
+  tooltip More detail
+A -> A
+A -> A: Label
+A -> A
+  tag local
+A -> A: Label
+  tag local
+  tooltip More detail`);
+
+  assert.deepEqual(
+    result.rows.map((row) => row.height),
+    [24, 35, 41, 41, 52, 50, 61, 67, 78],
+  );
+});
