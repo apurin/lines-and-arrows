@@ -1,4 +1,4 @@
-export const CDN_VERSION = "0.12.0";
+export const CDN_VERSION = "0.13.0";
 
 const autoUrl = `https://cdn.jsdelivr.net/npm/lines-and-arrows@${CDN_VERSION}/dist/lines-and-arrows.auto.min.js`;
 
