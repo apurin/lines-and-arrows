@@ -878,6 +878,7 @@ const EDIT_STYLES = `
         sans-serif
       );
     text-align: center;
+    white-space: pre;
   }
 
   .la-inline-message-label::placeholder {
@@ -3767,6 +3768,7 @@ export function renderEditor(target, editor, options = {}) {
 
     labelControl.addEventListener("input", () => {
       dirtyFields.add("label");
+      positionEditor();
     });
     tagControl.addEventListener("input", () => {
       dirtyFields.add("tag");
@@ -3952,7 +3954,7 @@ export function renderEditor(target, editor, options = {}) {
         : (source.centerX + target.centerX) / 2;
       const labelY = selfMessage ? row.y - 20 : row.y - 7;
       const labelMetrics = messageLabelMetrics(
-        model.label,
+        labelControl.value,
         layout.options.messageLabelMaxWidth,
       );
       const labelTextHeight = Math.max(13, labelMetrics.height);

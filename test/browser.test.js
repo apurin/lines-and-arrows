@@ -688,6 +688,21 @@ test(
       .getByRole("button", { name: "Client to API: Start" })
       .click();
     const messageLabel = element.getByLabel("Arrow label");
+    const initialMessageLabelWidth = await messageLabel.evaluate(
+      (node) => node.getBoundingClientRect().width,
+    );
+    await messageLabel.fill("mmmmmmmmmmmmmmmmmmmm");
+    const expandedMessageLabel = await messageLabel.evaluate((node) => ({
+      width: node.getBoundingClientRect().width,
+      clientHeight: node.clientHeight,
+      scrollHeight: node.scrollHeight,
+    }));
+    assert.ok(expandedMessageLabel.width > initialMessageLabelWidth * 2);
+    assert.ok(
+      expandedMessageLabel.scrollHeight <=
+        expandedMessageLabel.clientHeight + 1,
+      JSON.stringify(expandedMessageLabel),
+    );
     await messageLabel.fill("Continue");
     await messageLabel.press("Enter");
     assert.match(
