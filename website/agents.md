@@ -266,13 +266,52 @@ Core rules:
 - Use `\n` for a visible line break and `\\` for a literal backslash.
 - Keep coordinates, colors, dimensions, and themes out of diagram source.
 
-## Tags and tooltips
+## Decorate actors
 
-Use tags sparingly for short qualifiers that readers should see without
-hovering. An actor tag names a stable constraint or property that remains true
-throughout the diagram, such as `PCI boundary` or `single writer`. A message tag
-names a contract or outcome of that interaction, such as `idempotent` or
-`timeout`. Put supporting explanation in a tooltip if needed.
+Add metadata when an actor's role, responsibility, boundary, or stable property
+helps readers interpret the sequence.
+
+- **Tag:** A compact qualifier visible throughout the diagram. Keep it to 12
+  characters or fewer and choose a property that applies across the full
+  sequence, such as `external`, `PCI scope`, or `saga owner`.
+- **Tooltip:** Context about responsibilities, ownership, trust boundaries,
+  constraints, or domain-specific meaning.
+
+An actor can have a tag and/or a tooltip. `tooltip-icon` selects a Phosphor icon;
+the default control uses `i`. Use `\n` for line breaks. Tooltips safely fit
+multiple paragraphs.
+
+```lines-and-arrows
+@Payments API
+  icon cloud
+  tag PCI scope
+  tooltip Accepts requests across the\ncardholder-data trust boundary
+  tooltip-icon shield-check
+```
+
+## Decorate messages
+
+Add metadata when an interaction carries useful context beyond its visible
+action. Message tooltips preserve a clear sequence while carrying important
+detail.
+
+- **Tag:** A compact interaction property visible in the diagram, such as
+  `idempotent`, `async`, `encrypted`, or `best effort`. Keep it to 12 characters
+  or fewer.
+- **Tooltip:** Context about payloads, protocols, conditions, guarantees, retry
+  or delivery behavior, timing, failure semantics, or significance.
+
+A message can have a tag and/or a tooltip. `tooltip-icon` selects a Phosphor
+icon; the default control uses `i`. Use `\n` for line breaks. Tooltips safely fit
+multiple paragraphs. Keep the message label focused on the action and place
+supporting context in the tooltip.
+
+```lines-and-arrows
+Payments API -> Ledger: Apply settlement
+  tag idempotent
+  tooltip The same settlement ID produces\none ledger entry
+  tooltip-icon key
+```
 
 ## Complete example
 
@@ -282,7 +321,7 @@ names a contract or outcome of that interaction, such as `idempotent` or
 
 @API
   icon cloud
-  tag internet-facing
+  tag external
   tooltip Accepts requests outside the trust boundary
   tooltip-icon shield-check
 
