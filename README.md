@@ -10,7 +10,9 @@ and the editor.
 [Constructor](https://lines-and-arrows.dev/constructor) ·
 [Showcase](https://lines-and-arrows.dev/showcase) ·
 [Syntax reference](./syntax.md) ·
-[Agent guide](https://lines-and-arrows.dev/agents)
+[Agent guide][agent-guide]
+
+[agent-guide]: https://raw.githubusercontent.com/apurin/lines-and-arrows/refs/heads/main/website/agents.md
 
 The JavaScript runtime has zero dependencies and includes TypeScript
 declarations. The current `0.12` line is under active development before 1.0;
@@ -115,8 +117,8 @@ API --> Customer: Job complete
 
 The [syntax reference](./syntax.md) defines actors, messages, arrow forms,
 groups, sections, gaps, header comments, escaping, validation, and canonical
-serialization. The [agent guide](https://lines-and-arrows.dev/agents) provides
-a compact authoring and embedding workflow.
+serialization. The [agent guide][agent-guide] provides a compact authoring and
+embedding workflow.
 
 ## Validation
 

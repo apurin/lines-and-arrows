@@ -109,15 +109,12 @@ test("website pages load the exact public CDN runtime", async (testContext) => {
   }
 });
 
-test("website CDN examples disable email address rewriting", () => {
-  for (const path of ["index.html", "agents.html"]) {
-    const source = readFileSync(join(ROOT, "website", path), "utf8");
-    assert.doesNotMatch(
-      source,
-      /cdn\.jsdelivr\.net\/npm\/lines-and-arrows@/,
-      path,
-    );
-  }
+test("homepage CDN example disables email address rewriting", () => {
+  const source = readFileSync(join(ROOT, "website", "index.html"), "utf8");
+  assert.doesNotMatch(
+    source,
+    /cdn\.jsdelivr\.net\/npm\/lines-and-arrows@/,
+  );
 });
 
 test("showcase uses static view-mode diagrams with source copy available", async (

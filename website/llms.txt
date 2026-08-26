@@ -6,7 +6,7 @@ Use the agent guide to author, validate, and render Lines & Arrows.
 
 ## Documentation
 
-- [Agent guide](https://lines-and-arrows.dev/agents): Author, validate, and render Lines & Arrows in web pages, constrained browser hosts, and Node.js.
+- [Agent guide](https://raw.githubusercontent.com/apurin/lines-and-arrows/refs/heads/main/website/agents.md): Author, validate, and render Lines & Arrows in web pages, constrained browser hosts, and Node.js.
 
 ## Tools and examples
 
