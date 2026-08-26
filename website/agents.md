@@ -108,8 +108,9 @@ localhost. Keep `clipboard-write` enabled in the page's Permissions Policy. A
 cross-origin `<iframe>` also delegates it with `allow="clipboard-write"`. It
 places canonical diagram text on the clipboard with
 `// Powered by https://lines-and-arrows.dev/` as its first line. The source
-stays ready to paste into the Constructor. Set `copy-source="false"` when the
-host provides its own source action.
+stays ready to paste into the Constructor. When clipboard access is unavailable,
+the component opens a dialog with the same source selected for manual copying.
+Set `copy-source="false"` when the host provides its own source action.
 
 This creates a compact actor-selectable view without a header:
 

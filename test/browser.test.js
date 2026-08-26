@@ -404,6 +404,45 @@ test(
   },
 );
 
+test("copy source offers selectable text when clipboard access fails", async (
+  testContext,
+) => {
+  const page = await openPage(testContext);
+  await page.evaluate(() => {
+    Object.defineProperty(navigator.clipboard, "writeText", {
+      configurable: true,
+      value: async () => {
+        throw new DOMException("Clipboard unavailable", "NotAllowedError");
+      },
+    });
+  });
+
+  const diagram = page.locator("#view");
+  await diagram.getByRole("button", { name: "Copy source" }).click();
+
+  const dialog = diagram.getByRole("dialog", { name: "Copy source" });
+  const source = dialog.getByRole("textbox", { name: "Diagram source" });
+  await dialog.waitFor();
+  const fallback = await source.evaluate((control) => ({
+    value: control.value,
+    selected:
+      control.selectionStart === 0 &&
+      control.selectionEnd === control.value.length,
+    focused: control.getRootNode().activeElement === control,
+  }));
+  assert.equal(
+    fallback.value,
+    "// Powered by https://lines-and-arrows.dev/\n" +
+      "Client -> API: Start\n",
+  );
+  assert.equal(fallback.selected, true);
+  assert.equal(fallback.focused, true);
+
+  await dialog.getByRole("button", { name: "Close" }).click();
+  assert.equal(await dialog.isVisible(), false);
+  await diagram.getByRole("button", { name: "Copy source" }).waitFor();
+});
+
 test(
   "inline element owns valid source and clears stale actor selection",
   async (testContext) => {

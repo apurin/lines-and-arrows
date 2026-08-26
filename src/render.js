@@ -281,6 +281,113 @@ const VIEW_STYLES = `
     opacity: 0.26;
   }
 
+  .la-copy-dialog {
+    box-sizing: border-box;
+    width: min(560px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    padding: 16px;
+    border: 1px solid color-mix(
+      in srgb,
+      var(--la-text) 18%,
+      transparent
+    );
+    border-radius: 10px;
+    background: var(--la-surface);
+    color: var(--la-text);
+    box-shadow: 0 16px 48px
+      color-mix(in srgb, #000 28%, transparent);
+    font-family: var(
+      --la-font-family,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif
+    );
+  }
+
+  .la-copy-dialog::backdrop {
+    background: rgb(0 0 0 / 0.42);
+  }
+
+  .la-copy-dialog-title {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.3;
+  }
+
+  .la-copy-dialog-description {
+    margin: 6px 0 12px;
+    color: var(--la-muted-text);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .la-copy-dialog-source {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 220px;
+    max-height: calc(100vh - 180px);
+    padding: 10px;
+    resize: vertical;
+    border: 1px solid color-mix(
+      in srgb,
+      var(--la-text) 24%,
+      transparent
+    );
+    border-radius: 7px;
+    outline: none;
+    background: color-mix(
+      in srgb,
+      var(--la-text) 4%,
+      var(--la-surface)
+    );
+    color: var(--la-text);
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco,
+      Consolas, monospace;
+  }
+
+  .la-copy-dialog-source:focus-visible {
+    border-color: var(--la-selection);
+    box-shadow: 0 0 0 2px color-mix(
+      in srgb,
+      var(--la-selection) 22%,
+      transparent
+    );
+  }
+
+  .la-copy-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+  }
+
+  .la-copy-dialog-close {
+    padding: 6px 12px;
+    border: 1px solid color-mix(
+      in srgb,
+      var(--la-selection) 42%,
+      transparent
+    );
+    border-radius: 7px;
+    background: var(--la-accent-soft);
+    color: var(--la-text);
+    font: 600 12px/1.4 var(
+      --la-font-family,
+      ui-sans-serif,
+      system-ui,
+      sans-serif
+    );
+    cursor: pointer;
+  }
+
+  .la-copy-dialog-close:focus-visible {
+    outline: 2px solid var(--la-selection);
+    outline-offset: 2px;
+  }
+
   .la-group-hit.la-selectable:hover
     + .la-group-shape,
   .la-group-hit.la-selectable:focus-visible
@@ -1806,6 +1913,54 @@ function sourceWithAttribution(source) {
   return `${SOURCE_ATTRIBUTION}\n${body}`;
 }
 
+function createCopySourceDialog(source, prefix) {
+  const dialog = document.createElement("dialog");
+  dialog.className = "la-copy-dialog";
+
+  const title = document.createElement("h2");
+  title.className = "la-copy-dialog-title";
+  title.id = `${prefix}-copy-dialog-title`;
+  title.textContent = "Copy source";
+  dialog.setAttribute("aria-labelledby", title.id);
+
+  const description = document.createElement("p");
+  description.className = "la-copy-dialog-description";
+  description.textContent = "Copy the diagram source below.";
+
+  const sourceControl = document.createElement("textarea");
+  sourceControl.className = "la-copy-dialog-source";
+  sourceControl.readOnly = true;
+  sourceControl.spellcheck = false;
+  sourceControl.value = source;
+  sourceControl.setAttribute("aria-label", "Diagram source");
+
+  const actions = document.createElement("div");
+  actions.className = "la-copy-dialog-actions";
+  const close = document.createElement("button");
+  close.className = "la-copy-dialog-close";
+  close.type = "button";
+  close.textContent = "Close";
+  close.addEventListener("click", () => dialog.close());
+  actions.append(close);
+  dialog.append(title, description, sourceControl, actions);
+
+  return {
+    dialog,
+    open() {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+      sourceControl.focus();
+      sourceControl.select();
+    },
+    cleanup() {
+      if (dialog.open) {
+        dialog.close();
+      }
+    },
+  };
+}
+
 async function writeClipboardText(source) {
   await navigator.clipboard.writeText(source);
 }
@@ -1916,6 +2071,7 @@ function renderHeader(
   headerActions,
   source,
   branding,
+  openCopyFallback,
   cleanups,
 ) {
   const actions = [...headerActions];
@@ -1928,7 +2084,12 @@ function renderHeader(
       className: "la-copy-source",
       field: "copy-source",
       async onActivate(control, title) {
-        await writeClipboardText(sourceWithAttribution(source));
+        try {
+          await writeClipboardText(sourceWithAttribution(source));
+        } catch {
+          openCopyFallback();
+          return;
+        }
         control.dataset.copied = "true";
         control.setAttribute("aria-label", "Source copied");
         title.textContent = "Source copied";
@@ -2171,6 +2332,12 @@ function renderDiagramSurface(
   const tooltipLayer = document.createElement("div");
   tooltipLayer.className = "la-tooltip-layer";
   tooltipLayer.cleanups = [];
+  const copyDialog = copySource
+    ? createCopySourceDialog(sourceWithAttribution(source), prefix)
+    : null;
+  if (copyDialog) {
+    tooltipLayer.cleanups.push(copyDialog.cleanup);
+  }
 
   const selection =
     selectionMode === "editor"
@@ -2250,6 +2417,7 @@ function renderDiagramSurface(
     headerActions,
     source,
     branding,
+    () => copyDialog?.open(),
     tooltipLayer.cleanups,
   );
   if (selectionMode === "actors") {
@@ -2265,6 +2433,9 @@ function renderDiagramSurface(
   }
 
   frame.append(svg, tooltipLayer);
+  if (copyDialog) {
+    frame.append(copyDialog.dialog);
+  }
   target.replaceChildren(style, frame);
 
   let destroyed = false;
