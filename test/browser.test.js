@@ -336,6 +336,7 @@ test(
         longTextGeometry: {
           emoji: measureLongGeometry("😀"),
           latin: measureLongGeometry("W"),
+          lowercaseWide: measureLongGeometry("m"),
           nonAscii: measureLongGeometry("Ж"),
         },
       };
@@ -370,6 +371,13 @@ test(
           messages: [true, true],
         },
         latin: {
+          actor: true,
+          tag: true,
+          group: true,
+          gap: true,
+          messages: [true, true],
+        },
+        lowercaseWide: {
           actor: true,
           tag: true,
           group: true,
@@ -645,6 +653,30 @@ test(
       gaps: 1,
       selfMessage: true,
     });
+    const tagGeometry = await element.evaluate((node) =>
+      [...node.shadowRoot.querySelectorAll(".la-message .la-tag")].map(
+        (tag) => {
+          const text = tag.querySelector("text");
+          const pill = tag.querySelector("rect");
+          return {
+            text: text.textContent,
+            textWidth: text.getBBox().width,
+            pillWidth: pill.getBBox().width,
+          };
+        },
+      ),
+    );
+    assert.deepEqual(
+      tagGeometry.map(({ text }) => text),
+      ["local + one replica", "mmmmmmmmmmmmmmmmmmmm"],
+    );
+    assert.ok(tagGeometry[0].pillWidth < 140);
+    for (const geometry of tagGeometry) {
+      assert.ok(
+        geometry.textWidth + 16 <= geometry.pillWidth,
+        JSON.stringify(geometry),
+      );
+    }
     await element
       .getByRole("button", { name: "Edit group label" })
       .click();

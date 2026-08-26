@@ -3,8 +3,11 @@ const graphemeSegmenter = new Intl.Segmenter(undefined, {
 });
 const nonAsciiGrapheme = /[^\x00-\x7f]/u;
 const wideAsciiGrapheme = /[MW@#%&]/u;
+const wideLowercaseGrapheme = /[mw]/u;
 const NORMAL_EM_WIDTH = 1;
+const COMPACT_NORMAL_EM_WIDTH = 0.56;
 const WIDE_ASCII_EM_WIDTH = 1.2;
+const WIDE_LOWERCASE_EM_WIDTH = 1;
 const WIDE_EM_WIDTH = 1.35;
 
 export function graphemes(value) {
@@ -14,20 +17,39 @@ export function graphemes(value) {
   );
 }
 
-function graphemeWidth(grapheme, fontSize) {
+function graphemeWidth(
+  grapheme,
+  fontSize,
+  normalEmWidth = NORMAL_EM_WIDTH,
+) {
   const width =
     nonAsciiGrapheme.test(grapheme) || grapheme.length > 1
       ? WIDE_EM_WIDTH
       : wideAsciiGrapheme.test(grapheme)
         ? WIDE_ASCII_EM_WIDTH
-        : NORMAL_EM_WIDTH;
+        : wideLowercaseGrapheme.test(grapheme)
+          ? WIDE_LOWERCASE_EM_WIDTH
+          : normalEmWidth;
   return fontSize * width;
 }
 
-export function estimatedTextWidth(value, fontSize) {
+function estimatedWidth(value, fontSize, normalEmWidth) {
   return graphemes(value).reduce(
-    (width, grapheme) => width + graphemeWidth(grapheme, fontSize),
+    (width, grapheme) =>
+      width + graphemeWidth(grapheme, fontSize, normalEmWidth),
     0,
+  );
+}
+
+export function estimatedTextWidth(value, fontSize) {
+  return estimatedWidth(value, fontSize, NORMAL_EM_WIDTH);
+}
+
+export function estimatedCompactTextWidth(value, fontSize) {
+  return estimatedWidth(
+    value,
+    fontSize,
+    COMPACT_NORMAL_EM_WIDTH,
   );
 }
 

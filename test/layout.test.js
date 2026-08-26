@@ -3,7 +3,11 @@ import test from "node:test";
 
 import { assignStructuralIds } from "../src/document.js";
 import { layoutDiagram, layoutDiagramWithoutHeader } from "../src/layout.js";
-import { messageLabelMetrics, selfMessageWidth } from "../src/metadata.js";
+import {
+  messageLabelMetrics,
+  metadataMetrics,
+  selfMessageWidth,
+} from "../src/metadata.js";
 import { parse } from "../src/parser.js";
 
 function layout(source, withoutHeader = false) {
@@ -83,6 +87,15 @@ Client -> API: ${label}`);
     api.centerX - client.centerX >
       result.options.actorWidth + result.options.actorGap,
   );
+});
+
+test("tag pills show complete text at compact width", () => {
+  const metrics = metadataMetrics("local + one replica", false);
+  const wideLowercase = metadataMetrics("m".repeat(20), false);
+
+  assert.equal(metrics.visibleTag, "local + one replica");
+  assert.ok(Math.abs(metrics.tagWidth - 126.4) < 0.01);
+  assert.equal(wideLowercase.tagWidth, 220);
 });
 
 test("message rows reserve space for their visible decorations", () => {

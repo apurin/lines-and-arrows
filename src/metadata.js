@@ -1,10 +1,10 @@
 import {
+  estimatedCompactTextWidth,
   estimatedTextWidth,
   graphemes,
   textLines,
 } from "./text.js";
 
-const TAG_MAX_LENGTH = 16;
 const TAG_FONT_SIZE = 10;
 const TAG_MIN_TEXT_WIDTH = 30;
 const TAG_HORIZONTAL_PADDING = 20;
@@ -25,16 +25,11 @@ export function actorLabelWidth(name) {
 }
 
 export function metadataMetrics(tag, tooltip) {
-  const text = String(tag ?? "");
-  const characters = graphemes(text);
-  const visibleTag =
-    characters.length <= TAG_MAX_LENGTH
-      ? text
-      : `${characters.slice(0, TAG_MAX_LENGTH - 1).join("")}…`;
+  const visibleTag = String(tag ?? "");
   const tagWidth = tag
       ? Math.max(
         TAG_MIN_TEXT_WIDTH,
-        estimatedTextWidth(visibleTag, TAG_FONT_SIZE),
+        estimatedCompactTextWidth(visibleTag, TAG_FONT_SIZE),
       ) + TAG_HORIZONTAL_PADDING
     : 0;
   const triggerSize = tooltip ? 20 : 0;
