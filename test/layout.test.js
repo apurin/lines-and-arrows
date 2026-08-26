@@ -95,7 +95,7 @@ test("tag pills show complete text at compact width", () => {
 
   assert.equal(metrics.visibleTag, "local + one replica");
   assert.ok(Math.abs(metrics.tagWidth - 126.4) < 0.01);
-  assert.equal(wideLowercase.tagWidth, 220);
+  assert.equal(wideLowercase.tagWidth, 230);
 });
 
 test("message rows reserve space for their visible decorations", () => {

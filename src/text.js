@@ -7,7 +7,7 @@ const wideLowercaseGrapheme = /[mw]/u;
 const NORMAL_EM_WIDTH = 1;
 const COMPACT_NORMAL_EM_WIDTH = 0.56;
 const WIDE_ASCII_EM_WIDTH = 1.2;
-const WIDE_LOWERCASE_EM_WIDTH = 1;
+const WIDE_LOWERCASE_EM_WIDTH = 1.05;
 const WIDE_EM_WIDTH = 1.35;
 
 export function graphemes(value) {
