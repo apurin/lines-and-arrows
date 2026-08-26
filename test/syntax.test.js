@@ -76,6 +76,55 @@ Client -> API: Start`;
   assert.throws(() => serialize(document), /comments\[0\].*one line/i);
 });
 
+test("places declared actors before actors inferred from the timeline", () => {
+  const source = `@Database
+
+@Audit
+
+Client -> API: Start
+choice Processing
+  | store
+    API -> Database: Save
+  | inspect
+    Worker -> Worker: Check
+API --> Client: Done`;
+  const document = parse(source);
+
+  assert.deepEqual(
+    document.actors.map(({ name }) => name),
+    ["Database", "Audit", "Client", "API", "Worker"],
+  );
+  assert.equal(serialize(document), `${source}\n`);
+  assert.deepEqual(parse(serialize(document)), document);
+});
+
+test("canonical source preserves every actor order with a minimal prefix", () => {
+  const base = parse("A -> B: First\nC -> A: Second");
+  const actorsByName = new Map(
+    base.actors.map((actor) => [actor.name, actor]),
+  );
+
+  for (const [names, expectedDeclarations] of [
+    [["A", "B", "C"], 0],
+    [["A", "C", "B"], 2],
+    [["B", "A", "C"], 1],
+    [["B", "C", "A"], 2],
+    [["C", "A", "B"], 1],
+    [["C", "B", "A"], 2],
+  ]) {
+    const document = structuredClone(base);
+    document.actors = names.map((name) => actorsByName.get(name));
+    const source = serialize(document);
+
+    assert.equal(
+      source.split("\n").filter((line) => line.startsWith("@")).length,
+      expectedDeclarations,
+      names.join(", "),
+    );
+    assert.deepEqual(parse(source), document, names.join(", "));
+  }
+});
+
 test("rejects comments after the diagram starts", () => {
   assert.deepEqual(validate("Client -> API: Start\n// Later note"), {
     valid: false,
@@ -87,17 +136,12 @@ test("rejects comments after the diagram starts", () => {
 });
 
 test("reports concise syntax and document validation errors", () => {
-  const result = validate(`@Client
+  assert.deepEqual(
+    validate(`@Client
 
-Client -> Missing: Start`);
-
-  assert.deepEqual(result, {
-    valid: false,
-    error: {
-      message: 'Unknown actor "Missing".',
-      line: 3,
-    },
-  });
+Client -> Missing: Start`),
+    { valid: true },
+  );
   assert.throws(
     () => parse("Client -> API:"),
     (error) =>
@@ -123,6 +167,9 @@ Client -> Missing: Start`);
   emptyValue.items[0].label = "Start";
   emptyValue.actors[0].tag = " ";
   assert.throws(() => serialize(emptyValue), /actors\[0\]\.tag.*empty/i);
+  const missingActor = parse("A -> B: Start");
+  missingActor.actors.pop();
+  assert.throws(() => serialize(missingActor), /Unknown actor "B"/);
 });
 
 test("validates files and stdin through the verb-less CLI", () => {

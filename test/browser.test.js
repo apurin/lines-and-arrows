@@ -907,3 +907,71 @@ test("constructor preserves diagram source in generated HTML", async (testContex
     },
   });
 });
+
+test("partial actor declarations set the visible actor prefix", async (
+  testContext,
+) => {
+  const page = await openPage(testContext);
+  const result = await page.evaluate(() => {
+    const source = `@Database
+
+@Audit
+
+Client -> API: Start
+choice Processing
+  | store
+    API -> Database: Save
+  | inspect
+    Worker -> Worker: Check
+API --> Client: Done`;
+    const namesAndPositions = (root) =>
+      [...root.querySelectorAll(".la-actor")].map((actor) => ({
+        name: actor.querySelector(".la-actor-label").textContent,
+        left: actor.getBoundingClientRect().left,
+      }));
+
+    const viewTarget = document.createElement("div");
+    document.body.append(viewTarget);
+    const view = window.linesAndArrows.renderDiagram(viewTarget, source, {
+      branding: false,
+      copySource: false,
+    });
+
+    const editor = document.createElement("lines-and-arrows");
+    editor.mode = "edit";
+    editor.branding = false;
+    editor.source = source;
+    document.body.append(editor);
+
+    const snapshot = {
+      view: namesAndPositions(view.svg),
+      edit: namesAndPositions(editor.shadowRoot),
+      canonicalSource: editor.source,
+    };
+    view.destroy();
+    viewTarget.remove();
+    editor.remove();
+    return snapshot;
+  });
+
+  const expectedNames = ["Database", "Audit", "Client", "API", "Worker"];
+  for (const mode of ["view", "edit"]) {
+    assert.deepEqual(
+      result[mode].map(({ name }) => name),
+      expectedNames,
+    );
+    assert.ok(
+      result[mode].every(
+        ({ left }, index, actors) =>
+          index === 0 || left > actors[index - 1].left,
+      ),
+      JSON.stringify(result[mode]),
+    );
+  }
+  assert.equal(
+    result.canonicalSource,
+    "@Database\n\n@Audit\n\nClient -> API: Start\n" +
+      "choice Processing\n  | store\n    API -> Database: Save\n" +
+      "  | inspect\n    Worker -> Worker: Check\nAPI --> Client: Done\n",
+  );
+});

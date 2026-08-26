@@ -130,13 +130,16 @@ editors may assign private session IDs.
 Actor declarations are optional:
 
 - If the document has no declarations, actors are inferred in first-use order.
-- If the document has any declaration, every referenced actor must be declared.
-  Declaration order is actor order.
+- Declared actors appear first in declaration order. Referenced actors without a
+  declaration follow in first-use order.
+- First use follows timeline source order, reading each message's source before
+  its target. An actor is added once, including in nested groups, sections, and
+  self-messages.
 - Declarations must appear before the first timeline item.
 
-Canonical output writes declarations when they establish actor order, preserve
-actor metadata, or include actors unused by messages. Otherwise, actor order is
-represented by first use in the timeline.
+Canonical output writes the shortest leading declaration block that preserves
+actor order, actor metadata, and actors unused by messages. Remaining actor
+order is represented by first use in the timeline.
 
 An unknown icon identifier does not invalidate a diagram. A renderer should use
 its generic actor treatment or the default tooltip information icon and
@@ -367,7 +370,6 @@ A parser must report, at minimum:
 - malformed indentation or tabs;
 - duplicate actor properties;
 - duplicate message tags, tooltips, or tooltip icons;
-- unknown actor references in a document with explicit declarations;
 - empty names, explicit labels, groups, sections, or gaps;
 - line-break escapes in single-line fields;
 - mixed direct items and sections in one group;

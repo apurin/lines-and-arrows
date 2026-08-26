@@ -48,6 +48,31 @@ test("editor snapshots are immutable, canonical, and undoable", () => {
   assert.doesNotMatch(editor.source, /(?:actor|item|section):/);
 });
 
+test("editor preserves mixed declared and inferred actor order", () => {
+  const editor = new DiagramEditor(`@Database
+
+Client -> API: Start
+API -> Database: Store`);
+
+  assert.deepEqual(
+    editor.document.actors.map(({ name }) => name),
+    ["Database", "Client", "API"],
+  );
+  assert.equal(
+    editor.source,
+    "@Database\n\nClient -> API: Start\nAPI -> Database: Store\n",
+  );
+
+  const client = editor.document.actors.find(({ name }) => name === "Client");
+  editor.updateActor(client.id, { tag: "caller" });
+  assert.deepEqual(
+    editor.document.actors.map(({ name }) => name),
+    ["Database", "Client", "API"],
+  );
+  assert.match(editor.source, /@Client\n  tag caller/);
+  assert.doesNotMatch(editor.source, /@API/);
+});
+
 test("timeline commands preserve structure through grouping and sections", () => {
   const editor = new DiagramEditor(SOURCE);
   const messageId = editor.addMessage(ROOT_CONTAINER_ID, 1, {

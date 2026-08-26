@@ -200,7 +200,8 @@ if (!result.valid) {
 
 ## Authoring workflow
 
-1. Write actors first when their order, icons, tags, or tooltips matter.
+1. Declare actors that need to appear first or carry icons, tags, or tooltips.
+   Their declaration order forms the beginning of the actor order.
 2. Write messages and groups in timeline order.
 3. Use exactly two spaces for every indentation level and preserve code-block
    whitespace when copying examples.
@@ -238,10 +239,10 @@ gap Visible discontinuity
 
 Core rules:
 
-- Actor declarations are optional. Without them, actors appear in first-use
-  order. If any actor is declared, declare every referenced actor. Canonical
-  source includes declarations for actor order, metadata, and actors unused by
-  messages.
+- Actor declarations are optional. Declared actors appear first in declaration
+  order. Other actors follow in first-use order across messages, reading each
+  source before its target. Canonical source declares the shortest leading actor
+  block needed for order, metadata, and actors unused by messages.
 - `->`, `-->`, and `->x` preserve three distinct arrow styles. Use `->x` only
   when a message is not delivered.
 - A message label is optional. Omit the colon when there is no label.

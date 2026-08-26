@@ -178,6 +178,37 @@ function sourceText(value) {
   return encodeText(String(value ?? "").trim());
 }
 
+function declarationCount(actors, referencedActorNames) {
+  let minimum = 0;
+  actors.forEach((actor, index) => {
+    if (
+      actor.icon ||
+      actor.tag ||
+      actor.tooltip ||
+      actor.tooltipIcon
+    ) {
+      minimum = index + 1;
+    }
+  });
+
+  for (let count = minimum; count <= actors.length; count += 1) {
+    const declared = actors.slice(0, count);
+    const declaredNames = new Set(declared.map((actor) => actor.name));
+    const resolvedNames = [
+      ...declaredNames,
+      ...referencedActorNames.filter((name) => !declaredNames.has(name)),
+    ];
+    if (
+      resolvedNames.length === actors.length &&
+      actors.every((actor, index) => actor.name === resolvedNames[index])
+    ) {
+      return count;
+    }
+  }
+
+  return actors.length;
+}
+
 function propertyLines(item, names, indent) {
   const prefix = "  ".repeat(indent);
   const lines = [];
@@ -255,22 +286,15 @@ export function serialize(document) {
     blocks.push(comments);
   }
 
-  const needsDeclarations =
-    document.actors.length !== referencedActorNames.length ||
-    document.actors.some(
-      (actor, index) => actor.name !== referencedActorNames[index],
-    ) ||
-    document.actors.some(
-      (actor) =>
-        actor.icon ||
-        actor.tag ||
-        actor.tooltip ||
-        actor.tooltipIcon,
-    );
+  const declaredActorCount = declarationCount(
+    document.actors,
+    referencedActorNames,
+  );
 
-  if (needsDeclarations) {
+  if (declaredActorCount > 0) {
     blocks.push(
       document.actors
+        .slice(0, declaredActorCount)
         .map((actor) =>
           [
             `@${sourceText(actor.name)}`,

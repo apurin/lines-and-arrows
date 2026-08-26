@@ -397,18 +397,7 @@ function resolveActors(declaredActors, items) {
     byName.set(actor.name, actor);
   }
 
-  if (declaredActors.length > 0) {
-    visitMessages(items, (message) => {
-      for (const name of [message.source, message.target]) {
-        if (!byName.has(name)) {
-          fail(`Unknown actor "${name}".`, message.line);
-        }
-      }
-    });
-    return declaredActors;
-  }
-
-  const inferred = [];
+  const actors = [...declaredActors];
   visitMessages(items, (message) => {
     for (const name of [message.source, message.target]) {
       if (!byName.has(name)) {
@@ -422,11 +411,11 @@ function resolveActors(declaredActors, items) {
           line: message.line,
         };
         byName.set(name, actor);
-        inferred.push(actor);
+        actors.push(actor);
       }
     }
   });
-  return inferred;
+  return actors;
 }
 
 function publicActor(actor) {
