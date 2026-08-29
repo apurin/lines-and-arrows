@@ -226,12 +226,12 @@
   @API
   @Database
 
-  Browser -&gt; API: Save draft
+  Browser -> API: Save draft
   critical Persist draft
-    API -&gt; Database: Write
-    Database --&gt; API: Stored
+    API -> Database: Write
+    Database --> API: Stored
   gap User keeps editing
-  API --&gt; Browser: Draft saved
+  API --> Browser: Draft saved
 &lt;/lines-and-arrows&gt;</code></pre>
       </section>
     </main>

@@ -44,9 +44,11 @@ framework is required.
 </html>
 ```
 
-Diagram source inside HTML is text content. Generated embeds escape `&` as
-`&amp;`, `<` as `&lt;`, and `>` as `&gt;`. Assigning the element's `source`
-property or calling `renderDiagram()` accepts raw diagram source.
+Diagram source inside HTML is text content. Write arrow operators as `->`,
+`-->`, and `->x`; literal `>` is valid in HTML text. Escape `&` as `&amp;` and
+`<` as `&lt;` when those characters appear in labels or metadata. Assigning the
+element's `source` property or calling `renderDiagram()` also accepts raw
+diagram source.
 
 Browser integrations target current stable Chromium. The syntax module and CLI
 run on Node.js 22 or newer.
@@ -205,8 +207,12 @@ if (!result.valid) {
 2. Write messages and groups in timeline order.
 3. Use exactly two spaces for every indentation level and preserve code-block
    whitespace when copying examples.
-4. Save the source and validate it with the CLI or `validate(source)`.
-5. Fix the reported line and validate again.
+4. Count compact visible text before returning the diagram: every actor and
+   message tag is 12 characters or fewer, including spaces, and every visible
+   line of a message label is 32 characters or fewer. Move supporting detail to
+   a tooltip and use `\n` to split a label across visible lines.
+5. Save the source and validate it with the CLI or `validate(source)`.
+6. Fix the reported line and validate again.
 
 ## Syntax
 

@@ -140,8 +140,7 @@ let copyResetTimer = null;
 const escapeHtmlText = (value) =>
   value
     .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+    .replaceAll("<", "&lt;");
 
 const formatSource = (source) =>
   source

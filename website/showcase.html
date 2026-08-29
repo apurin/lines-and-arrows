@@ -315,21 +315,21 @@
 
 parallel Encounters across Eurasia, ~100-45 ka
   | Western Eurasia, ~60-45 ka
-    Neanderthals -&gt; Neanderthals: Build a life in Eurasia
+    Neanderthals -> Neanderthals: Build a life in Eurasia
       tag deep roots
       tooltip Neanderthals controlled fire, made clothing and sophisticated tools, and weathered immense climate swings across Europe and western Asia.
       tooltip-icon campfire
-    Homo sapiens -&gt; Neanderthals: Meet and have children
+    Homo sapiens -> Neanderthals: Meet and have children
       tag gene flow
       tooltip Ancient genomes record repeated contact rather than a single encounter.
       tooltip-icon dna
   | Denisova Cave, Siberia, ~90 ka
-    Neanderthals -&gt; Denisovans: Denisova 11 is born
+    Neanderthals -> Denisovans: Denisova 11 is born
       tag F1 hybrid
       tooltip Her genome shows a Neanderthal mother and a Denisovan father.
       tooltip-icon identification-card
   | Asia, several encounters
-    Homo sapiens -&gt; Denisovans: Populations meet
+    Homo sapiens -> Denisovans: Populations meet
       tag gene flow
       tooltip Living genomes suggest contact with more than one Denisovan-related population.
       tooltip-icon users-three
@@ -337,11 +337,11 @@ parallel Encounters across Eurasia, ~100-45 ka
 gap Hundreds of generations pass
 
 legacy Living genomes
-  Neanderthals --&gt; Homo sapiens: Inherited fragments persist
+  Neanderthals --> Homo sapiens: Inherited fragments persist
     tag widespread
     tooltip Neanderthal-derived DNA is distributed across living populations in different proportions.
     tooltip-icon fingerprint
-  Denisovans --&gt; Homo sapiens: EPAS1 crosses time
+  Denisovans --> Homo sapiens: EPAS1 crosses time
     tag adaptation
     tooltip A Denisovan-like EPAS1 haplotype contributes to high-altitude adaptation in Tibetan populations.
     tooltip-icon mountains</lines-and-arrows>
@@ -381,32 +381,32 @@ legacy Living genomes
 @Telemetry
   icon pulse
 
-Release -&gt; Database: Add nullable display_name
+Release -> Database: Add nullable display_name
   tooltip Expanding first keeps the old application compatible
   tooltip-icon plus-circle
-Release -&gt; Application: Enable dual writes
+Release -> Application: Enable dual writes
 parallel Compatibility window
   | live profile updates
     repeat Every accepted write
-      Application -&gt; Database: Write name and display_name
+      Application -> Database: Write name and display_name
   | historical profiles
     repeat Batches under load
-      Backfill Worker -&gt; Database: Copy name into display_name
-      Database --&gt; Backfill Worker: Batch committed
-Application -&gt; Telemetry: Report read mismatches
+      Backfill Worker -> Database: Copy name into display_name
+      Database --> Backfill Worker: Batch committed
+Application -> Telemetry: Report read mismatches
 choice Canary reads
   | mismatch rate is zero
-    Telemetry --&gt; Release: New column is ready
-    Release -&gt; Application: Prefer display_name
+    Telemetry --> Release: New column is ready
+    Release -> Application: Prefer display_name
   | mismatches appear
-    Telemetry -&gt; Release: Hold the rollout
+    Telemetry -> Release: Hold the rollout
       tag SLO guardrail
       tooltip Keeps the compatible path while engineers inspect the cohort
       tooltip-icon warning
-    Release -&gt; Application: Keep reading name
+    Release -> Application: Keep reading name
 gap One release after every old reader retires
-Release -&gt; Database: Require display_name
-Release -&gt; Database: Drop name</lines-and-arrows>
+Release -> Database: Require display_name
+Release -> Database: Drop name</lines-and-arrows>
           </div>
         </figure>
       </section>
@@ -440,27 +440,27 @@ Release -&gt; Database: Drop name</lines-and-arrows>
 @Delivery Service
   icon truck
 
-Storefront -&gt; Order Service: Place order
-Order Service -&gt; Payment Service: Authorize payment
+Storefront -> Order Service: Place order
+Order Service -> Payment Service: Authorize payment
 choice Payment result
   | authorized
-    Payment Service --&gt; Order Service: Hold approved
-    Order Service -&gt; Inventory Service: Reserve items
+    Payment Service --> Order Service: Hold approved
+    Order Service -> Inventory Service: Reserve items
     choice Stock result
       | reserved
-        Inventory Service --&gt; Order Service: Reservation confirmed
-        Order Service -&gt; Delivery Service: Schedule shipment
-        Delivery Service --&gt; Order Service: Delivery window
-        Order Service --&gt; Storefront: Confirm order
+        Inventory Service --> Order Service: Reservation confirmed
+        Order Service -> Delivery Service: Schedule shipment
+        Delivery Service --> Order Service: Delivery window
+        Order Service --> Storefront: Confirm order
       | unavailable
-        Inventory Service --&gt; Order Service: Reservation rejected
+        Inventory Service --> Order Service: Reservation rejected
         critical Compensate prior work
-          Order Service -&gt; Payment Service: Release hold
-          Payment Service --&gt; Order Service: Hold released
-        Order Service --&gt; Storefront: Explain stock conflict
+          Order Service -> Payment Service: Release hold
+          Payment Service --> Order Service: Hold released
+        Order Service --> Storefront: Explain stock conflict
   | declined
-    Payment Service --&gt; Order Service: Authorization declined
-    Order Service --&gt; Storefront: Request another payment method</lines-and-arrows>
+    Payment Service --> Order Service: Authorization declined
+    Order Service --> Storefront: Request another payment method</lines-and-arrows>
           </div>
         </figure>
       </section>
@@ -494,27 +494,27 @@ choice Payment result
 @Risk Desk
   icon shield-warning
 
-Payment Edge -&gt; Event Stream: Publish payment
+Payment Edge -> Event Stream: Publish payment
 repeat For each account partition
-  Event Stream -&gt; Window Processor: Deliver payment event
-  Window Processor -&gt; Window Processor: Update five-minute features
-  Window Processor -&gt; Risk Model: Score current window
+  Event Stream -> Window Processor: Deliver payment event
+  Window Processor -> Window Processor: Update five-minute features
+  Window Processor -> Risk Model: Score current window
   choice Score result
     | suspicious
-      Risk Model --&gt; Window Processor: High risk
-      Window Processor -&gt; Risk Desk: Emit alert
+      Risk Model --> Window Processor: High risk
+      Window Processor -> Risk Desk: Emit alert
     | routine
-      Risk Model --&gt; Window Processor: Below threshold
+      Risk Model --> Window Processor: Below threshold
 gap Watermark advances
 choice Arrival timing
   | within allowed lateness
-    Event Stream -&gt; Window Processor: Deliver late payment
-    Window Processor -&gt; Window Processor: Revise window
-    Window Processor -&gt; Risk Model: Rescore corrected features
-    Risk Model --&gt; Window Processor: Corrected score
-    Window Processor -&gt; Risk Desk: Amend alert evidence
+    Event Stream -> Window Processor: Deliver late payment
+    Window Processor -> Window Processor: Revise window
+    Window Processor -> Risk Model: Rescore corrected features
+    Risk Model --> Window Processor: Corrected score
+    Window Processor -> Risk Desk: Amend alert evidence
   | past retention
-    Event Stream -&gt;x Window Processor: Drop expired event
+    Event Stream ->x Window Processor: Drop expired event
       tooltip Window state has already been compacted
       tooltip-icon clock-countdown</lines-and-arrows>
           </div>
@@ -552,24 +552,24 @@ choice Arrival timing
   icon user-check
   tag approval gate
 
-Engineer -&gt; Research Agent: Investigate the failed deployment
-Research Agent -&gt; Search Index: Query errors and change history
+Engineer -> Research Agent: Investigate the failed deployment
+Research Agent -> Search Index: Query errors and change history
 parallel Gather grounded context
-  Search Index --&gt; Research Agent: Return relevant records
-  Research Agent -&gt; Source Documents: Open exact passages
-  Source Documents --&gt; Research Agent: Return versioned evidence
-Research Agent -&gt; Research Agent: Draft a diagnosis with citations
-Research Agent -&gt; Human Reviewer: Propose cause and rollback
+  Search Index --> Research Agent: Return relevant records
+  Research Agent -> Source Documents: Open exact passages
+  Source Documents --> Research Agent: Return versioned evidence
+Research Agent -> Research Agent: Draft a diagnosis with citations
+Research Agent -> Human Reviewer: Propose cause and rollback
   tag cited evidence
   tooltip Every claim points to a retrieved passage
   tooltip-icon file-text
-Human Reviewer -&gt; Source Documents: Verify cited passages
+Human Reviewer -> Source Documents: Verify cited passages
 choice Review outcome
   | evidence holds
-    Human Reviewer --&gt; Engineer: Approve the rollback plan
+    Human Reviewer --> Engineer: Approve the rollback plan
   | evidence conflicts
-    Human Reviewer --&gt; Research Agent: Request a narrower claim
-    Research Agent -&gt; Search Index: Search for the missing evidence</lines-and-arrows>
+    Human Reviewer --> Research Agent: Request a narrower claim
+    Research Agent -> Search Index: Search for the missing evidence</lines-and-arrows>
           </div>
         </figure>
       </section>
@@ -603,24 +603,24 @@ choice Review outcome
 @Trade Tape
   icon broadcast
 
-Investor -&gt; Broker: Submit a market-on-open order
-Broker -&gt; Opening Auction: Route the eligible order
+Investor -> Broker: Submit a market-on-open order
+Broker -> Opening Auction: Route the eligible order
 repeat Until the opening cutoff
-  Opening Auction -&gt; Opening Auction: Add and cancel auction orders
-  Opening Auction -&gt; Market Data: Publish indicative price and imbalance
-  Market Data --&gt; Investor: Show the changing auction signal
+  Opening Auction -> Opening Auction: Add and cancel auction orders
+  Opening Auction -> Market Data: Publish indicative price and imbalance
+  Market Data --> Investor: Show the changing auction signal
 gap Opening auction cutoff
-Opening Auction -&gt; Opening Auction: Choose the price that matches the most shares
+Opening Auction -> Opening Auction: Choose the price that matches the most shares
 choice Executable cross
   | enough opposing volume
-    Opening Auction --&gt; Broker: Fill at one opening price
+    Opening Auction --> Broker: Fill at one opening price
       tooltip All matched auction orders execute at the same opening price
       tooltip-icon scales
-    Broker --&gt; Investor: Confirm shares filled
-    Opening Auction -&gt; Trade Tape: Publish opening trades
+    Broker --> Investor: Confirm shares filled
+    Opening Auction -> Trade Tape: Publish opening trades
   | not enough opposing volume
-    Opening Auction --&gt; Broker: Report no opening execution
-    Broker --&gt; Investor: Report no opening fill</lines-and-arrows>
+    Opening Auction --> Broker: Report no opening execution
+    Broker --> Investor: Report no opening fill</lines-and-arrows>
           </div>
         </figure>
       </section>
