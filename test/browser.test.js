@@ -73,7 +73,7 @@ async function stubCdn(page, requests = []) {
 
 test("website pages load the exact public CDN runtime", async (testContext) => {
   const expected =
-    "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.14.0/dist/lines-and-arrows.auto.min.js";
+    "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.15.0/dist/lines-and-arrows.auto.min.js";
 
   for (const path of [
     "index.html",
