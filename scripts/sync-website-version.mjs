@@ -17,7 +17,7 @@ if (!match) {
 
 const compatibleVersion = `${match[1]}.${match[2]}`;
 const cdnPattern = /lines-and-arrows@(\d+)\.(\d+)(?:\.(\d+))?/g;
-const readmeLinePattern = /The current `\d+\.\d+` line/g;
+const readmeLinePattern = /The current release line is `\d+\.\d+`/g;
 
 const syncCdnReferences = (source) => {
   let references = 0;
@@ -87,13 +87,15 @@ const readmeSource = await readFile(readmeFile, "utf8");
 const readmeLines = readmeSource.match(readmeLinePattern) ?? [];
 
 if (readmeLines.length !== 1) {
-  throw new Error("Expected one \"The current `X.Y` line\" sentence in README.md");
+  throw new Error(
+    "Expected one \"The current release line is `X.Y`\" sentence in README.md",
+  );
 }
 
 const readme = syncCdnReferences(
   readmeSource.replace(
     readmeLinePattern,
-    `The current \`${compatibleVersion}\` line`,
+    `The current release line is \`${compatibleVersion}\``,
   ),
 );
 

@@ -1,7 +1,5 @@
 # Lines & Arrows syntax
 
-Status: working definition
-
 Lines & Arrows is a small text format for sequence diagrams. The document
 captures the meaning and order of a sequence without depending on a particular
 visual engine. The SVG renderer, visual editor, syntax API, and command-line
@@ -10,6 +8,13 @@ validator all use the same portable source.
 The syntax is the source of truth. A visual editor reads and writes this format;
 it does not store a separate, richer diagram that cannot be represented as
 text.
+
+## Status
+
+Before 1.0, a minor release may change the language and the JavaScript API;
+the release notes list each change. From 1.0, the language follows semantic
+versioning: a change that breaks existing source ships only in a major
+release.
 
 ## Design boundaries
 
@@ -337,7 +342,7 @@ compact controls, so line breaks would be ambiguous rather than useful.
 Other backslash combinations have no special meaning. A canonical writer
 escapes every literal backslash, so text always parses back to the same value.
 
-In this draft:
+The following rules also apply:
 
 - actor names may contain spaces;
 - actor names may not contain `:`, an arrow form, or begin with `@`, `|`, or

@@ -54,7 +54,10 @@ try {
   const compatibleVersion = `${major}.${minor}`;
   const readme = readFileSync(join(root, "README.md"), "utf8");
   for (const [name, pattern] of [
-    ["\"The current `X.Y` line\" sentence", /The current `(\d+\.\d+)` line/g],
+    [
+      "\"The current release line is `X.Y`\" sentence",
+      /The current release line is `(\d+\.\d+)`/g,
+    ],
     ["lines-and-arrows@X.Y CDN reference", /lines-and-arrows@(\d+\.\d+)(?:\.\d+)?/g],
   ]) {
     const versions = [...readme.matchAll(pattern)].map((match) => match[1]);

@@ -3,8 +3,8 @@
 [![A Lines & Arrows sequence diagram showing a person and AI agent creating readable diagram source, rendering it, and sharing it with a team](https://lines-and-arrows.dev/assets/social-card.png)](https://lines-and-arrows.dev/showcase)
 
 Lines & Arrows is a sequence-diagram language, SVG renderer, and visual editor.
-Its readable source is the durable format shared by people, agents, the viewer,
-and the editor.
+Its readable source is the one stored format that people, agents, the viewer,
+and the editor share.
 
 [Website](https://lines-and-arrows.dev/) ·
 [Constructor](https://lines-and-arrows.dev/constructor) ·
@@ -15,8 +15,8 @@ and the editor.
 [agent-guide]: https://raw.githubusercontent.com/apurin/lines-and-arrows/refs/heads/main/website/agents.md
 
 The JavaScript runtime has zero dependencies and includes TypeScript
-declarations. The current `0.15` line is under active development before 1.0;
-minor releases may change its contracts.
+declarations. The current release line is `0.15`; the
+[stability policy](./syntax.md#status) states what a release may change.
 
 Browser modules target current stable Chromium. The syntax module and CLI run
 on Node.js 22 or newer without DOM globals.
