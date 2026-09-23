@@ -3,10 +3,10 @@ import {
   ARROW_PATTERN,
   GROUP_LINE_PATTERN,
   MESSAGE_PROPERTY_LINE_PATTERN,
+  actorNameProblem,
 } from "./grammar.js";
 import { visitMessages } from "./document.js";
 
-const ACTOR_FORBIDDEN_PATTERN = /:|-->|->x|->/;
 const SUPPORTED_ARROWS = new Set(["->", "-->", "->x"]);
 // Arrow-like punctuation runs, including forms other notations use. Only
 // consulted to explain a line that already failed to parse.
@@ -192,13 +192,9 @@ function assertActorName(value, line) {
   const name = assertText(value, "Actor name", line, {
     multiline: false,
   });
-  if (
-    ACTOR_FORBIDDEN_PATTERN.test(name) ||
-    name.startsWith("@") ||
-    name.startsWith("|") ||
-    name.startsWith("//")
-  ) {
-    fail(`Invalid actor name "${name}".`, line);
+  const problem = actorNameProblem(name);
+  if (problem) {
+    fail(problem, line);
   }
   return name;
 }

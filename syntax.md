@@ -342,6 +342,9 @@ In this draft:
 - actor names may contain spaces;
 - actor names may not contain `:`, an arrow form, or begin with `@`, `|`, or
   `//`;
+- an actor name may not be `gap` or start with `gap` followed by whitespace,
+  because such a line reads as a gap. The check is case-sensitive, so `Gap`
+  and `gapfill` are valid names;
 - group labels, section labels, message labels, tags, and tooltips may contain
   punctuation, including additional colons, and group labels may contain arrow
   forms as described in [Groups](#groups);
@@ -414,6 +417,7 @@ A parser must report, at minimum:
 - mixed direct items and sections in one group;
 - a section marker without separator whitespace;
 - use of the reserved `gap` keyword as a group type;
+- an actor name that is `gap` or starts with `gap` followed by whitespace;
 - unsupported arrow forms;
 - actor declarations after the timeline begins;
 - a comment after the first actor or timeline construct.
@@ -425,9 +429,13 @@ icon identifiers, tags, tooltips, or document header comments. Canonical output
 writes real line breaks inside values as `\n` and literal backslashes as `\\`.
 
 Programmatic documents follow the same grammar. `serialize(document)` validates
-the document before returning source. A parsed group has one non-empty `body`
-containing either timeline items or sections; each section contains timeline
-items.
+the document before returning source, then parses that source and compares the
+result with the input: actors, timeline items, and comments, after the same
+trimming the writer applies. Private editor IDs are ignored, and a missing
+optional value equals `null`. If the source would read back differently,
+`serialize` throws a `TypeError` naming the first differing path. A parsed
+group has one non-empty `body` containing either timeline items or sections;
+each section contains timeline items.
 
 ## Renderer contract
 

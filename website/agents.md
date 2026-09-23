@@ -257,6 +257,8 @@ Core rules:
 - `->`, `-->`, and `->x` preserve three distinct arrow styles. Use `->x` only
   when a message is not delivered.
 - A message label is optional. Omit the colon when there is no label.
+- An actor name cannot be `gap` or start with `gap ` because that line reads as
+  a gap.
 - Keep each visible line of a message label to 32 characters or fewer. Use `\n`
   for additional lines; multiline labels are fully supported.
 - Actor and message metadata uses child-block syntax. Put each `icon`, `tag`,

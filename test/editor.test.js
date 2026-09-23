@@ -169,3 +169,30 @@ test("group labels cannot start with an arrow", () => {
   editor.updateItem(group.id, { label: "->" });
   assert.match(editor.source, /^critical ->$/m);
 });
+
+test("actor renames reject the reserved gap keyword", () => {
+  const editor = new DiagramEditor(SOURCE);
+  const beforeDocument = editor.document;
+  const api = editor.document.actors.find(({ name }) => name === "API");
+
+  for (const name of ["gap", "gap service", "  gap  "]) {
+    assert.throws(
+      () => editor.updateActor(api.id, { name }),
+      (error) =>
+        error.message ===
+        `Actor name "${name.trim()}" cannot start with the reserved word "gap".`,
+      name,
+    );
+  }
+  assert.throws(
+    () => editor.updateActor(api.id, { name: "API: public" }),
+    /^Error: Invalid actor name "API: public"\.$/,
+  );
+  assert.equal(editor.document, beforeDocument);
+  assert.equal(editor.canUndo, false);
+
+  editor.updateActor(api.id, { name: "gapfill" });
+  assert.match(editor.source, /^Client -> gapfill: Start$/m);
+  editor.updateActor(api.id, { name: "Gap" });
+  assert.match(editor.source, /^Client -> Gap: Start$/m);
+});

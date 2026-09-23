@@ -739,6 +739,13 @@ test(
     await page.keyboard.press("Escape");
     await element.getByRole("button", { name: /Actor Client/ }).click();
     const name = element.getByLabel("Actor name");
+    await name.fill("gap service");
+    await name.press("Enter");
+    assert.equal(
+      await element.locator(".la-edit-error").textContent(),
+      'Actor name "gap service" cannot start with the reserved word "gap".',
+    );
+    assert.match(await element.evaluate((node) => node.source), /@Client/);
     await name.fill("Customer");
     await name.press("Enter");
 

@@ -12,7 +12,11 @@ import {
 } from "./document.js";
 import { parse } from "./parser.js";
 import { serialize } from "./serialize.js";
-import { groupLabelStartsWithArrow, isGroupType } from "./grammar.js";
+import {
+  actorNameProblem,
+  groupLabelStartsWithArrow,
+  isGroupType,
+} from "./grammar.js";
 import { encodeText } from "./text.js";
 
 class EditorIdAllocator {
@@ -68,6 +72,17 @@ function assertGroupLabel(groupType, label) {
   ) {
     throw new Error("A group label cannot start with an arrow.");
   }
+}
+
+function requiredActorName(value) {
+  const name = requiredText(value, "Actor name", {
+    multiline: false,
+  });
+  const problem = actorNameProblem(name);
+  if (problem) {
+    throw new Error(problem);
+  }
+  return name;
 }
 
 function uniqueActorName(document, preferred = "New actor") {
@@ -269,9 +284,7 @@ export class DiagramEditor {
 
       const previousName = actor.name;
       if (Object.hasOwn(patch, "name")) {
-        const name = requiredText(patch.name, "Actor name", {
-          multiline: false,
-        });
+        const name = requiredActorName(patch.name);
         if (
           document.actors.some(
             (candidate) => candidate !== actor && candidate.name === name,

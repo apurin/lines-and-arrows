@@ -7,6 +7,7 @@ import {
   serialize,
   validate,
 } from "lines-and-arrows/syntax";
+import { roundTripDifference } from "../src/serialize.js";
 
 import { GROUP_TYPE_PATTERN_SOURCE } from "../src/grammar.js";
 
@@ -441,4 +442,91 @@ test("rejects groups that would be written as messages", () => {
       error instanceof TypeError &&
       /items\[0\]\.body\[0\]/.test(error.message),
   );
+});
+
+test("rejects actor names that start with the reserved gap keyword", () => {
+  for (const [source, name] of [
+    ["@gap\nA -> B", "gap"],
+    ["@gap service\nA -> B", "gap service"],
+    ["A -> gap: Hi", "gap"],
+    ["A --> gap service", "gap service"],
+  ]) {
+    assert.deepEqual(
+      validate(source).error,
+      {
+        message: `Actor name "${name}" cannot start with the reserved word "gap".`,
+        line: 1,
+      },
+      source,
+    );
+  }
+  for (const source of ["Gap -> gapfill: Hi", "@Gap service\ngapfill -> B"]) {
+    const document = parse(source);
+    assert.deepEqual(parse(serialize(document)), document, source);
+  }
+
+  const renamed = parse("service -> API: Hi");
+  renamed.actors[0].name = "gap service";
+  renamed.items[0].source = "gap service";
+  assert.throws(
+    () => serialize(renamed),
+    (error) =>
+      error instanceof TypeError &&
+      /actors\[0\]\.name.*reserved word "gap"/.test(error.message),
+  );
+});
+
+test("serialize verifies that source reads back to the same document", () => {
+  const padded = parse("A -> B: Hi");
+  padded.items[0].arrow = " ->";
+  assert.throws(
+    () => serialize(padded),
+    (error) =>
+      error instanceof TypeError &&
+      /document\.items\[0\]\.arrow/.test(error.message),
+  );
+
+  const source = `// Context
+@A
+  tag first
+
+A -> B: Start
+choice Result
+  | done
+    B --> A: Done
+  | later
+    gap Later
+    B ->x A: Lost`;
+  const reparsed = parse(source);
+  const input = structuredClone(reparsed);
+  input.actors.forEach((actor, index) => {
+    actor.id = `actor:${index}`;
+    actor.icon = undefined;
+    actor.line = index + 2;
+  });
+  input.comments[0] = "  Context ";
+  input.items[0].label = " Start\r\n";
+  input.items[0].tooltip = undefined;
+  input.items[1].id = "item:1";
+  assert.equal(roundTripDifference(input, reparsed), null);
+
+  for (const [change, path] of [
+    [(document) => (document.comments[0] = "Other"), "document.comments[0]"],
+    [(document) => document.comments.push("More"), "document.comments[1]"],
+    [(document) => (document.actors[0].tag = null), "document.actors[0].tag"],
+    [(document) => document.actors.reverse(), "document.actors[0].name"],
+    [(document) => (document.items[0].target = "C"), "document.items[0].target"],
+    [(document) => (document.items[0] = { type: "gap", label: "x" }), "document.items[0].type"],
+    [(document) => (document.items[1].groupType = "repeat"), "document.items[1].groupType"],
+    [(document) => (document.items[1].label = "Other"), "document.items[1].label"],
+    [(document) => (document.items[1].body[1].label = "soon"), "document.items[1].body[1].label"],
+    [(document) => (document.items[1].body[1].items[0].label = "Soon"), "document.items[1].body[1].items[0].label"],
+    [(document) => document.items[1].body[0].items.push({ type: "gap", label: "x" }), "document.items[1].body[0].items[1]"],
+    [(document) => (document.items[1].body = document.items[1].body[0].items), "document.items[1].body"],
+    [(document) => document.items.pop(), "document.items[1]"],
+  ]) {
+    const changed = structuredClone(input);
+    change(changed);
+    assert.equal(roundTripDifference(changed, reparsed), path, path);
+  }
 });

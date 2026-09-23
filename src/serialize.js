@@ -4,9 +4,20 @@ import { encodeText } from "./text.js";
 import {
   ARROW_PATTERN,
   MESSAGE_PROPERTY_LINE_PATTERN,
+  actorNameProblem,
   groupLabelStartsWithArrow,
   isGroupType,
 } from "./grammar.js";
+
+const ACTOR_FIELDS = ["name", "icon", "tag", "tooltip", "tooltipIcon"];
+const MESSAGE_FIELDS = [
+  "source",
+  "target",
+  "label",
+  "tag",
+  "tooltip",
+  "tooltipIcon",
+];
 
 function requireArray(value, path) {
   if (!Array.isArray(value)) {
@@ -169,6 +180,12 @@ function assertDocumentStructure(document) {
       );
     }
     requireText(actor.name, `document.actors[${index}].name`);
+    const nameProblem = actorNameProblem(actor.name.trim());
+    if (nameProblem) {
+      throw new TypeError(
+        `document.actors[${index}].name is invalid. ${nameProblem}`,
+      );
+    }
     if (actorNames.has(actor.name)) {
       throw new TypeError(`Duplicate actor "${actor.name}".`);
     }
@@ -209,6 +226,114 @@ function assertDocumentStructure(document) {
 
 function sourceText(value) {
   return encodeText(String(value ?? "").trim());
+}
+
+// Text as the parser reads it back after sourceText() writes it.
+function readBackText(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const text = String(value).trim();
+  if (!text) {
+    return null;
+  }
+  return text.includes("\r") ? text.replace(/\r\n?/g, "\n") : text;
+}
+
+// Each helper returns null when both sides match, or the path suffix of the
+// first difference ("" when the compared value itself differs). Paths are
+// only built on the failure path.
+function fieldsDifference(expected, actual, fields) {
+  for (const field of fields) {
+    if (readBackText(expected[field]) !== readBackText(actual[field])) {
+      return `.${field}`;
+    }
+  }
+  return null;
+}
+
+function listDifference(expected, actual, compare) {
+  const length = Math.max(expected.length, actual.length);
+  for (let index = 0; index < length; index += 1) {
+    const difference =
+      index < expected.length && index < actual.length
+        ? compare(expected[index], actual[index])
+        : "";
+    if (difference !== null) {
+      return `[${index}]${difference}`;
+    }
+  }
+  return null;
+}
+
+function itemDifference(expected, actual) {
+  if (expected.type !== actual.type) {
+    return ".type";
+  }
+  if (expected.type === "message") {
+    if (expected.arrow !== actual.arrow) {
+      return ".arrow";
+    }
+    return fieldsDifference(expected, actual, MESSAGE_FIELDS);
+  }
+  if (expected.type === "gap") {
+    return fieldsDifference(expected, actual, ["label"]);
+  }
+  if (expected.groupType !== actual.groupType) {
+    return ".groupType";
+  }
+  const label = fieldsDifference(expected, actual, ["label"]);
+  if (label !== null) {
+    return label;
+  }
+  const expectedSections = groupSections(expected) !== null;
+  if (expectedSections !== (groupSections(actual) !== null)) {
+    return ".body";
+  }
+  const body = listDifference(
+    expected.body,
+    actual.body,
+    expectedSections ? sectionDifference : itemDifference,
+  );
+  return body === null ? null : `.body${body}`;
+}
+
+function sectionDifference(expected, actual) {
+  const label = fieldsDifference(expected, actual, ["label"]);
+  if (label !== null) {
+    return label;
+  }
+  const items = listDifference(expected.items, actual.items, itemDifference);
+  return items === null ? null : `.items${items}`;
+}
+
+function actorDifference(expected, actual) {
+  return fieldsDifference(expected, actual, ACTOR_FIELDS);
+}
+
+function commentDifference(expected, actual) {
+  return expected.trim() === actual ? null : "";
+}
+
+// Compares the public syntax shape of a validated document with the
+// document parsed from its source. Editor IDs, parser lines, and other
+// fields are ignored; null and undefined are equivalent.
+export function roundTripDifference(document, reparsed) {
+  for (const [key, compare] of [
+    ["comments", commentDifference],
+    ["actors", actorDifference],
+    ["items", itemDifference],
+  ]) {
+    const difference = listDifference(
+      document[key],
+      reparsed[key],
+      compare,
+    );
+    if (difference !== null) {
+      return `document.${key}${difference}`;
+    }
+  }
+  return null;
 }
 
 function declarationCount(actors, referencedActorNames) {
@@ -346,6 +471,11 @@ export function serialize(document) {
   const source = `${blocks.filter(Boolean).join("\n\n")}\n`;
 
   // Programmatic ASTs must round-trip through the same grammar as source.
-  parse(source);
+  const difference = roundTripDifference(document, parse(source));
+  if (difference !== null) {
+    throw new TypeError(
+      `Serialized source reads back differently at ${difference}.`,
+    );
+  }
   return source;
 }
