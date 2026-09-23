@@ -15,7 +15,7 @@ and the editor.
 [agent-guide]: https://raw.githubusercontent.com/apurin/lines-and-arrows/refs/heads/main/website/agents.md
 
 The JavaScript runtime has zero dependencies and includes TypeScript
-declarations. The current `0.12` line is under active development before 1.0;
+declarations. The current `0.15` line is under active development before 1.0;
 minor releases may change its contracts.
 
 Browser modules target current stable Chromium. The syntax module and CLI run
@@ -28,7 +28,7 @@ Load the registered web component from jsDelivr:
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.12"
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.15"
 ></script>
 
 <lines-and-arrows theme="auto">
@@ -164,13 +164,23 @@ repository conventions.
 Stable npm releases are produced by the
 [release workflow](https://github.com/apurin/lines-and-arrows/blob/main/.github/workflows/release.yml)
 from an annotated `vX.Y.Z` tag whose commit is already on remote `main`.
-Release preparation runs `npm ci` and `npm run check`. After npm publication,
+The release commit sets the new version in `package.json` and
+`package-lock.json`, then runs `npm run website:prepare`, which rewrites the
+version references in this README, the website, and its runtime from
+`package.json`. This README ships inside the package, so `npm run check` fails
+while its version reference differs from `package.json`. The agent guide is
+read from `main`, so push the release commit and its tag close together: until
+npm publication finishes, the guide's new CDN URLs do not resolve.
+
+The release workflow runs `npm ci` and `npm run check`. After npm publication,
 the workflow creates the GitHub release with the annotated tag message as its
 notes, so write that message as release notes: a summary line followed by the
 notable changes.
 
-`npm run website:prepare` then synchronizes the website with the package
-version for its independent deployment.
+Website deployment is independent of package publication. After the npm
+release is verified, run `npm run website:prepare` again as the first
+deployment step; on a synchronized checkout it changes nothing and confirms
+that every runtime and example URL matches the published version.
 
 ## License
 

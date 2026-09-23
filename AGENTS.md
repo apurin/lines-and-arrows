@@ -121,7 +121,16 @@ and push the annotated release tag. The tag message becomes the GitHub release
 notes, so write it as notes rather than a bare version.
 
 Package releases otherwise follow the trusted-publishing procedure documented
-in the [README](./README.md#publishing). Website deployment is independent of
-package publication. After the npm release is verified, run
-`npm run website:prepare` as the first website deployment step so every runtime
-and example URL is synchronized from `package.json`.
+in the [README](./README.md#publishing). The release commit bumps the version
+and runs `npm run website:prepare`: `README.md` ships inside the package, and
+`npm run check` rejects a README version reference that differs from
+`package.json`. The same run updates the website sources, which the browser
+suite expects to match `package.json`. `website/agents.md` is served from `main`
+through raw.githubusercontent.com, so it goes live when the release commit is
+pushed and points at CDN URLs that do not exist until npm publication finishes.
+Push the release commit and its tag close together to keep that window short.
+
+The deployed website is independent of package publication. After the npm
+release is verified, run `npm run website:prepare` again as the first website
+deployment step so every runtime and example URL is synchronized from
+`package.json`.

@@ -50,6 +50,28 @@ try {
   assert.equal(packageJson.unpkg, bundle);
   assert.deepEqual(packageJson.sideEffects, ["./src/auto.js", bundle]);
 
+  const [major, minor] = packageJson.version.split(".");
+  const compatibleVersion = `${major}.${minor}`;
+  const readme = readFileSync(join(root, "README.md"), "utf8");
+  for (const [name, pattern] of [
+    ["\"The current `X.Y` line\" sentence", /The current `(\d+\.\d+)` line/g],
+    ["lines-and-arrows@X.Y CDN reference", /lines-and-arrows@(\d+\.\d+)(?:\.\d+)?/g],
+  ]) {
+    const versions = [...readme.matchAll(pattern)].map((match) => match[1]);
+    assert.ok(
+      versions.length > 0,
+      `README.md is missing the ${name} that npm run website:prepare keeps in sync`,
+    );
+    for (const readmeVersion of versions) {
+      assert.equal(
+        readmeVersion,
+        compatibleVersion,
+        `README.md ${name} says ${readmeVersion} but package.json is ` +
+          `${packageJson.version}; run npm run website:prepare`,
+      );
+    }
+  }
+
   const packed = JSON.parse(
     run("npm", [
       "pack",

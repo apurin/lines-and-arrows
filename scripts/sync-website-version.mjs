@@ -2,6 +2,7 @@ import { readFile, readdir, writeFile } from "node:fs/promises";
 import { extname } from "node:path";
 
 const packageFile = new URL("../package.json", import.meta.url);
+const readmeFile = new URL("../README.md", import.meta.url);
 const websiteDirectory = new URL("../website/", import.meta.url);
 const runtimeFile = new URL("./runtime.js", websiteDirectory);
 const textExtensions = new Set([".css", ".html", ".js", ".md", ".txt", ".xml"]);
@@ -15,6 +16,20 @@ if (!match) {
 }
 
 const compatibleVersion = `${match[1]}.${match[2]}`;
+const cdnPattern = /lines-and-arrows@(\d+)\.(\d+)(?:\.(\d+))?/g;
+const readmeLinePattern = /The current `\d+\.\d+` line/g;
+
+const syncCdnReferences = (source) => {
+  let references = 0;
+  const output = source.replace(
+    cdnPattern,
+    (_reference, _major, _minor, patch) => {
+      references += 1;
+      return `lines-and-arrows@${patch === undefined ? compatibleVersion : version}`;
+    },
+  );
+  return { output, references };
+};
 
 const collectTextFiles = async (directory) => {
   const files = [];
@@ -54,13 +69,9 @@ for (const file of files) {
     );
   }
 
-  output = output.replace(
-    /lines-and-arrows@(\d+)\.(\d+)(?:\.(\d+))?/g,
-    (_reference, _major, _minor, patch) => {
-      concreteReferences += 1;
-      return `lines-and-arrows@${patch === undefined ? compatibleVersion : version}`;
-    },
-  );
+  const synced = syncCdnReferences(output);
+  output = synced.output;
+  concreteReferences += synced.references;
 
   if (output !== source) {
     await writeFile(file, output);
@@ -72,11 +83,34 @@ if (concreteReferences === 0) {
   throw new Error("Found no concrete lines-and-arrows CDN references in website/");
 }
 
+const readmeSource = await readFile(readmeFile, "utf8");
+const readmeLines = readmeSource.match(readmeLinePattern) ?? [];
+
+if (readmeLines.length !== 1) {
+  throw new Error("Expected one \"The current `X.Y` line\" sentence in README.md");
+}
+
+const readme = syncCdnReferences(
+  readmeSource.replace(
+    readmeLinePattern,
+    `The current \`${compatibleVersion}\` line`,
+  ),
+);
+
+if (readme.references === 0) {
+  throw new Error("Found no concrete lines-and-arrows CDN references in README.md");
+}
+
+if (readme.output !== readmeSource) {
+  await writeFile(readmeFile, readme.output);
+  changedFiles += 1;
+}
+
 const preparedRuntime = await readFile(runtimeFile, "utf8");
 if (!preparedRuntime.includes(`export const CDN_VERSION = "${version}";`)) {
   throw new Error("website/runtime.js did not receive the package version");
 }
 
 console.log(
-  `Prepared website for lines-and-arrows@${version}; updated ${changedFiles} file${changedFiles === 1 ? "" : "s"}.`,
+  `Prepared README and website for lines-and-arrows@${version}; updated ${changedFiles} file${changedFiles === 1 ? "" : "s"}.`,
 );
