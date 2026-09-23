@@ -151,6 +151,9 @@ External source assignment does not emit `la-change` and discards an inline
 edit that has not been committed yet. Changing `theme`, `palette`, `mode`, or
 another attribute instead commits a pending inline edit and emits `la-change`
 synchronously, as does an operating-system theme change under `theme="auto"`.
+Properties assigned before the module loads apply when the element upgrades;
+an invalid value assigned then emits `la-error` instead of throwing, and an
+invalid `source` also shows the error until a valid source replaces it.
 
 Prefer the built-in `theme="auto"` unless the diagram needs to blend into a
 specific host surface. The canvas is transparent by default, and built-in

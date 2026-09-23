@@ -887,6 +887,184 @@ test(
   },
 );
 
+async function openFixture(testContext, body) {
+  const context = await browser.newContext();
+  testContext.after(() => context.close());
+  const page = await context.newPage();
+  await stubCdn(page);
+  const url = `${origin}/test/fixture.html`;
+  await page.route(url, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "text/html; charset=utf-8",
+      body: `<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><title>Fixture</title></head>
+  <body>
+${body}
+    <script type="module">
+      await import("../dist/lines-and-arrows.auto.min.js");
+      window.afterDefinition?.();
+      window.fixtureReady = true;
+    </script>
+  </body>
+</html>`,
+    }),
+  );
+  await page.goto(url);
+  await page.waitForFunction(() => window.fixtureReady);
+  return page;
+}
+
+test(
+  "properties assigned before definition apply on upgrade",
+  async (testContext) => {
+    const page = await openFixture(
+      testContext,
+      `
+    <lines-and-arrows id="upgraded">
+      Inline -> Text: Stale
+    </lines-and-arrows>
+    <lines-and-arrows id="invalid">
+      Inline -> Text: Kept
+    </lines-and-arrows>
+    <script type="module">
+      const upgraded = document.querySelector("#upgraded");
+      upgraded.mode = "edit";
+      upgraded.theme = "dark";
+      upgraded.label = "Upgraded diagram";
+      upgraded.branding = false;
+      upgraded.copySource = false;
+      upgraded.canvasBackground = "solid";
+      upgraded.palette = { accent: "rgb(1 2 3)" };
+      upgraded.source = "A -> B: From property";
+      const invalid = document.querySelector("#invalid");
+      window.upgradeErrors = [];
+      invalid.addEventListener("la-error", (event) =>
+        window.upgradeErrors.push(event.detail.error.message),
+      );
+      invalid.theme = "sepia";
+      invalid.source = "A -> B:";
+      const detached = document.createElement("lines-and-arrows");
+      detached.id = "detached";
+      detached.selectableActors = true;
+      detached.source = "C -> D: Detached";
+      window.afterDefinition = () => document.body.append(detached);
+    </script>`,
+    );
+    const result = await page.evaluate(() => {
+      const labels = (element) =>
+        [...element.shadowRoot.querySelectorAll(".la-message-label")].map(
+          (label) => label.textContent,
+        );
+      const upgraded = document.querySelector("#upgraded");
+      const invalid = document.querySelector("#invalid");
+      const detached = document.querySelector("#detached");
+      const names = [
+        "source",
+        "mode",
+        "theme",
+        "label",
+        "branding",
+        "copySource",
+        "canvasBackground",
+        "palette",
+        "selectableActors",
+      ];
+      const snapshot = {
+        ownProperties: [upgraded, invalid, detached].flatMap((element) =>
+          names.filter((name) => Object.hasOwn(element, name)),
+        ),
+        upgraded: {
+          source: upgraded.source,
+          labels: labels(upgraded),
+          inlineText: upgraded.textContent,
+          mode: upgraded.mode,
+          theme: upgraded.shadowRoot.querySelector(".la-frame").dataset
+            .theme,
+          label: upgraded.getAttribute("label"),
+          branding: upgraded.getAttribute("branding"),
+          copySource: upgraded.getAttribute("copy-source"),
+          canvasBackground: upgraded.getAttribute("canvas-background"),
+          palette: upgraded.palette,
+          undo: Boolean(
+            upgraded.shadowRoot.querySelector('[aria-label="Undo"]'),
+          ),
+        },
+        invalid: {
+          errors: [...window.upgradeErrors],
+          alert: invalid.shadowRoot.querySelector('[role="alert"]')
+            ?.textContent,
+          source: invalid.source,
+        },
+        detached: {
+          source: detached.source,
+          labels: labels(detached),
+          selectableActors: detached.hasAttribute("selectable-actors"),
+        },
+      };
+      const errorAlert = () =>
+        invalid.shadowRoot.querySelector('[role="alert"]')?.textContent ??
+        null;
+      invalid.theme = "dark";
+      const afterTheme = errorAlert();
+      invalid.remove();
+      document.body.append(invalid);
+      const persisted = {
+        afterTheme,
+        afterReconnect: errorAlert(),
+        errors: window.upgradeErrors.length,
+      };
+      upgraded.source = "E -> F: Reassigned";
+      invalid.source = "G -> H: Recovered";
+      return {
+        ...snapshot,
+        persisted,
+        reassigned: labels(upgraded),
+        recovered: {
+          labels: labels(invalid),
+          alert: Boolean(invalid.shadowRoot.querySelector('[role="alert"]')),
+        },
+      };
+    });
+
+    assert.deepEqual(result.ownProperties, []);
+    assert.deepEqual(result.upgraded, {
+      source: "A -> B: From property\n",
+      labels: ["From property"],
+      inlineText: "",
+      mode: "edit",
+      theme: "dark",
+      label: "Upgraded diagram",
+      branding: "false",
+      copySource: "false",
+      canvasBackground: "solid",
+      palette: { accent: "rgb(1 2 3)" },
+      undo: true,
+    });
+    assert.equal(result.invalid.errors.length, 2);
+    assert.match(result.invalid.errors[0], /theme must be/);
+    assert.match(result.invalid.errors[1], /label cannot be empty/i);
+    assert.equal(result.invalid.alert, result.invalid.errors[1]);
+    assert.equal(result.invalid.source, "Inline -> Text: Kept");
+    assert.deepEqual(result.persisted, {
+      afterTheme: result.invalid.errors[1],
+      afterReconnect: result.invalid.errors[1],
+      errors: 4,
+    });
+    assert.deepEqual(result.detached, {
+      source: "C -> D: Detached",
+      labels: ["Detached"],
+      selectableActors: true,
+    });
+    assert.deepEqual(result.reassigned, ["Reassigned"]);
+    assert.deepEqual(result.recovered, {
+      labels: ["Recovered"],
+      alert: false,
+    });
+  },
+);
+
 test("constructor preserves diagram source in generated HTML", async (testContext) => {
   const context = await browser.newContext();
   testContext.after(() => context.close());

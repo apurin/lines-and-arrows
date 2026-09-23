@@ -4,6 +4,20 @@ import { parse } from "./parser.js";
 import { renderDiagramForElement } from "./render.js";
 import { dedentInlineSource } from "./text.js";
 
+// Properties a page may assign before the element is defined. Configuration
+// comes first so the first render sees it; source comes last.
+const UPGRADED_PROPERTIES = [
+  "mode",
+  "theme",
+  "label",
+  "selectableActors",
+  "branding",
+  "copySource",
+  "canvasBackground",
+  "palette",
+  "source",
+];
+
 // The class extends HTMLElement, so it is created on first registration
 // rather than at module evaluation. This keeps the module importable where
 // DOM globals do not exist, such as during server rendering.
@@ -28,6 +42,9 @@ function createElementClass() {
     #selectedActorName = null;
     #mediaQuery = null;
     #modeAnimationFrame = null;
+    #live = false;
+    #sourceError = null;
+    #showingError = false;
     #handleThemeChange = () => this.#render();
 
     constructor() {
@@ -43,11 +60,14 @@ function createElementClass() {
         }
         this.textContent = "";
       }
+      this.#upgradeProperties();
       this.#syncThemeListener();
+      this.#live = true;
       this.#render();
     }
 
     disconnectedCallback() {
+      this.#live = false;
       this.#mediaQuery?.removeEventListener(
         "change",
         this.#handleThemeChange,
@@ -58,7 +78,7 @@ function createElementClass() {
 
     attributeChangedCallback(name) {
       const previousFrame =
-        name === "mode" && this.isConnected
+        name === "mode" && this.#live
           ? this.#currentCanvasFrame()
           : null;
       if (
@@ -67,7 +87,7 @@ function createElementClass() {
       ) {
         this.#clearActorSelection();
       }
-      if (!this.isConnected) {
+      if (!this.#live) {
         return;
       }
       if (name === "theme") {
@@ -86,16 +106,7 @@ function createElementClass() {
         parse(source);
       }
       this.textContent = "";
-      if (source === this.source) {
-        return;
-      }
-      this.#destroyController();
-      this.#source = source;
-      this.#editor = null;
-      this.#clearActorSelection();
-      if (this.isConnected) {
-        this.#render();
-      }
+      this.#replaceSource(source);
     }
 
     get theme() {
@@ -187,7 +198,7 @@ function createElementClass() {
         throw new TypeError("palette must be an object or null.");
       }
       this.#palette = value ? { ...value } : null;
-      if (this.isConnected) {
+      if (this.#live) {
         this.#render();
       }
     }
@@ -223,6 +234,54 @@ function createElementClass() {
         throw new RangeError(`No actor named "${name}" exists.`);
       }
       this.#selectedActorName = name;
+    }
+
+    // Replaces the document without validating it. Callers validate first.
+    #replaceSource(source) {
+      this.#sourceError = null;
+      if (source === this.source && !this.#showingError) {
+        return;
+      }
+      this.#destroyController();
+      if (source !== this.source) {
+        this.#source = source;
+        this.#editor = null;
+        this.#clearActorSelection();
+      }
+      if (this.#live) {
+        this.#render();
+      }
+    }
+
+    // The error stays visible, including across re-renders and reconnection,
+    // until a valid source replaces it.
+    #reportSourceError(error) {
+      this.#sourceError = error;
+      if (this.#live) {
+        this.#render();
+      }
+    }
+
+    // A property assigned before the element was defined is an own data
+    // property that shadows the accessor. Move each one onto the accessor.
+    // There is no caller to throw to, so failures are reported as la-error.
+    #upgradeProperties() {
+      for (const name of UPGRADED_PROPERTIES) {
+        if (!Object.hasOwn(this, name)) {
+          continue;
+        }
+        const value = this[name];
+        delete this[name];
+        try {
+          this[name] = value;
+        } catch (error) {
+          if (name === "source") {
+            this.#reportSourceError(error);
+          } else {
+            this.#dispatchError(error);
+          }
+        }
+      }
     }
 
     #clearActorSelection() {
@@ -353,6 +412,11 @@ function createElementClass() {
     }
 
     #render(previousFrame = null) {
+      if (this.#sourceError) {
+        this.#renderError(this.#sourceError);
+        return;
+      }
+      this.#showingError = false;
       this.#cancelModeTransition();
       this.#controller?.commitPending?.();
       if (!this.source.trim()) {
@@ -402,27 +466,35 @@ function createElementClass() {
         }
         this.#animateModeTransition(previousFrame);
       } catch (problem) {
-        const error = this.#dispatchError(problem);
-        const style = document.createElement("style");
-        style.textContent = `
-          :host { display: block; }
-          .error {
-            padding: 16px;
-            border-radius: 12px;
-            color: #9b2c2c;
-            background: #fff0f0;
-            font: 500 13px/1.5 ui-sans-serif, system-ui, sans-serif;
-          }
-          @media (prefers-color-scheme: dark) {
-            .error { color: #ffb4b4; background: #2d1719; }
-          }
-        `;
-        const message = document.createElement("div");
-        message.className = "error";
-        message.setAttribute("role", "alert");
-        message.textContent = error.message;
-        this.shadowRoot.replaceChildren(style, message);
+        this.#renderError(problem);
       }
+    }
+
+    #renderError(problem) {
+      this.#cancelModeTransition();
+      this.#controller?.commitPending?.();
+      this.#destroyController();
+      this.#showingError = true;
+      const error = this.#dispatchError(problem);
+      const style = document.createElement("style");
+      style.textContent = `
+        :host { display: block; }
+        .error {
+          padding: 16px;
+          border-radius: 12px;
+          color: #9b2c2c;
+          background: #fff0f0;
+          font: 500 13px/1.5 ui-sans-serif, system-ui, sans-serif;
+        }
+        @media (prefers-color-scheme: dark) {
+          .error { color: #ffb4b4; background: #2d1719; }
+        }
+      `;
+      const message = document.createElement("div");
+      message.className = "error";
+      message.setAttribute("role", "alert");
+      message.textContent = error.message;
+      this.shadowRoot.replaceChildren(style, message);
     }
   };
 }
