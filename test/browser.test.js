@@ -34,7 +34,17 @@ test.before(async () => {
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   origin = `http://127.0.0.1:${server.address().port}`;
-  browser = await chromium.launch({ channel: "chrome", headless: true });
+  try {
+    browser = await chromium.launch({ channel: "chrome", headless: true });
+  } catch (error) {
+    throw new Error(
+      "The browser suite requires Google Chrome (stable channel) installed " +
+        "locally. playwright-core does not download browsers; install Google " +
+        "Chrome and rerun. See CONTRIBUTING.md.\n" +
+        `Launch error: ${error.message}`,
+      { cause: error },
+    );
+  }
 });
 
 test.after(async () => {

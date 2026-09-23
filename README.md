@@ -144,6 +144,10 @@ JavaScript.
 
 ## Development
 
+Development needs Node.js 22 or newer and a local Google Chrome installation:
+the browser suite in `npm run check` launches Chrome's stable channel through
+`playwright-core`, which does not download browsers.
+
 ```sh
 npm ci
 npm run check
