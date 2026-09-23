@@ -1128,3 +1128,188 @@ test("deletion keys apply only to the frame or the selected element", async (
   await page.keyboard.press("Delete");
   assert.equal(await source(), "A -> B: Done\n");
 });
+
+test("editor redraws keep keyboard focus inside the frame", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "A -> B: Start\nA -> B: Next",
+  );
+  await page.evaluate(() => {
+    const outside = document.createElement("button");
+    outside.id = "outside";
+    outside.textContent = "Outside";
+    document.body.prepend(outside);
+  });
+  const source = () => element.evaluate((node) => node.source);
+  const focused = () =>
+    element.evaluate((node) => {
+      const active = node.shadowRoot.activeElement;
+      const frame = node.shadowRoot.querySelector(".la-frame");
+      return {
+        inFrame: Boolean(active && frame.contains(active)),
+        label:
+          active === frame
+            ? "frame"
+            : active?.getAttribute("aria-label") ?? null,
+      };
+    });
+  const selected = () =>
+    element.evaluate((node) =>
+      [...node.shadowRoot.querySelectorAll('[data-selected="true"]')].map(
+        (item) => item.getAttribute("aria-label"),
+      ),
+    );
+
+  const label = element.getByLabel("Arrow label");
+  await element.getByRole("button", { name: "A to B: Start" }).click();
+  await label.fill("Begin");
+  await label.press("Enter");
+  assert.equal(await source(), "A -> B: Begin\nA -> B: Next\n");
+  assert.deepEqual(await focused(), { inFrame: true, label: "Arrow label" });
+  await page.keyboard.press("Escape");
+  assert.deepEqual(await selected(), []);
+  assert.deepEqual(await focused(), { inFrame: true, label: "frame" });
+
+  await element.getByRole("button", { name: "A to B: Next" }).click();
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector(".la-frame").focus(),
+  );
+  await page.keyboard.press("Delete");
+  assert.equal(await source(), "A -> B: Begin\n");
+  assert.deepEqual(await focused(), { inFrame: true, label: "frame" });
+  await page.keyboard.press("ControlOrMeta+z");
+  assert.equal(await source(), "A -> B: Begin\nA -> B: Next\n");
+  assert.equal((await focused()).inFrame, true);
+  await page.keyboard.press("ControlOrMeta+z");
+  assert.equal(await source(), "A -> B: Start\nA -> B: Next\n");
+  assert.equal((await focused()).inFrame, true);
+  await page.keyboard.press("ControlOrMeta+Shift+z");
+  assert.equal(await source(), "A -> B: Begin\nA -> B: Next\n");
+
+  await element.getByRole("button", { name: "A to B: Next" }).click();
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector('.la-message[data-selected="true"]').focus(),
+  );
+  await page.keyboard.press("Alt+ArrowUp");
+  assert.equal(await source(), "A -> B: Next\nA -> B: Begin\n");
+  assert.deepEqual(await focused(), { inFrame: true, label: "A to B: Next" });
+  await page.keyboard.press("Escape");
+  assert.deepEqual(await selected(), []);
+
+  await element.getByRole("button", { name: "Undo" }).click();
+  assert.equal(await source(), "A -> B: Begin\nA -> B: Next\n");
+  assert.deepEqual(await focused(), { inFrame: true, label: "Undo" });
+  await page.keyboard.press("Enter");
+  assert.equal(await source(), "A -> B: Start\nA -> B: Next\n");
+  assert.deepEqual(await focused(), { inFrame: true, label: "Redo" });
+  await page.keyboard.press("Enter");
+  assert.equal(await source(), "A -> B: Begin\nA -> B: Next\n");
+  await page.keyboard.press("Enter");
+  assert.equal(await source(), "A -> B: Next\nA -> B: Begin\n");
+  assert.deepEqual(await focused(), { inFrame: true, label: "Undo" });
+
+  await element.getByRole("button", { name: "A to B: Begin" }).click();
+  await label.fill("Later");
+  await page.locator("#outside").focus();
+  await page.waitForFunction(() =>
+    document.querySelector("#focus-editor").source.includes("Later"),
+  );
+  // The focusout commit redraws on a timer; let that redraw run.
+  await page.evaluate(
+    () => new Promise((resolve) => setTimeout(resolve, 20)),
+  );
+  assert.equal(
+    await page.evaluate(() => document.activeElement?.id),
+    "outside",
+  );
+  await element.evaluate((node) => {
+    node.theme = "dark";
+  });
+  assert.equal(
+    await page.evaluate(() => document.activeElement?.id),
+    "outside",
+  );
+  assert.deepEqual(await focused(), { inFrame: false, label: null });
+});
+
+test("focus returns to the frame when Escape removes the focused control", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(testContext, "A -> B: Start");
+  const source = () => element.evaluate((node) => node.source);
+  await element.getByRole("button", { name: "A to B: Start" }).click();
+  await element.getByRole("button", { name: "Dashed arrow" }).click();
+  assert.equal(await source(), "A --> B: Start\n");
+  await page.keyboard.press("Escape");
+  assert.equal(
+    await element.evaluate(
+      (node) =>
+        node.shadowRoot.activeElement ===
+        node.shadowRoot.querySelector(".la-frame"),
+    ),
+    true,
+  );
+  await page.keyboard.press("ControlOrMeta+z");
+  assert.equal(await source(), "A -> B: Start\n");
+});
+
+test("picking an actor icon returns focus to the picker trigger", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "@Client\n@Lonely\n\nClient -> API: Start",
+  );
+  const source = () => element.evaluate((node) => node.source);
+  await element.getByRole("button", { name: /Actor Lonely/ }).click();
+  await element.getByRole("button", { name: "Choose actor icon" }).click();
+  await element.locator(".la-icon-option").first().click();
+  assert.match(await source(), /@Lonely\n  icon /);
+  assert.equal(
+    await element.evaluate((node) =>
+      node.shadowRoot.activeElement?.getAttribute("aria-label"),
+    ),
+    "Choose actor icon",
+  );
+  await page.keyboard.press("Backspace");
+  await page.keyboard.press("Delete");
+  assert.match(await source(), /@Lonely\n  icon /);
+});
+
+test("restored focus stays with the control's own diagram item", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "@X\n  tooltip x\n\n@A\n  tooltip a\n\n@B\n  tooltip b\n\nA -> B: Go",
+  );
+  const source = () => element.evaluate((node) => node.source);
+  await element.getByRole("button", { name: /Actor X/ }).click();
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector(".la-frame").focus(),
+  );
+  await page.keyboard.press("Delete");
+  assert.doesNotMatch(await source(), /@X/);
+  await element.evaluate((node) =>
+    node.shadowRoot
+      .querySelector('.la-actor[aria-label^="Actor B"] .la-tooltip-trigger')
+      .focus(),
+  );
+  await page.keyboard.press("ControlOrMeta+z");
+  assert.match(await source(), /@X/);
+  assert.equal(
+    await element.evaluate((node) => {
+      const active = node.shadowRoot.activeElement;
+      return active?.classList.contains("la-tooltip-trigger")
+        ? active.closest(".la-actor").getAttribute("aria-label")
+        : null;
+    }),
+    await element.evaluate((node) =>
+      node.shadowRoot
+        .querySelector('.la-actor[aria-label^="Actor B"]')
+        .getAttribute("aria-label"),
+    ),
+  );
+});

@@ -1861,7 +1861,12 @@ function addPopover(
       close.className = "la-edit-close";
       close.setAttribute("aria-label", "Close dialog");
       close.textContent = "×";
-      close.addEventListener("click", () => removePopover(frame));
+      close.addEventListener("click", () => {
+        removePopover(frame);
+        if (!close.isConnected) {
+          frame.focus({ preventScroll: true });
+        }
+      });
       header.append(close);
     }
 
@@ -2298,6 +2303,9 @@ function createIconPicker(
   const trigger = document.createElement("button");
   trigger.type = "button";
   trigger.className = "la-icon-picker-trigger";
+  if (options.field) {
+    trigger.dataset.field = options.field;
+  }
   trigger.setAttribute("aria-label", options.label);
   trigger.setAttribute("aria-haspopup", "dialog");
   trigger.setAttribute("aria-expanded", "false");
@@ -2748,6 +2756,45 @@ function messageEndpoint(
 const FOCUSABLE_CONTROL_SELECTOR =
   "a[href], button, input, select, textarea, [tabindex], [contenteditable]";
 
+const OWNER_SELECTOR = "[data-la-id], [data-la-group-header-id]";
+
+function ownerSelector(owner) {
+  return owner.dataset.laId !== undefined
+    ? `[data-la-id="${CSS.escape(owner.dataset.laId)}"]`
+    : `[data-la-group-header-id="${CSS.escape(
+        owner.dataset.laGroupHeaderId,
+      )}"]`;
+}
+
+function canReceiveFocus(element) {
+  return (
+    element.disabled !== true &&
+    element.getAttribute("aria-disabled") !== "true"
+  );
+}
+
+function focusElement(element) {
+  element.focus({ preventScroll: true });
+  if (element.getRootNode().activeElement !== element) {
+    return false;
+  }
+  const placeCaretAtEnd =
+    element.classList.contains("la-inline-actor-name") ||
+    element.classList.contains("la-inline-group-label") ||
+    element.classList.contains("la-inline-message-label");
+  if (placeCaretAtEnd && element.setSelectionRange) {
+    const end = element.value.length;
+    element.setSelectionRange(end, end);
+  } else if (
+    element.classList.contains("la-inline-gap-label") ||
+    element.classList.contains("la-inline-group-type") ||
+    element.classList.contains("la-inline-section-label")
+  ) {
+    element.select();
+  }
+  return true;
+}
+
 function isEditableField(element) {
   return (
     element.matches("input, textarea, select") ||
@@ -2862,39 +2909,105 @@ export function renderEditor(target, editor, options = {}) {
 
   function focusPendingField(frame, defer = false) {
     if (!pendingFocus) {
-      return;
+      return false;
     }
     const field = frame.querySelector(
       `[data-field="${CSS.escape(pendingFocus)}"]`,
     );
     pendingFocus = null;
-    if (!field) {
+    if (!field || !canReceiveFocus(field)) {
+      return false;
+    }
+    if (defer) {
+      queueMicrotask(() => {
+        if (field.isConnected) {
+          focusElement(field);
+        }
+      });
+      return true;
+    }
+    return focusElement(field);
+  }
+
+  // Redraws replace the frame, so focus is described by a key that
+  // survives the swap: a data-field, a selectable's model id, the frame, or
+  // a control's class, position, and label.
+  function captureFocus(frame) {
+    if (!frame?.isConnected) {
+      return null;
+    }
+    const active = frame.getRootNode().activeElement;
+    if (!active || !frame.contains(active)) {
+      return null;
+    }
+    if (active === frame) {
+      return { frame: true };
+    }
+    if (active.classList.contains("la-selectable")) {
+      return { id: active.dataset.laId };
+    }
+    if (active.dataset.field) {
+      return {
+        field: active.dataset.field,
+        history: active.classList.contains("la-history-control"),
+      };
+    }
+    const className = active.classList[0];
+    if (!className) {
+      return { frame: true };
+    }
+    // Controls such as tooltip triggers repeat per item, so they are
+    // located within the diagram item that owns them.
+    const owner = active.closest(OWNER_SELECTOR);
+    const scope = owner ?? frame;
+    return {
+      owner: owner ? ownerSelector(owner) : null,
+      className,
+      index: [
+        ...scope.querySelectorAll(`.${CSS.escape(className)}`),
+      ].indexOf(active),
+      label: active.getAttribute("aria-label"),
+    };
+  }
+
+  function restoreFocus(frame, key) {
+    if (!key || !frame.isConnected) {
       return;
     }
-    const focus = () => {
-      if (!field.isConnected) {
+    const selectable = (id) =>
+      frame.querySelector(
+        `.la-selectable[data-la-id="${CSS.escape(id)}"]`,
+      );
+    const candidates = [];
+    if (key.field) {
+      candidates.push(
+        frame.querySelector(`[data-field="${CSS.escape(key.field)}"]`),
+      );
+    }
+    if (key.history) {
+      candidates.push(...frame.querySelectorAll(".la-history-control"));
+    }
+    if (key.id) {
+      candidates.push(selectable(key.id));
+    }
+    const scope = key.owner ? frame.querySelector(key.owner) : frame;
+    if (key.className && scope) {
+      const match = scope.querySelectorAll(
+        `.${CSS.escape(key.className)}`,
+      )[key.index];
+      if (match?.getAttribute("aria-label") === key.label) {
+        candidates.push(match);
+      }
+    }
+    candidates.push(...selectedIds.map(selectable), frame);
+    for (const candidate of candidates) {
+      if (
+        candidate &&
+        canReceiveFocus(candidate) &&
+        focusElement(candidate)
+      ) {
         return;
       }
-      field.focus({ preventScroll: true });
-      const placeCaretAtEnd =
-        field.classList.contains("la-inline-actor-name") ||
-        field.classList.contains("la-inline-group-label") ||
-        field.classList.contains("la-inline-message-label");
-      if (placeCaretAtEnd && field.setSelectionRange) {
-        const end = field.value.length;
-        field.setSelectionRange(end, end);
-      } else if (
-        field.classList.contains("la-inline-gap-label") ||
-        field.classList.contains("la-inline-group-type") ||
-        field.classList.contains("la-inline-section-label")
-      ) {
-        field.select();
-      }
-    };
-    if (defer) {
-      queueMicrotask(focus);
-    } else {
-      focus();
     }
   }
 
@@ -3111,7 +3224,7 @@ export function renderEditor(target, editor, options = {}) {
       inlineEditor,
       model.icon,
       (icon) => {
-        const result = commit({ icon });
+        const result = commit({ icon }, "actor-icon-trigger");
         if (result === "unchanged") {
           iconPicker.closePicker(false, true);
         }
@@ -3121,6 +3234,7 @@ export function renderEditor(target, editor, options = {}) {
         clearLabel: "No actor icon",
         defaultIcon: "user",
         defaultText: "+",
+        field: "actor-icon-trigger",
       },
     );
     iconPicker.classList.add("la-inline-actor-icon-picker");
@@ -4300,7 +4414,11 @@ export function renderEditor(target, editor, options = {}) {
   }
 
   function contextualEditor(frame, layout) {
+    const active = frame.getRootNode().activeElement;
     removeContextualEditor(frame);
+    if (active && !active.isConnected && frame.isConnected) {
+      frame.focus({ preventScroll: true });
+    }
 
     if (transient?.type === "insert") {
       const popover = addPopover(
@@ -5267,6 +5385,7 @@ export function renderEditor(target, editor, options = {}) {
     }
 
     const previousFrame = baseController?.svg?.closest(".la-frame");
+    const previousFocus = captureFocus(previousFrame);
     removeContextualEditor(previousFrame);
     baseController?.destroy();
     baseController = renderDiagramForEditor(
@@ -5316,7 +5435,9 @@ export function renderEditor(target, editor, options = {}) {
     decorate(frame, baseController.svg, baseController.layout);
     applySelectedVisuals(baseController.svg, selectedIds);
     contextualEditor(frame, baseController.layout);
-    focusPendingField(frame);
+    if (!focusPendingField(frame)) {
+      restoreFocus(frame, previousFocus);
+    }
   }
 
   draw();
