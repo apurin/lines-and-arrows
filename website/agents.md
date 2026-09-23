@@ -179,6 +179,11 @@ npm install lines-and-arrows
 npx lines-and-arrows --json diagram.la
 ```
 
+The CLI accepts several files, or `-` for stdin, and exits with 0 when all are
+valid, 1 when any is invalid, and 2 for usage or read errors. With `--json` it
+prints one object for a single input, or an array for several; an invalid
+result carries `error.line` and `error.message`.
+
 Register the web component in an npm-based browser application:
 
 ```js

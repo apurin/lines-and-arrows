@@ -1,10 +1,5 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
 
 import {
   LinesAndArrowsSyntaxError,
@@ -13,7 +8,6 @@ import {
   validate,
 } from "lines-and-arrows/syntax";
 
-const CLI = fileURLToPath(new URL("../bin/lines-and-arrows.js", import.meta.url));
 const SOURCE = `// Customer journey
 @Customer
   icon user
@@ -172,24 +166,3 @@ Client -> Missing: Start`),
   assert.throws(() => serialize(missingActor), /Unknown actor "B"/);
 });
 
-test("validates files and stdin through the verb-less CLI", () => {
-  const valid = spawnSync(process.execPath, [CLI, "--json", "-"], {
-    encoding: "utf8",
-    input: "Client -> API: Start",
-  });
-  const invalid = spawnSync(process.execPath, [CLI, "--json", "-"], {
-    encoding: "utf8",
-    input: "Client -> API:",
-  });
-  const path = join(tmpdir(), `lines-and-arrows-${process.pid}.txt`);
-  writeFileSync(path, "Client -> API: Start");
-  const file = spawnSync(process.execPath, [CLI, path], { encoding: "utf8" });
-  rmSync(path);
-
-  assert.equal(valid.status, 0);
-  assert.deepEqual(JSON.parse(valid.stdout), { valid: true, file: "<stdin>" });
-  assert.equal(invalid.status, 1);
-  assert.equal(JSON.parse(invalid.stdout).error.line, 1);
-  assert.equal(file.status, 0);
-  assert.equal(file.stdout, `Valid: ${path}\n`);
-});

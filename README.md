@@ -122,13 +122,22 @@ embedding workflow.
 
 ## Validation
 
-Validate a file or standard input with the published CLI:
+Validate one or more files, or standard input, with the published CLI:
 
 ```sh
 lines-and-arrows diagram.txt
+lines-and-arrows first.txt second.txt
 lines-and-arrows --json diagram.txt
 lines-and-arrows - < diagram.txt
+lines-and-arrows --version
 ```
+
+The exit code is 0 when every input is valid, 1 when any input is invalid, and
+2 for a usage error or when any input cannot be read; every input is still
+checked and reported. With `--json`, a single input prints one object and
+several inputs print an array. Each object has `valid` and `file`; an invalid
+input adds `error` with `line` and `message`, while a read error has only
+`error.message`. Run `lines-and-arrows --help` for every option.
 
 Use `validate`, `parse`, and `serialize` from `lines-and-arrows/syntax` in
 JavaScript.
