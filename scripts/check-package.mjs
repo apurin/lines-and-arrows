@@ -87,6 +87,17 @@ try {
     { cwd: consumer },
   );
 
+  const packedBundle = readFileSync(
+    join(consumer, "node_modules/lines-and-arrows", bundle),
+    "utf8",
+  );
+  assert.ok(
+    packedBundle.startsWith(
+      `/*! lines-and-arrows v${packageJson.version} | MIT | https://lines-and-arrows.dev */\n`,
+    ),
+    "packed CDN bundle must start with the license banner for the package version",
+  );
+
   const smoke = `
     const root = await import("lines-and-arrows");
     const syntax = await import("lines-and-arrows/syntax");

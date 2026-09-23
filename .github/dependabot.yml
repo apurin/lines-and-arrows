@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # esbuild is 0.x, where a minor release may break, so only patch updates
+    # are grouped; minor and major npm updates arrive as separate pull requests.
+    groups:
+      npm-patch:
+        update-types:
+          - patch
