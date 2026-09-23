@@ -2929,6 +2929,18 @@ function focusAnchor(element, candidates, selectedElement) {
   return resolved && resolved !== element ? resolved : null;
 }
 
+// Firefox counts strokes in SVG client rects, so wide transparent hit strokes
+// would merge rows there. Fill boxes match in every engine.
+function layoutRect(element) {
+  if (!(element instanceof SVGGraphicsElement)) {
+    return element.getBoundingClientRect();
+  }
+  const box = element.getBBox();
+  const matrix = element.getScreenCTM();
+  const start = new DOMPoint(box.x, box.y).matrixTransform(matrix);
+  return { left: start.x, top: start.y, height: box.height * matrix.d };
+}
+
 // SVG layers put messages before actors and insertion marks last, so the DOM
 // order does not match what people see. Tab instead follows the layout:
 // visual rows from top to bottom (the header, actors with their insertion
@@ -2954,7 +2966,7 @@ function layoutFocusOrder(frame, selectedElement) {
 
   const boxes = roots
     .map((element) => {
-      const rect = element.getBoundingClientRect();
+      const rect = layoutRect(element);
       return {
         element,
         left: rect.left,
@@ -3372,11 +3384,32 @@ export function renderEditor(target, editor, options = {}) {
 
   function moveFocusInLayoutOrder(frame, event) {
     const current = event.target;
+    const moveAlong = (controls) => {
+      const step = event.shiftKey ? -1 : 1;
+      for (
+        let position = controls.indexOf(current) + step;
+        position >= 0 && position < controls.length;
+        position += step
+      ) {
+        const next = controls[position];
+        next.focus();
+        if (frame.getRootNode().activeElement === next) {
+          event.preventDefault();
+          // As sequential navigation does, select a text field's value.
+          if (next instanceof HTMLInputElement) {
+            next.select();
+          }
+          return true;
+        }
+      }
+      return false;
+    };
+    // Editing forms keep their DOM order, but Safari's own Tab skips their
+    // buttons by default, so the element moves focus within them as well.
     const overlay = current.closest(OVERLAY_SELECTOR);
     if (overlay) {
       const controls = tabbableControls(overlay);
-      const edge = event.shiftKey ? controls[0] : controls.at(-1);
-      if (current !== edge) {
+      if (!controls.includes(current) || moveAlong(controls)) {
         return;
       }
     }
@@ -3386,22 +3419,8 @@ export function renderEditor(target, editor, options = {}) {
         )
       : null;
     const order = [frame, ...layoutFocusOrder(frame, selectedElement)];
-    const index = order.indexOf(current);
-    if (index === -1) {
+    if (!order.includes(current) || moveAlong(order)) {
       return;
-    }
-    const step = event.shiftKey ? -1 : 1;
-    for (
-      let position = index + step;
-      position >= 0 && position < order.length;
-      position += step
-    ) {
-      const next = order[position];
-      next.focus();
-      if (frame.getRootNode().activeElement === next) {
-        event.preventDefault();
-        return;
-      }
     }
     if (!event.shiftKey) {
       releaseFocusForward(frame, current);
@@ -5917,15 +5936,27 @@ export function renderEditor(target, editor, options = {}) {
 
     frame.addEventListener("focusin", (event) => enterFromEnd(frame, event));
 
+    // Tab is captured: editing fields stop their keys from reaching here.
+    frame.addEventListener(
+      "keydown",
+      (event) => {
+        if (
+          event.key === "Tab" &&
+          !event.isComposing &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.altKey
+        ) {
+          moveFocusInLayoutOrder(frame, event);
+        }
+      },
+      true,
+    );
+
     frame.addEventListener("keydown", (event) => {
       // Text fields keep the browser's own undo stack and key handling.
       const editing = isEditableField(event.target);
       const command = event.metaKey || event.ctrlKey;
-
-      if (event.key === "Tab" && !command && !event.altKey) {
-        moveFocusInLayoutOrder(frame, event);
-        return;
-      }
 
       if (!editing && command && event.key.toLowerCase() === "z") {
         event.preventDefault();
