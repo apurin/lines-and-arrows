@@ -2023,7 +2023,7 @@ function sourceWithAttribution(source) {
   return `${SOURCE_ATTRIBUTION}\n${body}`;
 }
 
-function createCopySourceDialog(source, prefix) {
+function createCopySourceDialog(prefix) {
   const dialog = document.createElement("dialog");
   dialog.className = "la-copy-dialog";
 
@@ -2041,7 +2041,6 @@ function createCopySourceDialog(source, prefix) {
   sourceControl.className = "la-copy-dialog-source";
   sourceControl.readOnly = true;
   sourceControl.spellcheck = false;
-  sourceControl.value = source;
   sourceControl.setAttribute("aria-label", "Diagram source");
 
   const actions = document.createElement("div");
@@ -2056,7 +2055,8 @@ function createCopySourceDialog(source, prefix) {
 
   return {
     dialog,
-    open() {
+    open(source) {
+      sourceControl.value = source;
       if (!dialog.open) {
         dialog.showModal();
       }
@@ -2326,7 +2326,7 @@ function renderHeader(
   tokens,
   options,
   headerActions,
-  source,
+  copyText,
   branding,
   downloadSvg,
   openCopyFallback,
@@ -2379,7 +2379,7 @@ function renderHeader(
       field: "copy-source",
       async onActivate(control, title) {
         try {
-          await writeClipboardText(sourceWithAttribution(source));
+          await writeClipboardText(copyText());
         } catch {
           openCopyFallback();
           return;
@@ -2637,9 +2637,10 @@ function renderDiagramSurface(
   const tooltipLayer = document.createElement("div");
   tooltipLayer.className = "la-tooltip-layer";
   tooltipLayer.cleanups = [];
-  const copyDialog = copySource
-    ? createCopySourceDialog(sourceWithAttribution(source), prefix)
-    : null;
+  const copyDialog = copySource ? createCopySourceDialog(prefix) : null;
+  // The editor passes a getter, so copies include its latest edit.
+  const copyText = () =>
+    sourceWithAttribution(typeof source === "function" ? source() : source);
   if (copyDialog) {
     tooltipLayer.cleanups.push(copyDialog.cleanup);
   }
@@ -2727,10 +2728,10 @@ function renderDiagramSurface(
     tokens,
     renderOptions,
     headerActions,
-    source,
+    copyText,
     branding,
     downloadSvg,
-    () => copyDialog?.open(),
+    () => copyDialog?.open(copyText()),
     tooltipLayer.cleanups,
   );
   if (selectionMode === "actors") {

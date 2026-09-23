@@ -50,8 +50,7 @@ Both engines pass the suite with these differences:
   caret-placement step presses Meta+ArrowRight there instead.
 - Known renderer differences have engine-specific expectations, each with a
   comment in the test: in WebKit, actor names with more than about 20 emoji
-  overflow their box, and a typed actor name is dropped after a refused delete
-  from the inspector; in Firefox, the hover area of a shortened message label
+  overflow their box; in Firefox, the hover area of a shortened message label
   covers only its glyphs.
 
 Validate a diagram file with the local CLI:

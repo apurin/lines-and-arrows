@@ -1723,6 +1723,23 @@ function removeInlineGapEditor(frame) {
   deleteControl?.remove();
 }
 
+// Pressing an inline editor's button keeps focus in the editor's field, so
+// no engine commits typed text before the button acts. Otherwise WebKit
+// would focus the frame, and Chrome and Firefox the button. Focus elsewhere
+// moves as usual.
+function keepFieldFocus(container, fields = container) {
+  container.addEventListener("mousedown", (event) => {
+    const active = container.getRootNode().activeElement;
+    if (
+      event.target.closest("button") &&
+      fields.contains(active) &&
+      active.matches("input, textarea, select")
+    ) {
+      event.preventDefault();
+    }
+  });
+}
+
 function removeInlineEditor(frame, selector) {
   const inlineEditor = frame?.querySelector(selector);
   inlineEditor?.cleanup();
@@ -3152,6 +3169,10 @@ export function renderEditor(target, editor, options = {}) {
   let activeCancel = null;
   let transient = null;
   let pendingFocus = null;
+  // Commits the open inline editor's typed text, focused or not. An
+  // editor's focusout also commits unless the editor is disposed, since
+  // Chrome fires focusout when a removal or Escape detaches its field.
+  let flushInlineEdit = null;
   let pendingInlineDraw = null;
   let pressActive = false;
   let statusTimer = null;
@@ -3248,9 +3269,7 @@ export function renderEditor(target, editor, options = {}) {
     }
   }
 
-  // Pressing a delete control cancels its inline editor's commit on blur.
-  // The caller restores that commit when the removal is refused and the
-  // editor stays open.
+  // A refused removal keeps the inline editor's typed text pending.
   function runRemoval(command, popover = null) {
     return run(
       () => {
@@ -3517,6 +3536,8 @@ export function renderEditor(target, editor, options = {}) {
       if (destroyed) {
         return;
       }
+      // The selection may have moved to an editor with new typed text.
+      flushInlineEdit?.(true);
       if (frame.querySelector(".la-inline-gap-label:focus")) {
         pendingFocus = "gap-label";
       }
@@ -3646,8 +3667,9 @@ export function renderEditor(target, editor, options = {}) {
     card.append(nameControl, deleteControl);
     inlineEditor.append(card, metadata);
     frame.append(inlineEditor);
+    keepFieldFocus(inlineEditor);
 
-    let cancelled = false;
+    let disposed = false;
     const commit = (
       extraPatch = {},
       focusField = null,
@@ -3699,6 +3721,7 @@ export function renderEditor(target, editor, options = {}) {
         return "error";
       }
     };
+    flushInlineEdit = (deferDraw) => commit({}, null, deferDraw);
 
     const iconPicker = createIconPicker(
       inlineEditor,
@@ -3801,10 +3824,7 @@ export function renderEditor(target, editor, options = {}) {
       event.stopPropagation();
     });
     inlineEditor.addEventListener("focusout", (event) => {
-      if (
-        cancelled ||
-        inlineEditor.contains(event.relatedTarget)
-      ) {
+      if (disposed || inlineEditor.contains(event.relatedTarget)) {
         return;
       }
       tooltipEditor.close(false);
@@ -3814,7 +3834,6 @@ export function renderEditor(target, editor, options = {}) {
     for (const control of [nameControl, tagControl]) {
       control.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
-          cancelled = true;
           cancelInlineEditor(event, frame);
           return;
         }
@@ -3828,19 +3847,15 @@ export function renderEditor(target, editor, options = {}) {
       });
     }
 
-    deleteControl.addEventListener("pointerdown", (event) => {
-      cancelled = true;
-      event.stopPropagation();
-    });
     deleteControl.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      if (!runRemoval(() => editor.removeActor(model.id))) {
-        cancelled = false;
-      }
+      runRemoval(() => editor.removeActor(model.id));
     });
 
     inlineEditor.cleanup = () => {
+      disposed = true;
+      flushInlineEdit = null;
       positioning.disconnect();
       tooltipEditor.cleanup();
       iconPicker.cleanup();
@@ -3935,6 +3950,7 @@ export function renderEditor(target, editor, options = {}) {
     row.append(typeField, labelField, actions);
     inlineEditor.append(row);
     frame.append(inlineEditor);
+    keepFieldFocus(inlineEditor);
 
     const dirtyFields = new Set();
     const sizeTypePill = () => {
@@ -3960,7 +3976,7 @@ export function renderEditor(target, editor, options = {}) {
       dirtyFields.add("label");
     });
 
-    let cancelled = false;
+    let disposed = false;
     const commit = (
       focusField = null,
       deferDraw = false,
@@ -4009,6 +4025,7 @@ export function renderEditor(target, editor, options = {}) {
       }
     };
 
+    flushInlineEdit = (deferDraw) => commit(null, deferDraw);
     const flushBeforeAction = () => commit(null, true) !== "error";
     addSectionControl.addEventListener("click", (event) => {
       event.preventDefault();
@@ -4033,21 +4050,14 @@ export function renderEditor(target, editor, options = {}) {
       }
       run(() => editor.ungroup(model.id));
     });
-    deleteControl.addEventListener("pointerdown", (event) => {
-      cancelled = true;
-      event.stopPropagation();
-    });
     deleteControl.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      if (!runRemoval(() => editor.removeItem(model.id))) {
-        cancelled = false;
-      }
+      runRemoval(() => editor.removeItem(model.id));
     });
 
     typeControl.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        cancelled = true;
         cancelInlineEditor(event, frame);
         return;
       }
@@ -4061,7 +4071,6 @@ export function renderEditor(target, editor, options = {}) {
     });
     labelControl.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        cancelled = true;
         cancelInlineEditor(event, frame);
         return;
       }
@@ -4111,16 +4120,15 @@ export function renderEditor(target, editor, options = {}) {
       event.stopPropagation();
     });
     inlineEditor.addEventListener("focusout", (event) => {
-      if (
-        cancelled ||
-        inlineEditor.contains(event.relatedTarget)
-      ) {
+      if (disposed || inlineEditor.contains(event.relatedTarget)) {
         return;
       }
       commit(null, true);
     });
 
     inlineEditor.cleanup = () => {
+      disposed = true;
+      flushInlineEdit = null;
       positioning.disconnect();
       header.style.visibility = previousVisibility;
     };
@@ -4170,9 +4178,10 @@ export function renderEditor(target, editor, options = {}) {
 
     inlineEditor.append(labelControl, deleteControl);
     frame.append(inlineEditor);
+    keepFieldFocus(inlineEditor);
 
     let dirty = false;
-    let cancelled = false;
+    let disposed = false;
     const labelLeft = section.left + 10;
     const ruleGap = 4;
     const sizeLabel = () => {
@@ -4234,10 +4243,10 @@ export function renderEditor(target, editor, options = {}) {
         return "error";
       }
     };
+    flushInlineEdit = commit;
 
     labelControl.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        cancelled = true;
         cancelInlineEditor(event, frame);
         return;
       }
@@ -4250,16 +4259,10 @@ export function renderEditor(target, editor, options = {}) {
       event.stopPropagation();
     });
 
-    deleteControl.addEventListener("pointerdown", (event) => {
-      cancelled = true;
-      event.stopPropagation();
-    });
     deleteControl.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      if (!runRemoval(() => editor.removeSection(model.id))) {
-        cancelled = false;
-      }
+      runRemoval(() => editor.removeSection(model.id));
     });
 
     const positionEditor = () => {
@@ -4294,13 +4297,15 @@ export function renderEditor(target, editor, options = {}) {
       event.stopPropagation();
     });
     inlineEditor.addEventListener("focusout", (event) => {
-      if (cancelled || inlineEditor.contains(event.relatedTarget)) {
+      if (disposed || inlineEditor.contains(event.relatedTarget)) {
         return;
       }
       commit(true);
     });
 
     inlineEditor.cleanup = () => {
+      disposed = true;
+      flushInlineEdit = null;
       positioning.disconnect();
       label.style.visibility = previousVisibility;
       if (rightRule && previousRightRuleStart !== null) {
@@ -4411,8 +4416,9 @@ export function renderEditor(target, editor, options = {}) {
       metadata,
     );
     frame.append(inlineEditor);
+    keepFieldFocus(inlineEditor);
 
-    let cancelled = false;
+    let disposed = false;
     const commit = (
       extraPatch = {},
       focusField = null,
@@ -4475,6 +4481,7 @@ export function renderEditor(target, editor, options = {}) {
         return "error";
       }
     };
+    flushInlineEdit = (deferDraw) => commit({}, null, deferDraw);
 
     const arrowStyles = document.createElement("div");
     arrowStyles.className = "la-inline-message-arrow-styles";
@@ -4582,7 +4589,6 @@ export function renderEditor(target, editor, options = {}) {
       });
       control.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
-          cancelled = true;
           cancelInlineEditor(event, frame);
           return;
         }
@@ -4737,10 +4743,7 @@ export function renderEditor(target, editor, options = {}) {
       event.stopPropagation();
     });
     inlineEditor.addEventListener("focusout", (event) => {
-      if (
-        cancelled ||
-        inlineEditor.contains(event.relatedTarget)
-      ) {
+      if (disposed || inlineEditor.contains(event.relatedTarget)) {
         return;
       }
       tooltipEditor.close(false);
@@ -4749,7 +4752,6 @@ export function renderEditor(target, editor, options = {}) {
 
     labelControl.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        cancelled = true;
         cancelInlineEditor(event, frame);
         return;
       }
@@ -4763,7 +4765,6 @@ export function renderEditor(target, editor, options = {}) {
     });
     tagControl.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        cancelled = true;
         cancelInlineEditor(event, frame);
         return;
       }
@@ -4776,19 +4777,15 @@ export function renderEditor(target, editor, options = {}) {
       event.stopPropagation();
     });
 
-    deleteControl.addEventListener("pointerdown", (event) => {
-      cancelled = true;
-      event.stopPropagation();
-    });
     deleteControl.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      if (!runRemoval(() => editor.removeItem(model.id))) {
-        cancelled = false;
-      }
+      runRemoval(() => editor.removeItem(model.id));
     });
 
     inlineEditor.cleanup = () => {
+      disposed = true;
+      flushInlineEdit = null;
       positioning.disconnect();
       tooltipEditor.cleanup();
       for (let index = 0; index < hiddenElements.length; index += 1) {
@@ -4836,7 +4833,10 @@ export function renderEditor(target, editor, options = {}) {
       height: labelHeight,
       overflow: "visible",
     });
+    let disposed = false;
     inlineEditor.cleanup = () => {
+      disposed = true;
+      flushInlineEdit = null;
       label.style.visibility = previousVisibility;
     };
 
@@ -4895,7 +4895,6 @@ export function renderEditor(target, editor, options = {}) {
       repositionDeleteControl();
     });
 
-    let cancelled = false;
     let committedValue = model.label;
     const commit = (focusAfter = false, deferDraw = false) => {
       if (destroyed || control.value === committedValue) {
@@ -4929,6 +4928,7 @@ export function renderEditor(target, editor, options = {}) {
         notifyError(error, body);
       }
     };
+    flushInlineEdit = (deferDraw) => commit(false, deferDraw);
 
     body.addEventListener("pointerdown", (event) => {
       event.stopPropagation();
@@ -4938,7 +4938,7 @@ export function renderEditor(target, editor, options = {}) {
     });
     body.addEventListener("focusout", (event) => {
       if (
-        cancelled ||
+        disposed ||
         body.contains(event.relatedTarget) ||
         deleteControl.contains(event.relatedTarget)
       ) {
@@ -4948,7 +4948,6 @@ export function renderEditor(target, editor, options = {}) {
     });
     control.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
-        cancelled = true;
         cancelInlineEditor(event, frame);
         return;
       }
@@ -4963,19 +4962,17 @@ export function renderEditor(target, editor, options = {}) {
     const deleteGap = (event) => {
       event.preventDefault();
       event.stopPropagation();
-      cancelled = true;
       if (!runRemoval(() => editor.removeItem(model.id))) {
-        cancelled = false;
         // The delete control sits outside the label editor, so focus
         // returns to the label, whose blur commits a pending edit.
         control.focus({ preventScroll: true });
       }
     };
     deleteControl.addEventListener("pointerdown", (event) => {
-      cancelled = true;
       event.stopPropagation();
     });
     deleteControl.addEventListener("click", deleteGap);
+    keepFieldFocus(deleteControl, body);
 
     body.append(control);
     labelEditor.append(body);
@@ -5760,6 +5757,29 @@ export function renderEditor(target, editor, options = {}) {
           suppressClick = false;
           event.preventDefault();
           event.stopImmediatePropagation();
+          return;
+        }
+        // Pressing a header control commits typed text and defers the
+        // redraw past this click. Redraw first and replay the click on the
+        // new control, so a copy dialog or confirmation is not replaced.
+        const control = event.target.closest(".la-header-control");
+        if (!control) {
+          return;
+        }
+        // A shown inline error already reports the rejected text.
+        if (!frame.querySelector(".la-edit-error")) {
+          flushInlineEdit?.(true);
+        }
+        if (pendingInlineDraw === null && !inlineDrawAfterPress) {
+          return;
+        }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        draw();
+        if (control.getAttribute("aria-disabled") !== "true") {
+          baseController.svg
+            .querySelector(`[data-field="${control.dataset.field}"]`)
+            ?.dispatchEvent(new MouseEvent("click"));
         }
       },
       true,
@@ -5791,14 +5811,7 @@ export function renderEditor(target, editor, options = {}) {
         }
 
         activeCancel?.();
-        const focusedControl = frame.querySelector(
-          ".la-inline-gap-editor :focus, " +
-            ".la-inline-actor-editor :focus, " +
-            ".la-inline-group-editor :focus, " +
-            ".la-inline-section-editor :focus, " +
-            ".la-inline-message-editor :focus",
-        );
-        focusedControl?.blur();
+        flushInlineEdit?.(true);
         const keepsSelection = frame.querySelector(".la-edit-error");
         // Another item's own click selects it, so the switch takes one
         // click; only a press on empty canvas clears the selection here.
@@ -6067,7 +6080,8 @@ export function renderEditor(target, editor, options = {}) {
     baseController = renderDiagramForEditor(
       target,
       editor.document,
-      options.copySource === false ? "" : editor.source,
+      // Header actions read the source on activation.
+      () => editor.source,
       options,
       activateModel,
       [
@@ -6127,6 +6141,7 @@ export function renderEditor(target, editor, options = {}) {
         ?.closest(".la-frame")
         ?.querySelector(":focus")
         ?.blur();
+      flushInlineEdit?.(false);
     },
     destroy() {
       destroyed = true;

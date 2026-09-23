@@ -3139,28 +3139,18 @@ test("refused deletions explain themselves in the editor", async (
   assert.equal(await source(), "@A\n\n@B\n\n@C\n\nA -> B: Start\n");
 
   // The refused delete leaves the inline editor committing on blur.
-  // Renderer bug in WebKit: a clicked button does not take focus there, and
-  // the typed name is dropped instead of committed, so the actor stays "A".
-  const renamed = ENGINE === "webkit" ? "A" : "Alpha";
-  if (ENGINE === "webkit") {
-    testContext.diagnostic(
-      "skipped the rename commit after a refused delete: WebKit drops the " +
-        "typed actor name",
-    );
-  } else {
-    await element.evaluate((node) =>
-      node.shadowRoot.querySelector(".la-frame").focus(),
-    );
-    await page.waitForFunction(() =>
-      document.querySelector("#focus-editor").source.includes("@Alpha"),
-    );
-    await page.clock.runFor(10);
-    assert.deepEqual(await statusText(), [""]);
-  }
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector(".la-frame").focus(),
+  );
+  await page.waitForFunction(() =>
+    document.querySelector("#focus-editor").source.includes("@Alpha"),
+  );
+  await page.clock.runFor(10);
+  assert.deepEqual(await statusText(), [""]);
 
-  await element.getByRole("button", { name: `${renamed} to B: Start` }).click();
+  await element.getByRole("button", { name: "Alpha to B: Start" }).click();
   await page.keyboard.press("Escape");
-  await element.getByRole("button", { name: `${renamed} to B: Start` }).click();
+  await element.getByRole("button", { name: "Alpha to B: Start" }).click();
   await element.evaluate((node) =>
     node.shadowRoot.querySelector(".la-frame").focus(),
   );
@@ -3177,12 +3167,12 @@ test("refused deletions explain themselves in the editor", async (
   await element
     .getByRole("button", { name: "Delete actor and messages" })
     .click();
-  assert.equal(await source(), `${renamed} -> B: Start\n`);
+  assert.equal(await source(), "Alpha -> B: Start\n");
   assert.deepEqual(await statusText(), [""]);
 
   // On a phone-width frame the status sits below undo and redo.
   await page.setViewportSize({ width: 390, height: 844 });
-  await element.getByRole("button", { name: `${renamed} to B: Start` }).click();
+  await element.getByRole("button", { name: "Alpha to B: Start" }).click();
   await element.evaluate((node) =>
     node.shadowRoot.querySelector(".la-frame").focus(),
   );
@@ -3233,6 +3223,329 @@ test("a refused gap delete keeps the typed label and the selection free", async 
     document.querySelector("#focus-editor").source.includes("gap Later"),
   );
   assert.deepEqual(await changes(), ["@A\n\n@B\n\ngap Later\n"]);
+});
+
+// One inline editor of each kind, with a delete that the editor refuses
+// because the diagram would lose its last message or gap. Sections merge
+// into a neighbor instead, so their delete is never refused.
+const PENDING_EDITS = [
+  {
+    kind: "actor",
+    source: "@A\n@B\n\nA -> B: Start",
+    select: /^Actor A/,
+    field: "Actor name",
+    remove: "Delete actor and messages",
+    committed: (text) => `${text} -> B: Start\n`,
+  },
+  {
+    kind: "message",
+    source: "@A\n@B\n\nA -> B: Start",
+    select: "A to B: Start",
+    field: "Arrow label",
+    remove: "Delete arrow",
+    committed: (text) => `A -> B: ${text}\n`,
+  },
+  {
+    kind: "group",
+    source: "@A\n@B\n\nloop Retry\n  A -> B: Start",
+    select: "Edit group label",
+    field: "Group label",
+    remove: "Delete group and contents",
+    committed: (text) => `loop ${text}\n  A -> B: Start\n`,
+  },
+  {
+    kind: "section",
+    source:
+      "@A\n@B\n\nchoice Pick\n  | first\n    A -> B: Start\n" +
+      "  | second\n    A -> B: Next",
+    // Only the label glyphs take a click, and WebKit reports their box
+    // differently, so the section is selected from the keyboard.
+    select: "Section first",
+    selectKey: "Enter",
+    field: "Section label",
+    remove: "Delete section",
+    refusable: false,
+    committed: (text) =>
+      `choice Pick\n  | ${text}\n    A -> B: Start\n` +
+      "  | second\n    A -> B: Next\n",
+  },
+  {
+    kind: "gap",
+    source: "@A\n@B\n\ngap Wait",
+    select: "Gap: Wait",
+    field: "Gap label",
+    remove: "Delete gap",
+    committed: (text) => `@A\n\n@B\n\ngap ${text}\n`,
+  },
+];
+
+function selectPendingEdit(element, edit) {
+  const item = element.getByRole("button", { name: edit.select });
+  return edit.selectKey ? item.press(edit.selectKey) : item.click();
+}
+
+// Clicks the canvas margin above the first actor, which clears the
+// selection.
+function clickEmptyCanvas(element) {
+  return element.locator(".la-canvas").click({ position: { x: 4, y: 4 } });
+}
+
+// Lets a deferred commit redraw, or a second commit, run before counting.
+function settle(page) {
+  return page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 50)));
+}
+
+test("a refused delete leaves the typed text for the next commit", async (
+  testContext,
+) => {
+  for (const edit of PENDING_EDITS.filter((item) => item.refusable !== false)) {
+    const { page, element } = await openEditor(testContext, edit.source);
+    const changes = await recordChanges(page, "#focus-editor");
+    await selectPendingEdit(element, edit);
+    await element
+      .getByRole("textbox", { name: edit.field, exact: true })
+      .fill("Later");
+    await element.getByRole("button", { name: edit.remove }).click();
+    assert.match(
+      await element.getByRole("status").textContent(),
+      /must keep at least one message or gap/,
+      edit.kind,
+    );
+    assert.deepEqual(await changes(), [], edit.kind);
+    await clickEmptyCanvas(element);
+    await settle(page);
+    assert.deepEqual(await changes(), [edit.committed("Later")], edit.kind);
+    assert.deepEqual(await selectedLabels(element), [], edit.kind);
+  }
+});
+
+test("a press that leaves a delete control keeps later edits", async (
+  testContext,
+) => {
+  for (const edit of PENDING_EDITS) {
+    const { page, element } = await openEditor(testContext, edit.source);
+    const changes = await recordChanges(page, "#focus-editor");
+    // The diagram fills the page width, and Firefox cannot scroll this page
+    // far enough to show the lower inline editors in a 720px viewport.
+    await page.setViewportSize({ width: 1280, height: 1400 });
+    await selectPendingEdit(element, edit);
+    const field = element.getByRole("textbox", {
+      name: edit.field,
+      exact: true,
+    });
+    await field.fill("Later");
+    const removeControl = element.getByRole("button", { name: edit.remove });
+    await removeControl.scrollIntoViewIfNeeded();
+    const remove = await removeControl.boundingBox();
+    // Release the press in the page margin, outside the diagram.
+    const outside = { x: 1, y: 1 };
+    await page.mouse.move(
+      remove.x + remove.width / 2,
+      remove.y + remove.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(outside.x, outside.y, { steps: 4 });
+    await page.mouse.up();
+    await field.click();
+    await field.fill("Later!");
+    await clickEmptyCanvas(element);
+    await settle(page);
+    assert.deepEqual(await changes(), [edit.committed("Later!")], edit.kind);
+  }
+});
+
+test("a redraw left from the previous edit keeps text typed since", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "@A\n@B\n\nA -> B: Start",
+  );
+  const changes = await recordChanges(page, "#focus-editor");
+  await element.getByRole("button", { name: "A to B: Start" }).click();
+  await element.getByLabel("Arrow label").fill("Later");
+  // Hold the redraw that the label's commit schedules on a timer, so the
+  // next editor is filled before that redraw replaces it.
+  await page.clock.install({ time: 0 });
+  await page.clock.pauseAt(1000);
+  await element.getByRole("button", { name: /^Actor A/ }).click();
+  await element.getByLabel("Actor name").fill("Alpha");
+  assert.deepEqual(await changes(), ["A -> B: Later\n"]);
+  await page.clock.runFor(10);
+  assert.deepEqual(await changes(), [
+    "A -> B: Later\n",
+    "Alpha -> B: Later\n",
+  ]);
+  assert.equal(await element.getByLabel("Actor name").inputValue(), "Alpha");
+});
+
+test("a host re-render commits the text left by a refused delete", async (
+  testContext,
+) => {
+  const [edit] = PENDING_EDITS;
+  const { page, element } = await openEditor(testContext, edit.source);
+  const changes = await recordChanges(page, "#focus-editor");
+  await selectPendingEdit(element, edit);
+  await element
+    .getByRole("textbox", { name: edit.field, exact: true })
+    .fill("Alpha");
+  await element.getByRole("button", { name: edit.remove }).click();
+  assert.deepEqual(await changes(), []);
+  await element.evaluate((node) => {
+    node.theme = "dark";
+  });
+  await settle(page);
+  assert.deepEqual(await changes(), [edit.committed("Alpha")]);
+});
+
+test("copy source copies the text of a pending edit", async (testContext) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "@A\n@B\n\nA -> B: Start",
+  );
+  const changes = await recordChanges(page, "#focus-editor");
+  const attribution = "// Powered by https://lines-and-arrows.dev/\n";
+  const label = element.getByLabel("Arrow label");
+  const copy = element.locator('[data-field="copy-source"]');
+  // Long enough for a redraw left over from the press to have run.
+  const wait = () => page.waitForTimeout(300);
+
+  await element.getByRole("button", { name: "A to B: Start" }).click();
+  await label.fill("Later");
+  await copy.click();
+  await wait();
+  assert.deepEqual(await changes(), ["A -> B: Later\n"]);
+  assert.equal(
+    await page.evaluate(() => navigator.clipboard.readText()),
+    `${attribution}A -> B: Later\n`,
+  );
+  assert.equal(await copy.getAttribute("aria-label"), "Source copied");
+
+  await page.evaluate(() => {
+    Object.defineProperty(navigator.clipboard, "writeText", {
+      configurable: true,
+      value: async () => {
+        throw new DOMException("Clipboard unavailable", "NotAllowedError");
+      },
+    });
+  });
+  // The arrow stays selected after the commit.
+  await label.fill("Again");
+  await copy.click();
+  await wait();
+  assert.deepEqual(await changes(), ["A -> B: Later\n", "A -> B: Again\n"]);
+  const dialog = element.getByRole("dialog", { name: "Copy source" });
+  assert.equal(await dialog.isVisible(), true);
+  assert.equal(
+    await dialog.getByRole("textbox", { name: "Diagram source" }).inputValue(),
+    `${attribution}A -> B: Again\n`,
+  );
+});
+
+test("copy source reports rejected field text once", async (testContext) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "@A\n@B\n\nA -> B: Start",
+  );
+  await page.evaluate(() => {
+    window.editorErrors = [];
+    document
+      .querySelector("#focus-editor")
+      .addEventListener("la-error", (event) =>
+        window.editorErrors.push(event.detail.error.message),
+      );
+  });
+  await element.getByRole("button", { name: /^Actor A/ }).click();
+  await element.getByLabel("Actor name").fill("gap x");
+  await element.locator('[data-field="copy-source"]').click();
+  await page.waitForTimeout(300);
+  assert.deepEqual(await page.evaluate(() => window.editorErrors), [
+    'Actor name "gap x" cannot start with the reserved word "gap".',
+  ]);
+  assert.equal(
+    await page.evaluate(() => navigator.clipboard.readText()),
+    "// Powered by https://lines-and-arrows.dev/\nA -> B: Start\n",
+  );
+});
+
+test("pressing an inline button leaves focus elsewhere free to move", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "@A\n@B\n\nA -> B: One\nloop Retry\n  A -> B: Two",
+  );
+  await page.evaluate(() => {
+    const outside = document.createElement("input");
+    outside.id = "outside";
+    document.body.prepend(outside);
+  });
+  const source = () => element.evaluate((node) => node.source);
+  // Focusing the input must not scroll the page under the inline editor.
+  const focusOutside = () =>
+    page.evaluate(() =>
+      document.querySelector("#outside").focus({ preventScroll: true }),
+    );
+  const focusInFrame = () =>
+    element.evaluate(
+      (node) =>
+        document.activeElement === node &&
+        node.shadowRoot
+          .querySelector(".la-frame")
+          .contains(node.shadowRoot.activeElement),
+    );
+
+  await element.getByRole("button", { name: "A to B: One" }).click();
+  await focusOutside();
+  await element.getByRole("button", { name: "Delete arrow" }).click();
+  assert.equal(await source(), "loop Retry\n  A -> B: Two\n");
+  assert.equal(await focusInFrame(), true);
+
+  await element.getByRole("button", { name: "Edit group label" }).click();
+  await focusOutside();
+  await element.getByRole("button", { name: "Ungroup" }).click();
+  assert.equal(await source(), "A -> B: Two\n");
+  assert.equal(await focusInFrame(), true);
+});
+
+test("typed text is committed once, by the control that applies it", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "@A\n@B\n\nA -> B: Start",
+  );
+  const changes = await recordChanges(page, "#focus-editor");
+  const panelOpen = (selector) =>
+    element.evaluate(
+      (node, target) => !node.shadowRoot.querySelector(target).hidden,
+      selector,
+    );
+
+  await element.getByRole("button", { name: "A to B: Start" }).click();
+  await element.getByLabel("Arrow label").fill("Later");
+  await element.getByRole("button", { name: "Dashed arrow" }).click();
+  await settle(page);
+  assert.deepEqual(await changes(), ["A --> B: Later\n"]);
+
+  await element.getByLabel("Arrow label").fill("Again");
+  await element.getByRole("button", { name: "Edit arrow tooltip" }).click();
+  await settle(page);
+  assert.equal(await panelOpen(".la-inline-actor-tooltip-dialog"), true);
+  assert.equal((await changes()).length, 1);
+
+  await element.getByRole("button", { name: /^Actor A/ }).click();
+  await settle(page);
+  assert.equal((await changes()).at(-1), "A --> B: Again\n");
+  await element.getByLabel("Actor name").fill("Alpha");
+  await element.getByRole("button", { name: "Choose actor icon" }).click();
+  await settle(page);
+  assert.equal(await panelOpen(".la-icon-picker-popover"), true);
+  assert.equal((await changes()).length, 2);
+  await element.locator(".la-icon-option").first().click();
+  await settle(page);
+  assert.equal((await changes()).length, 3);
+  assert.match((await changes()).at(-1), /^@Alpha\n  icon \S+\n/);
 });
 
 test(
