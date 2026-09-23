@@ -533,6 +533,18 @@ test(
       const detachedEditors = teardownFrame.querySelectorAll(
         ".la-inline-actor-editor",
       ).length;
+      const settleViewBox = async (canvas) => {
+        let previous = null;
+        for (let frame = 0; frame < 300; frame += 1) {
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+          const current = canvas.getAttribute("viewBox");
+          if (current === previous) {
+            return;
+          }
+          previous = current;
+        }
+        throw new Error("The mode transition did not settle.");
+      };
       const transition = document.createElement("lines-and-arrows");
       transition.branding = false;
       transition.copySource = false;
@@ -552,7 +564,7 @@ test(
         height: editCanvas.viewBox.baseVal.height,
         canvases: transition.shadowRoot.querySelectorAll(".la-canvas").length,
       };
-      await new Promise((resolve) => setTimeout(resolve, 220));
+      await settleViewBox(editCanvas);
       const editFrame = {
         x: editCanvas.viewBox.baseVal.x,
         y: editCanvas.viewBox.baseVal.y,
@@ -589,7 +601,7 @@ test(
         height: viewStart.viewBox.baseVal.height,
         canvases: transition.shadowRoot.querySelectorAll(".la-canvas").length,
       };
-      await new Promise((resolve) => setTimeout(resolve, 220));
+      await settleViewBox(viewStart);
       const restoredView = {
         x: viewStart.viewBox.baseVal.x,
         y: viewStart.viewBox.baseVal.y,
