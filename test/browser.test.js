@@ -769,6 +769,159 @@ test("message labels use the arrow span and expose truncated text", async (
   );
 });
 
+test("view canvases stay at natural size, shrink, then scroll", async (
+  testContext,
+) => {
+  const page = await openPage(testContext);
+  const small = "A -> B: Start\nB --> A: Done";
+  const large = Array.from(
+    { length: 5 },
+    (_, index) => `A${index} -> A${index + 1}: Step ${index}`,
+  ).join("\n");
+  const result = await page.evaluate(
+    async ({ small, large }) => {
+      // Samples the rendered width each frame until the viewBox and width
+      // stay unchanged across two animation frames.
+      const settle = async (element) => {
+        const widths = [];
+        let previous = null;
+        let stable = 0;
+        for (let frame = 0; frame < 300; frame += 1) {
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+          const canvas = element.shadowRoot.querySelector(".la-canvas");
+          const width = canvas.getBoundingClientRect().width;
+          const current = `${canvas.getAttribute("viewBox")} ${width}`;
+          widths.push(width);
+          stable = current === previous ? stable + 1 : 0;
+          if (stable >= 2) {
+            return widths;
+          }
+          previous = current;
+        }
+        throw new Error("The mode transition did not settle.");
+      };
+      const inlineSizing = (element) => {
+        const { width, minWidth, maxWidth } = element.shadowRoot.querySelector(
+          ".la-canvas",
+        ).style;
+        return { width, minWidth, maxWidth };
+      };
+      const transition = async (source, containerWidth) => {
+        const container = document.createElement("div");
+        container.style.width = `${containerWidth}px`;
+        document.body.append(container);
+        const element = document.createElement("lines-and-arrows");
+        element.source = source;
+        container.append(element);
+        const width = () =>
+          element.shadowRoot.querySelector(".la-canvas").getBoundingClientRect()
+            .width;
+        const view = { width: width(), sizing: inlineSizing(element) };
+        element.mode = "edit";
+        const toEdit = await settle(element);
+        const edit = { width: width(), sizing: inlineSizing(element) };
+        element.mode = "view";
+        const toView = await settle(element);
+        const restored = { width: width(), sizing: inlineSizing(element) };
+        container.remove();
+        return { view, toEdit, edit, toView, restored };
+      };
+      const measure = async (source, containerWidth, mode = "view") => {
+        const container = document.createElement("div");
+        container.style.width = `${containerWidth}px`;
+        document.body.append(container);
+        const element = document.createElement("lines-and-arrows");
+        element.mode = mode;
+        element.source = source;
+        container.append(element);
+        const frame = element.shadowRoot.querySelector(".la-frame");
+        const canvas = element.shadowRoot.querySelector(".la-canvas");
+        const natural = canvas.viewBox.baseVal.width;
+        const bounds = canvas.getBoundingClientRect();
+        const snapshot = {
+          natural,
+          width: bounds.width,
+          left: bounds.left - container.getBoundingClientRect().left,
+          scrolls: frame.scrollWidth > frame.clientWidth,
+          frameWidth: frame.clientWidth,
+        };
+        if (mode === "edit") {
+          element.mode = "view";
+          await settle(element);
+          snapshot.afterTransition = canvas.isConnected
+            ? null
+            : element.shadowRoot
+                .querySelector(".la-canvas")
+                .getBoundingClientRect().width;
+          snapshot.viewNatural = element.shadowRoot
+            .querySelector(".la-canvas")
+            .viewBox.baseVal.width;
+        }
+        container.remove();
+        return snapshot;
+      };
+      return {
+        wide: await measure(small, 1200),
+        medium: await measure(large, 800),
+        narrow: await measure(large, 320),
+        edit: await measure(small, 1200, "edit"),
+        narrowTransition: await transition(large, 375),
+      };
+    },
+    { small, large },
+  );
+
+  assert.equal(result.wide.width, result.wide.natural);
+  assert.equal(result.wide.left, 0);
+  assert.equal(result.wide.scrolls, false);
+
+  assert.ok(
+    result.medium.natural > 800 && result.medium.natural * 0.75 < 800,
+    JSON.stringify(result.medium),
+  );
+  assert.equal(result.medium.width, 800);
+  assert.equal(result.medium.scrolls, false);
+
+  assert.ok(
+    Math.abs(result.narrow.width - result.narrow.natural * 0.75) < 0.5,
+    JSON.stringify(result.narrow),
+  );
+  assert.equal(result.narrow.scrolls, true);
+
+  assert.equal(result.edit.width, 1200);
+  assert.equal(result.edit.afterTransition, result.edit.viewNatural);
+
+  const narrow = result.narrowTransition;
+  assert.ok(narrow.view.width > 375, JSON.stringify(narrow.view));
+  assert.equal(narrow.edit.width, 375);
+  assert.deepEqual(narrow.restored, narrow.view);
+  assert.deepEqual(narrow.edit.sizing, {
+    width: "",
+    minWidth: "",
+    maxWidth: "",
+  });
+  for (const [from, to, widths] of [
+    [narrow.view.width, narrow.edit.width, narrow.toEdit],
+    [narrow.edit.width, narrow.view.width, narrow.toView],
+  ]) {
+    const span = Math.abs(to - from);
+    const direction = Math.sign(to - from);
+    assert.ok(widths.length > 3, JSON.stringify(widths));
+    assert.ok(
+      Math.abs(widths[0] - from) < span / 2,
+      `first frame jumps: ${JSON.stringify({ from, to, widths })}`,
+    );
+    assert.ok(
+      widths.every(
+        (width, index) =>
+          index === 0 || (width - widths[index - 1]) * direction >= -0.5,
+      ),
+      JSON.stringify(widths),
+    );
+    assert.ok(Math.abs(widths.at(-1) - to) < 0.5, JSON.stringify(widths));
+  }
+});
+
 test(
   "inline element owns valid source and clears stale actor selection",
   async (testContext) => {

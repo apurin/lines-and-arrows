@@ -349,7 +349,11 @@ function createElementClass() {
         return null;
       }
       const { width, height } = canvas.viewBox.baseVal;
-      return { width, height };
+      return {
+        width,
+        height,
+        pixelWidth: canvas.getBoundingClientRect().width,
+      };
     }
 
     #animateModeTransition(previousFrame) {
@@ -383,9 +387,31 @@ function createElementClass() {
         return;
       }
 
-      const setFrame = ({ x, y, width, height }) => {
+      // View canvases are capped between a readability floor and their
+      // natural width while the editor fills its container, so the rendered
+      // width animates with the frame. The effective widths already include
+      // the container and floor clamps; the fixed width is only temporary.
+      const finalStyle = {
+        width: canvas.style.width,
+        minWidth: canvas.style.minWidth,
+        maxWidth: canvas.style.maxWidth,
+      };
+      initialFrame.pixelWidth = previousFrame.pixelWidth;
+      finalFrame.pixelWidth = canvas.getBoundingClientRect().width;
+      const animateWidth =
+        initialFrame.pixelWidth > 0 && finalFrame.pixelWidth > 0;
+      const setFrame = ({ x, y, width, height, pixelWidth }, final = false) => {
         canvas.setAttribute("viewBox", `${x} ${y} ${width} ${height}`);
         canvas.style.aspectRatio = `${width} / ${height}`;
+        if (animateWidth && !final) {
+          canvas.style.width = `${pixelWidth}px`;
+          canvas.style.minWidth = "0";
+          canvas.style.maxWidth = "none";
+        } else {
+          canvas.style.width = finalStyle.width;
+          canvas.style.minWidth = finalStyle.minWidth;
+          canvas.style.maxWidth = finalStyle.maxWidth;
+        }
       };
       setFrame(initialFrame);
       const startedAt = performance.now();
@@ -402,16 +428,20 @@ function createElementClass() {
           height:
             initialFrame.height +
             (finalFrame.height - initialFrame.height) * eased,
+          pixelWidth:
+            initialFrame.pixelWidth +
+            (finalFrame.pixelWidth - initialFrame.pixelWidth) * eased,
         });
         if (progress < 1) {
           this.#modeAnimationFrame = requestAnimationFrame(step);
         } else {
           this.#modeAnimationFrame = null;
-          setFrame(finalFrame);
+          setFrame(finalFrame, true);
         }
       };
       this.#modeAnimationFrame = requestAnimationFrame(step);
     }
+
 
     #dispatch(type, detail) {
       this.dispatchEvent(

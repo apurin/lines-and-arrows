@@ -55,6 +55,10 @@ behavior. Set `copy-source="false"` to hide the Copy source action. When a view
 sets both `branding="false"` and `copy-source="false"`, the diagram starts at
 the top edge.
 
+A view never grows past its natural width and sits at the left edge of its
+container. In a narrower container it shrinks down to 75% of that width, then
+scrolls horizontally.
+
 Built-in icons load from the pinned Phosphor package on jsDelivr. Allow that
 origin in browser content policies, or omit icon properties for offline embeds.
 Unknown icon names and icons that fail to load fall back to the actor's initial

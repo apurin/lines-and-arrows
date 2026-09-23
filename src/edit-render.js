@@ -39,6 +39,10 @@ const EDIT_STYLES = `
     position: relative;
   }
 
+  .la-frame[data-mode="edit"] .la-canvas {
+    min-width: min(720px, 100%);
+  }
+
   .la-frame[data-mode="edit"]:focus-visible {
     outline: none;
     box-shadow: inset 0 0 0 1px

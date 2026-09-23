@@ -28,6 +28,11 @@ const HEADER_CONTROL_SIZE = 18;
 const HEADER_CONTROL_GAP = 2;
 const LIFELINE_LABEL_MIN_ROWS = 6;
 const LIFELINE_LABEL_BASELINE_OFFSET = 14;
+// View-mode canvases never grow past their natural layout width and shrink
+// with their container down to this scale. Below it the frame scrolls
+// horizontally: 0.75 keeps 11 px message labels at about 8 px and 13 px
+// actor names near 10 px.
+const VIEW_MIN_SCALE = 0.75;
 let tooltipSequence = 0;
 
 const VIEW_STYLES = `
@@ -46,7 +51,6 @@ const VIEW_STYLES = `
     display: block;
     width: 100%;
     height: auto;
-    min-width: min(720px, 100%);
     background: var(--la-canvas);
     color: var(--la-text);
     font-family: var(
@@ -2384,6 +2388,10 @@ function renderDiagramSurface(
     preserveAspectRatio: "xMinYMin meet",
   });
   svg.style.aspectRatio = `${layout.width} / ${layout.height}`;
+  if (selectionMode !== "editor") {
+    svg.style.maxWidth = `${layout.width}px`;
+    svg.style.minWidth = `${layout.width * VIEW_MIN_SCALE}px`;
+  }
   appendDefinitions(svg, tokens, prefix);
   const measurers = createTextMeasurers(svg);
   const renderOptions = {

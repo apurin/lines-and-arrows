@@ -157,6 +157,10 @@ Properties assigned before the module loads apply when the element upgrades;
 an invalid value assigned then emits `la-error` instead of throwing, and an
 invalid `source` also shows the error until a valid source replaces it.
 
+A view renders at most at its natural width, aligned to the left edge of its
+container. In a narrower container it shrinks down to 75% of that width and
+then scrolls horizontally, so wide diagrams stay readable without host CSS.
+
 Prefer the built-in `theme="auto"` unless the diagram needs to blend into a
 specific host surface. The canvas is transparent by default, and built-in
 themes use translucent group overlays.
