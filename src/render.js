@@ -1627,15 +1627,16 @@ function renderMessage(
   const group = svgElement("g", {
     class: "la-message",
   });
+  const accessibleName = `${row.source} to ${row.target}${
+    row.label ? `: ${row.label}` : ""
+  }${
+    row.tooltip ? `. ${row.tooltip}` : ""
+  }`;
   const selectable = makeSelectable(
     group,
     row,
     selection,
-    `${row.source} to ${row.target}${
-      row.label ? `: ${row.label}` : ""
-    }${
-      row.tooltip ? `. ${row.tooltip}` : ""
-    }`,
+    accessibleName,
   );
   const geometry = messagePath(
     row,
@@ -1774,20 +1775,20 @@ function renderMessage(
     const fontSize = 11;
     const fontWeight = 560;
     const lineHeight = 13;
+    // The layout reserves at most messageLabelMaxWidth between adjacent
+    // actors; a longer arrow or wider loop gives the label its full span.
     const labelSpan =
       source.centerX === target.centerX
         ? geometry.loopWidth
         : Math.abs(target.centerX - source.centerX);
-    const availableTextWidth = Math.max(
-      1,
-      Math.min(
-        layout.options.messageLabelMaxWidth - 16,
-        labelSpan - 16,
-      ),
-    );
+    const availableTextWidth = Math.max(1, labelSpan - 16);
     const measure = options.measurers(fontSize, fontWeight);
-    const visibleLines = textLines(row.label).map((line) =>
+    const lines = textLines(row.label);
+    const visibleLines = lines.map((line) =>
       truncateToWidth(line, availableTextWidth, measure),
+    );
+    const truncated = visibleLines.some(
+      (line, index) => line !== lines[index],
     );
     const label = svgElement("text", {
       class: "la-message-label",
@@ -1796,7 +1797,7 @@ function renderMessage(
       "font-size": fontSize,
       "font-weight": fontWeight,
       fill: tokens.text,
-      "pointer-events": "none",
+      "pointer-events": truncated ? "bounding-box" : "none",
     });
     appendTextLines(
       label,
@@ -1807,7 +1808,25 @@ function renderMessage(
         1,
       lineHeight,
     );
-    group.append(label);
+    if (truncated) {
+      // The message carries the full label as its accessible name. The
+      // hover title covers only the label so tag and tooltip controls keep
+      // their own behavior.
+      if (!selectable) {
+        group.setAttribute("role", "group");
+        group.setAttribute("aria-label", accessibleName);
+      }
+      const labelGroup = svgElement("g", {
+        class: "la-message-label-group",
+        "aria-hidden": "true",
+      });
+      const title = svgElement("title");
+      title.textContent = row.label;
+      labelGroup.append(title, label);
+      group.append(labelGroup);
+    } else {
+      group.append(label);
+    }
   }
 
   const isSelfMessage = source.centerX === target.centerX;

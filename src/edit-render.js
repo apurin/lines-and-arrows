@@ -4128,9 +4128,13 @@ export function renderEditor(target, editor, options = {}) {
         ? source.centerX + loopWidth / 2
         : (source.centerX + target.centerX) / 2;
       const labelY = selfMessage ? row.y - 20 : row.y - 7;
+      // Match the rendered label, which may use the full arrow span.
+      const labelSpan = selfMessage
+        ? loopWidth
+        : Math.abs(target.centerX - source.centerX);
       const labelMetrics = messageLabelMetrics(
         labelControl.value,
-        layout.options.messageLabelMaxWidth,
+        labelSpan,
       );
       const labelTextHeight = Math.max(13, labelMetrics.height);
       const labelWidth = Math.max(

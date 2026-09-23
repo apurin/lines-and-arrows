@@ -683,6 +683,92 @@ test("group and gap labels use measured width", async (testContext) => {
   }
 });
 
+test("message labels use the arrow span and expose truncated text", async (
+  testContext,
+) => {
+  const page = await openPage(testContext);
+  const label =
+    "Publish the reconciled settlement batch to every downstream ledger and notify each subscriber";
+  const source =
+    "@A\n@B\n@C\n@D\n@E\n@F\n@G\n@H\n\n" +
+    `A -> H: ${label}\nA -> B: ${label}\nC -> C: ${label}\n` +
+    "D -> E: Short label";
+  const snapshot = (root) =>
+    [...root.querySelectorAll(".la-message")].map((message) => {
+      const text = message.querySelector(".la-message-label");
+      const lifelines = [...root.querySelectorAll(".la-lifeline")].map(
+        (line) => Number(line.getAttribute("x1")),
+      );
+      const box = text.getBBox();
+      const line = message.querySelector(".la-message-line").getBBox();
+      return {
+        text: text.textContent,
+        title: message.querySelector("title")?.textContent ?? null,
+        name: message.getAttribute("aria-label"),
+        between:
+          box.x >= line.x - 0.5 &&
+          box.x + box.width <= line.x + line.width + 0.5 &&
+          lifelines.length === 8,
+        hoverTarget:
+          message.querySelector("title")
+            ? getComputedStyle(text).pointerEvents
+            : null,
+      };
+    });
+  const result = await page.evaluate(
+    ({ source, snapshot }) => {
+      const read = new Function(`return (${snapshot})`)();
+      const target = document.createElement("div");
+      document.body.append(target);
+      const rendered = window.linesAndArrows.renderDiagram(target, source, {
+        branding: false,
+        copySource: false,
+      });
+      target.id = "span-labels";
+      const view = read(rendered.svg);
+      const element = document.createElement("lines-and-arrows");
+      element.mode = "edit";
+      element.source = source;
+      document.body.append(element);
+      const edit = read(element.shadowRoot);
+      element.remove();
+      return { view, edit };
+    },
+    { source, snapshot: snapshot.toString() },
+  );
+
+  for (const mode of ["view", "edit"]) {
+    const [long, adjacent, self, short] = result[mode];
+    assert.equal(long.text, label, mode);
+    assert.equal(long.title, null, mode);
+    assert.equal(long.between, true, mode);
+    assert.match(adjacent.text, /…$/, mode);
+    assert.equal(adjacent.title, label, mode);
+    assert.equal(adjacent.between, true, mode);
+    assert.equal(adjacent.hoverTarget, "bounding-box", mode);
+    assert.match(adjacent.name, new RegExp(`^A to B: ${label}`), mode);
+    assert.match(self.text, /…$/, mode);
+    assert.equal(self.title, label, mode);
+    assert.match(self.name, new RegExp(`^C to C: ${label}`), mode);
+    assert.deepEqual(
+      { text: short.text, title: short.title },
+      { text: "Short label", title: null },
+      mode,
+    );
+  }
+  assert.equal(result.view[0].name, null);
+  assert.equal(result.view[3].name, null);
+  const labels = page.locator("#span-labels");
+  assert.equal(
+    await labels.getByRole("group", { name: `A to B: ${label}` }).count(),
+    1,
+  );
+  assert.equal(
+    await labels.getByRole("group", { name: `C to C: ${label}` }).count(),
+    1,
+  );
+});
+
 test(
   "inline element owns valid source and clears stale actor selection",
   async (testContext) => {

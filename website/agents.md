@@ -269,7 +269,9 @@ Core rules:
 - An actor name cannot be `gap` or start with `gap ` because that line reads as
   a gap.
 - Keep each visible line of a message label to 32 characters or fewer. Use `\n`
-  for additional lines; multiline labels are fully supported.
+  for additional lines; multiline labels are fully supported. A longer line is
+  shortened with `…` when it does not fit its arrow, and the full label appears
+  on hover.
 - Actor and message metadata uses child-block syntax. Put each `icon`, `tag`,
   `tooltip`, and `tooltip-icon` directive on its own line, indented exactly two
   spaces beneath its actor or message. Actors alone support `icon`.
