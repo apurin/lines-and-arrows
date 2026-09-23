@@ -140,3 +140,32 @@ test("invalid commands leave the current snapshot and history unchanged", () => 
   assert.equal(editor.document, beforeDocument);
   assert.equal(editor.canUndo, false);
 });
+
+test("group labels cannot start with an arrow", () => {
+  const editor = new DiagramEditor(SOURCE);
+  const beforeDocument = editor.document;
+  const group = editor.document.items.find(({ type }) => type === "group");
+  const message = "A group label cannot start with an arrow.";
+
+  assert.throws(
+    () => editor.updateItem(group.id, { label: "-> retry" }),
+    (error) => error.message === message,
+  );
+  assert.throws(
+    () =>
+      editor.wrapItems(
+        ROOT_CONTAINER_ID,
+        [editor.document.items[0].id],
+        "retry",
+        " --> API",
+      ),
+    (error) => error.message === message,
+  );
+  assert.equal(editor.document, beforeDocument);
+  assert.equal(editor.canUndo, false);
+
+  editor.updateItem(group.id, { label: "Retry API -> Worker" });
+  assert.match(editor.source, /^critical Retry API -> Worker$/m);
+  editor.updateItem(group.id, { label: "->" });
+  assert.match(editor.source, /^critical ->$/m);
+});

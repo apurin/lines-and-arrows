@@ -12,7 +12,8 @@ import {
 } from "./document.js";
 import { parse } from "./parser.js";
 import { serialize } from "./serialize.js";
-import { isGroupType } from "./grammar.js";
+import { groupLabelStartsWithArrow, isGroupType } from "./grammar.js";
+import { encodeText } from "./text.js";
 
 class EditorIdAllocator {
   #nextByKind = new Map();
@@ -58,6 +59,15 @@ function requiredGroupType(value) {
     );
   }
   return text;
+}
+
+function assertGroupLabel(groupType, label) {
+  if (
+    label !== null &&
+    groupLabelStartsWithArrow(groupType, encodeText(label))
+  ) {
+    throw new Error("A group label cannot start with an arrow.");
+  }
 }
 
 function uniqueActorName(document, preferred = "New actor") {
@@ -403,6 +413,7 @@ export class DiagramEditor {
         if (Object.hasOwn(patch, "label")) {
           item.label = optionalText(patch.label);
         }
+        assertGroupLabel(item.groupType, item.label);
       }
       return item.id;
     });
@@ -488,13 +499,16 @@ export class DiagramEditor {
         throw new Error("Only a contiguous range of sibling items can group.");
       }
 
+      const type = requiredGroupType(groupType);
+      const text = optionalText(label);
+      assertGroupLabel(type, text);
       const first = indices[0];
       const grouped = items.splice(first, indices.length);
       const group = {
         type: "group",
         id: this.#ids.next("item"),
-        groupType: requiredGroupType(groupType),
-        label: optionalText(label),
+        groupType: type,
+        label: text,
         body: grouped,
       };
       items.splice(first, 0, group);

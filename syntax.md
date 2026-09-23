@@ -232,6 +232,36 @@ it introduces a timeline gap and cannot introduce a group body.
 
 Groups may be nested.
 
+A group label may contain arrows. Because actor names may contain spaces and
+lowercase letters, a line such as `critical Retry A -> B` also has the shape of
+a message from `critical Retry A`. A line with both shapes is read as follows:
+
+- When the first word is followed directly by an arrow, as in `client -> api`
+  or `client -> api: Send`, the line is a message. The group reading's label
+  would begin with the arrow.
+- Otherwise the next non-blank line decides, if it is more indented. If it is
+  not more indented, or there is none, the line is a message.
+- A more-indented message property line also makes the line a message. That is
+  a `tag`, `tooltip`, or `tooltip-icon` line, or any other `word value` line
+  that contains no arrow, is not a `gap` line, and has no more-indented block
+  of its own; the latter is then reported as an unknown property.
+- Any other more-indented line, such as a message, gap, group, or `|` section,
+  makes the line a group whose label is everything after the group type.
+
+```lines-and-arrows
+critical Retry A -> B
+  A -> B: Attempt
+  B --> A: Accepted
+```
+
+With a multi-word lowercase source name such as `order service -> api`, an
+item indented by mistake below the message turns the line into a group rather
+than reporting an indentation error. A one-word source such as `client -> api`
+always stays a message. A canonical writer rejects a group whose label begins
+with an arrow, and a group whose label contains an arrow when its first item
+begins with a message property keyword, because neither can be written back
+unambiguously.
+
 ### Sections
 
 A group with alternatives or parallel lanes uses `|` sections:
@@ -313,7 +343,8 @@ In this draft:
 - actor names may not contain `:`, an arrow form, or begin with `@`, `|`, or
   `//`;
 - group labels, section labels, message labels, tags, and tooltips may contain
-  punctuation, including additional colons;
+  punctuation, including additional colons, and group labels may contain arrow
+  forms as described in [Groups](#groups);
 - empty names and explicitly empty text values are invalid;
 - a `\n` escape is invalid in a field defined as single-line.
 
@@ -364,7 +395,11 @@ single-line-text = escaped-text without "\n" ;
 
 `timeline` must contain at least one timeline item. The grammar is descriptive;
 an implementation should parse arrow tokens longest-first. `gap` is excluded
-from `group-type` because it is reserved by the `gap` production.
+from `group-type` because it is reserved by the `gap` production. A line that
+matches both `message` and `group` is a message when the text before the arrow
+is one word; otherwise it is a group only when the next non-blank line is more
+indented and is a timeline item or section rather than a message property line,
+as described in [Groups](#groups).
 
 ## Validation and round trips
 

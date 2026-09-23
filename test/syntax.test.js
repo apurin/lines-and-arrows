@@ -357,3 +357,88 @@ test("keeps mis-indented timeline items as indentation errors", () => {
     );
   }
 });
+
+test("reads a line with both shapes as a group when a body follows", () => {
+  const group = parse("critical Retry A -> B\n  A -> B: Try\n  B --> A: Done");
+  assert.equal(group.items[0].type, "group");
+  assert.equal(group.items[0].groupType, "critical");
+  assert.equal(group.items[0].label, "Retry A -> B");
+  assert.equal(group.items[0].body.length, 2);
+
+  const sections = `choice A -> B
+  | accepted
+    A -> B: Send
+  | lost
+    A ->x B: Send
+`;
+  assert.equal(parse(sections).items[0].label, "A -> B");
+  assert.equal(parse(sections).items[0].body[1].label, "lost");
+  assert.equal(serialize(parse(sections)), sections);
+
+  const nested = `review Before A -> B
+  gap Later
+  repeat Each A --> B
+    loop Again
+      A -> B
+`;
+  assert.equal(serialize(parse(nested)), nested);
+  assert.equal(parse("critical A->B\n  A -> B").items[0].label, "A->B");
+});
+
+test("keeps one-word and property-bearing arrow lines as messages", () => {
+  for (const source of ["client -> api", "client -> api: Send"]) {
+    const [item] = parse(source).items;
+    assert.equal(item.type, "message", source);
+    assert.equal(item.source, "client", source);
+  }
+  assert.deepEqual(validate("client -> api\n  api -> db").error, {
+    message: "Unexpected extra indentation.",
+    line: 2,
+  });
+
+  const source = `order service -> api: Send
+  tag idempotent
+order service -> api
+billing api --> order service
+`;
+  const document = parse(source);
+  assert.deepEqual(
+    document.items.map(({ type, source: from }) => [type, from]),
+    [
+      ["message", "order service"],
+      ["message", "order service"],
+      ["message", "billing api"],
+    ],
+  );
+  assert.equal(serialize(document), source);
+  assert.deepEqual(validate("order service -> api\n  tags idempotent").error, {
+    message:
+      'Unknown message property "tags". Message properties are tag, tooltip, and tooltip-icon.',
+    line: 2,
+  });
+
+  const misindented = parse("order service -> api\n  api -> db");
+  assert.equal(misindented.items[0].type, "group");
+  assert.equal(misindented.items[0].label, "service -> api");
+});
+
+test("rejects groups that would be written as messages", () => {
+  const document = parse("critical Retry A -> B\n  A -> B");
+  document.items[0].label = "-> B";
+  assert.throws(
+    () => serialize(document),
+    (error) =>
+      error instanceof TypeError &&
+      /items\[0\]\.label cannot start with an arrow/.test(error.message),
+  );
+
+  const property = parse("critical Retry A -> B\n  tagger -> B");
+  property.actors[0].name = "tag line";
+  property.items[0].body[0].source = "tag line";
+  assert.throws(
+    () => serialize(property),
+    (error) =>
+      error instanceof TypeError &&
+      /items\[0\]\.body\[0\]/.test(error.message),
+  );
+});

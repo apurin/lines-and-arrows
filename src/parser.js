@@ -1,9 +1,11 @@
 import { decodeText } from "./text.js";
-import { GROUP_LINE_PATTERN } from "./grammar.js";
+import {
+  ARROW_PATTERN,
+  GROUP_LINE_PATTERN,
+  MESSAGE_PROPERTY_LINE_PATTERN,
+} from "./grammar.js";
 import { visitMessages } from "./document.js";
 
-const ARROW_PATTERN =
-  /^(.*?)\s+(-->|->x|->)\s+([^:]+?)(?::\s*(.*))?$/;
 const ACTOR_FORBIDDEN_PATTERN = /:|-->|->x|->/;
 const SUPPORTED_ARROWS = new Set(["->", "-->", "->x"]);
 // Arrow-like punctuation runs, including forms other notations use. Only
@@ -263,6 +265,26 @@ function looksLikeProperty(cursor, index) {
   return !next || next.indent <= line.indent;
 }
 
+// A line shaped like both a message and a group ("critical Retry A -> B")
+// is a message when its source is one word, because the group label would
+// begin with the arrow. Otherwise the more-indented line that follows
+// decides: a message property or nothing makes it a message, and a timeline
+// item or section makes it a group.
+function arrowLineIsGroup(cursor, line, messageMatch) {
+  if (!/\s/.test(messageMatch[1])) {
+    return false;
+  }
+  const nextIndex = nextContentIndex(cursor, cursor.index + 1);
+  const next = cursor.lines[nextIndex];
+  if (!next || next.indent <= line.indent) {
+    return false;
+  }
+  return !(
+    MESSAGE_PROPERTY_LINE_PATTERN.test(next.content) ||
+    looksLikeProperty(cursor, nextIndex)
+  );
+}
+
 function unknownPropertyMessage(key, owner, names) {
   const message = `Unknown ${owner} property "${key}".`;
   const lowercase = key.toLowerCase();
@@ -507,8 +529,18 @@ function parseItems(cursor, indent) {
     }
 
     const messageMatch = line.content.match(ARROW_PATTERN);
-    if (messageMatch) {
+    const groupMatch = line.content.trimEnd().match(GROUP_LINE_PATTERN);
+    if (
+      messageMatch &&
+      !(groupMatch && arrowLineIsGroup(cursor, line, messageMatch))
+    ) {
       items.push(parseMessage(cursor, line, messageMatch));
+      skipBlankLines(cursor);
+      continue;
+    }
+
+    if (groupMatch) {
+      items.push(parseGroup(cursor, line, groupMatch));
       skipBlankLines(cursor);
       continue;
     }
@@ -519,13 +551,6 @@ function parseItems(cursor, indent) {
           "Unsupported or malformed arrow expression.",
         line.number,
       );
-    }
-
-    const groupMatch = line.content.trimEnd().match(GROUP_LINE_PATTERN);
-    if (groupMatch) {
-      items.push(parseGroup(cursor, line, groupMatch));
-      skipBlankLines(cursor);
-      continue;
     }
 
     fail(unexpectedLineMessage(line.content), line.number);

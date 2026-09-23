@@ -1,7 +1,12 @@
 import { groupSections, visitMessages } from "./document.js";
 import { parse } from "./parser.js";
 import { encodeText } from "./text.js";
-import { isGroupType } from "./grammar.js";
+import {
+  ARROW_PATTERN,
+  MESSAGE_PROPERTY_LINE_PATTERN,
+  groupLabelStartsWithArrow,
+  isGroupType,
+} from "./grammar.js";
 
 function requireArray(value, path) {
   if (!Array.isArray(value)) {
@@ -25,6 +30,33 @@ function requireText(value, path) {
 function requireOptionalText(value, path) {
   if (value !== null && value !== undefined) {
     requireText(value, path);
+  }
+}
+
+// Mirrors the parser's reading of a line shaped like both a message and a
+// group, so a group whose label contains an arrow is written unambiguously.
+function assertGroupHeadReadsAsGroup(group, path) {
+  if (group.label === null || group.label === undefined) {
+    return;
+  }
+  const label = sourceText(group.label);
+  if (groupLabelStartsWithArrow(group.groupType, label)) {
+    throw new TypeError(`${path}.label cannot start with an arrow.`);
+  }
+  if (!ARROW_PATTERN.test(`${group.groupType} ${label}`)) {
+    return;
+  }
+  const [first] = group.body;
+  const firstLine =
+    first?.type === "message"
+      ? sourceText(first.source)
+      : first?.type === "group"
+        ? String(first.groupType)
+        : "";
+  if (MESSAGE_PROPERTY_LINE_PATTERN.test(firstLine)) {
+    throw new TypeError(
+      `${path}.body[0] would read as a message property because ${path}.label contains an arrow.`,
+    );
   }
 }
 
@@ -72,6 +104,7 @@ function assertTimelineStructure(items, path) {
         `${itemPath}.body must contain at least one item or section.`,
       );
     }
+    assertGroupHeadReadsAsGroup(item, itemPath);
 
     const sections = groupSections(item);
     if (!sections) {
