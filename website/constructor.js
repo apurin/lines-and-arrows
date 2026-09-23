@@ -19,6 +19,9 @@ const brandingInput = document.querySelector("[data-option-branding]");
 const copySourceInput = document.querySelector(
   "[data-option-copy-source]",
 );
+const downloadSvgInput = document.querySelector(
+  "[data-option-download-svg]",
+);
 const transparentInput = document.querySelector("[data-option-transparent]");
 const resetButton = document.querySelector("[data-reset-constructor]");
 const copyButton = document.querySelector("[data-copy-embed]");
@@ -88,6 +91,7 @@ const defaultState = Object.freeze({
   actorSelectionExample: false,
   branding: true,
   copySource: true,
+  downloadSvg: true,
   transparent: true,
   theme: "auto",
   source: initialSource,
@@ -110,6 +114,7 @@ const readSavedState = () => {
       "actorSelectionExample",
       "branding",
       "copySource",
+      "downloadSvg",
       "transparent",
     ]) {
       if (typeof savedState[key] === "boolean") {
@@ -188,6 +193,7 @@ const buildHtml = () => {
     state.selectableActors ? "selectable-actors" : null,
     `branding="${state.branding}"`,
     !state.copySource ? 'copy-source="false"' : null,
+    !state.downloadSvg ? 'download-svg="false"' : null,
     `canvas-background="${state.transparent ? "transparent" : "solid"}"`,
     'label="Sequence diagram"',
   ].filter(Boolean);
@@ -233,6 +239,7 @@ const renderCode = () => {
   interactionDescriptions.push(
     `selectable actors ${state.selectableActors ? "on" : "off"}`,
     `copy source ${state.copySource ? "on" : "off"}`,
+    `download SVG ${state.downloadSvg ? "on" : "off"}`,
   );
   codeSummary.textContent = `${initialStateDescription}, ${interactionDescriptions.join(
     ", ",
@@ -255,6 +262,7 @@ const renderControlState = () => {
   actorSelectionExampleInput.checked = state.actorSelectionExample;
   brandingInput.checked = state.branding;
   copySourceInput.checked = state.copySource;
+  downloadSvgInput.checked = state.downloadSvg;
   transparentInput.checked = state.transparent;
 };
 
@@ -339,6 +347,11 @@ brandingInput.addEventListener("change", () => {
 
 copySourceInput.addEventListener("change", () => {
   state.copySource = copySourceInput.checked;
+  render();
+});
+
+downloadSvgInput.addEventListener("change", () => {
+  state.downloadSvg = downloadSvgInput.checked;
   render();
 });
 

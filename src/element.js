@@ -13,6 +13,7 @@ const UPGRADED_PROPERTIES = [
   "selectableActors",
   "branding",
   "copySource",
+  "downloadSvg",
   "canvasBackground",
   "palette",
   "source",
@@ -31,6 +32,7 @@ function createElementClass() {
         "selectable-actors",
         "branding",
         "copy-source",
+        "download-svg",
         "canvas-background",
         "source",
       ];
@@ -173,6 +175,18 @@ function createElementClass() {
         this.setAttribute("copy-source", "false");
       } else {
         this.removeAttribute("copy-source");
+      }
+    }
+
+    get downloadSvg() {
+      return this.getAttribute("download-svg") !== "false";
+    }
+
+    set downloadSvg(value) {
+      if (value === false) {
+        this.setAttribute("download-svg", "false");
+      } else {
+        this.removeAttribute("download-svg");
       }
     }
 
@@ -483,6 +497,7 @@ function createElementClass() {
           label: this.label,
           branding: this.branding,
           copySource: this.copySource,
+        downloadSvg: this.downloadSvg,
           canvasBackground: this.canvasBackground,
           palette: this.#palette,
         };

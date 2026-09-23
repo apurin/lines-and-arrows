@@ -2041,6 +2041,155 @@ function createCopySourceDialog(source, prefix) {
   };
 }
 
+const SVG_EXPORT_REMOVED = [
+  ".la-diagram-header",
+  ".la-group-hit",
+  ".la-focus-ring",
+  ".la-message-selection-highlight",
+  'rect[fill="transparent"]',
+  'path[stroke="transparent"]',
+].join(", ");
+const SVG_EXPORT_INTERACTIVE_ATTRIBUTES = [
+  "tabindex",
+  "aria-pressed",
+  "aria-expanded",
+  "aria-describedby",
+  "aria-keyshortcuts",
+  "style",
+];
+const SVG_EXPORT_COLOR_ATTRIBUTES = [
+  "fill",
+  "stroke",
+  "flood-color",
+  "stop-color",
+];
+
+function svgFileName(label) {
+  const slug = String(label ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80)
+    .replace(/-+$/g, "");
+  return `${slug || "sequence-diagram"}.svg`;
+}
+
+// Serializes the diagram as currently shown into a standalone SVG document.
+// Theme tokens, palette references, and color functions are resolved to
+// computed colors so the file matches the on-screen theme; interaction-only
+// elements, header controls, and selection state are left out.
+function exportSvgMarkup(svg, layout, label) {
+  const frame = svg.closest(".la-frame");
+  const probe = document.createElement("span");
+  probe.hidden = true;
+  frame.append(probe);
+  const pixel = document
+    .createElement("canvas")
+    .getContext("2d", { willReadFrequently: true });
+  const resolvedColors = new Map();
+  // Custom properties resolve through a probe inside the frame; a canvas
+  // pixel then turns color-mix() and other color spaces into plain RGBA.
+  const resolveColor = (value) => {
+    if (!resolvedColors.has(value)) {
+      probe.style.color = "";
+      probe.style.color = value;
+      let resolved = value;
+      if (probe.style.color) {
+        pixel.clearRect(0, 0, 1, 1);
+        pixel.fillStyle = getComputedStyle(probe).color;
+        pixel.fillRect(0, 0, 1, 1);
+        const [red, green, blue, alpha] = pixel.getImageData(
+          0,
+          0,
+          1,
+          1,
+        ).data;
+        resolved =
+          alpha === 255
+            ? `rgb(${red}, ${green}, ${blue})`
+            : `rgba(${red}, ${green}, ${blue}, ${
+                Math.round((alpha / 255) * 1000) / 1000
+              })`;
+      }
+      resolvedColors.set(value, resolved);
+    }
+    return resolvedColors.get(value);
+  };
+
+  const clone = svg.cloneNode(true);
+  clone.querySelectorAll(SVG_EXPORT_REMOVED).forEach((element) => {
+    element.remove();
+  });
+  for (const element of [clone, ...clone.querySelectorAll("*")]) {
+    for (const name of SVG_EXPORT_INTERACTIVE_ATTRIBUTES) {
+      element.removeAttribute(name);
+    }
+    for (const attribute of [...element.attributes]) {
+      if (attribute.name.startsWith("data-")) {
+        element.removeAttribute(attribute.name);
+      }
+    }
+    if (element.getAttribute("role") === "button") {
+      element.removeAttribute("role");
+    }
+    element.classList.remove("la-selectable");
+    for (const name of SVG_EXPORT_COLOR_ATTRIBUTES) {
+      const value = element.getAttribute(name);
+      if (value && value !== "none" && !value.startsWith("url(")) {
+        element.setAttribute(name, resolveColor(value));
+      }
+    }
+  }
+
+  // A transparent canvas relies on the host page, so the file uses the
+  // theme surface that the derived colors were mixed against.
+  const computed = getComputedStyle(svg);
+  const canvasColor = resolveColor(computed.backgroundColor);
+  const background =
+    canvasColor === resolveColor("transparent")
+      ? resolveColor(getComputedStyle(frame).getPropertyValue("--la-surface"))
+      : canvasColor;
+  const style = document.createElementNS(SVG_NS, "style");
+  style.textContent = [
+    "svg {",
+    `  font-family: ${computed.fontFamily};`,
+    `  background: ${background};`,
+    "  text-rendering: geometricPrecision;",
+    "}",
+  ].join("\n");
+  const title = document.createElementNS(SVG_NS, "title");
+  title.textContent = label;
+  clone.prepend(title, style);
+  probe.remove();
+
+  clone.setAttribute("xmlns", SVG_NS);
+  clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+  clone.setAttribute("width", layout.width);
+  clone.setAttribute("height", layout.height);
+  clone.setAttribute(
+    "viewBox",
+    `0 0 ${layout.width} ${layout.height}`,
+  );
+  clone.setAttribute("role", "img");
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${new XMLSerializer().serializeToString(
+    clone,
+  )}\n`;
+}
+
+function downloadSvgFile(svg, layout, label) {
+  const markup = exportSvgMarkup(svg, layout, label);
+  const url = URL.createObjectURL(
+    new Blob([markup], { type: "image/svg+xml" }),
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = svgFileName(label);
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
 async function writeClipboardText(source) {
   await navigator.clipboard.writeText(source);
 }
@@ -2149,11 +2298,48 @@ function renderHeader(
   headerActions,
   source,
   branding,
+  downloadSvg,
   openCopyFallback,
   cleanups,
 ) {
   const actions = [...headerActions];
   let copyResetTimer = null;
+  let downloadResetTimer = null;
+  if (downloadSvg) {
+    const setDownloadState = (control, title, failed) => {
+      const label = failed ? "Download failed" : "Download SVG";
+      control.dataset.downloadFailed = String(failed);
+      control.setAttribute("aria-label", label);
+      title.textContent = label;
+    };
+    actions.push({
+      label: "Download SVG",
+      icon: "download-simple",
+      fallback: "↓",
+      className: "la-download-svg",
+      field: "download-svg",
+      onActivate(control, title) {
+        clearTimeout(downloadResetTimer);
+        try {
+          downloadSvgFile(
+            control.ownerSVGElement,
+            layout,
+            options.label || "Sequence diagram",
+          );
+          setDownloadState(control, title, false);
+        } catch {
+          setDownloadState(control, title, true);
+          downloadResetTimer = setTimeout(
+            () => setDownloadState(control, title, false),
+            1600,
+          );
+        }
+      },
+      cleanup() {
+        clearTimeout(downloadResetTimer);
+      },
+    });
+  }
   if (options.copySource !== false) {
     actions.push({
       label: "Copy source",
@@ -2359,9 +2545,12 @@ function renderDiagramSurface(
       : baseTheme;
   const branding = options.branding !== false;
   const copySource = options.copySource !== false;
+  const downloadSvg =
+    selectionMode !== "editor" && options.downloadSvg !== false;
   const hasHeader =
     branding ||
     copySource ||
+    downloadSvg ||
     headerActions.length > 0;
   const layout =
     selectionMode === "editor"
@@ -2508,6 +2697,7 @@ function renderDiagramSurface(
     headerActions,
     source,
     branding,
+    downloadSvg,
     () => copyDialog?.open(),
     tooltipLayer.cleanups,
   );

@@ -34,6 +34,8 @@ export interface LinesAndArrowsElement extends HTMLElement {
   selectableActors: boolean;
   branding: boolean;
   copySource: boolean;
+  /** Shows the view-mode Download SVG action. Defaults to true. */
+  downloadSvg: boolean;
   canvasBackground: CanvasBackground;
   palette: ThemePalette | null;
   selectActor(name: string | null): void;

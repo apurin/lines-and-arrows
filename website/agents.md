@@ -91,6 +91,9 @@ Enable `selectableActors: true` to receive `onActorSelect` callbacks or call the
 returned controller's `selectActor(name)`. Pass an existing actor name to
 select it or `null` to clear selection.
 
+The header options `branding`, `copySource`, and `downloadSvg` default to
+`true`; pass `false` to hide each one, as with the element attributes below.
+
 ## Configure the web component
 
 Set configuration through attributes on `<lines-and-arrows>`:
@@ -100,10 +103,11 @@ Set configuration through attributes on `<lines-and-arrows>`:
 | `mode` | `view` by default. Use `edit` to enable the visual editor, undo and redo controls, and editing keyboard shortcuts. |
 | `selectable-actors` | Boolean attribute. View mode is static by default; add this attribute to let people select actors. Edit mode keeps its own required selection behavior. |
 | `branding` | The compact header shows “Powered by Lines & Arrows” by default. Use `false` to hide the attribution text. |
-| `copy-source` | The Copy source action is shown by default. Use `false` to hide it. A view with branding and this action both hidden omits the compact header row and its spacing. |
+| `copy-source` | The Copy source action is shown by default. Use `false` to hide it. |
+| `download-svg` | View mode shows a Download SVG action by default. It saves the diagram as shown, in its current theme, as a standalone `.svg` file named after `label`. Use `false` to hide it. A view with branding, Copy source, and Download SVG all hidden omits the compact header row and its spacing. |
 | `theme` | `auto`, `light`, or `dark`. The default is `auto`. |
 | `canvas-background` | `transparent` by default. Use `solid` when the component should paint its theme or palette background. |
-| `label` | An accessible name describing the diagram. |
+| `label` | An accessible name describing the diagram. Download SVG also derives its file name from it. |
 | `source` | Diagram text as an alternative to inline text, dedented the same way. It wins over inline text, and a `source` property assigned before the element loads wins over it. After that, the latest attribute change or property assignment replaces the diagram and starts a fresh editor session; removing the attribute clears the diagram. An invalid value emits `la-error` instead of throwing and shows the error until a valid source replaces it, keeping the previous valid source. Escape `&` as `&amp;` and `"` as `&quot;`. |
 
 Copy source uses the browser Clipboard API in a secure context such as HTTPS or
@@ -124,6 +128,7 @@ This creates a compact actor-selectable view without a header:
   selectable-actors
   branding="false"
   copy-source="false"
+  download-svg="false"
   theme="auto"
 >
   Client -> API: Request

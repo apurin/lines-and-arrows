@@ -51,9 +51,14 @@ throws on invalid source; the attribute shows the error and emits `la-error`.
 Set `mode="edit"` to open the visual editor. The
 [Constructor](https://lines-and-arrows.dev/constructor) produces complete HTML
 for themes, editing controls, actor selection, branding, copy source, and canvas
-behavior. Set `copy-source="false"` to hide the Copy source action. When a view
-sets both `branding="false"` and `copy-source="false"`, the diagram starts at
-the top edge.
+behavior. Set `copy-source="false"` to hide the Copy source action and
+`download-svg="false"` to hide the view-mode Download SVG action. When a view
+sets `branding="false"`, `copy-source="false"`, and `download-svg="false"`, the
+diagram starts at the top edge.
+
+Download SVG saves the diagram as shown, in its current theme, as a standalone
+`.svg` file named after the `label`. Icons stay linked to the CDN, tooltips stay
+collapsed, and selection and controls are left out.
 
 A view never grows past its natural width and sits at the left edge of its
 container. In a narrower container it shrinks down to 75% of that width, then

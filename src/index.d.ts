@@ -25,6 +25,8 @@ export interface RenderOptions {
   label?: string;
   branding?: boolean;
   copySource?: boolean;
+  /** Shows the Download SVG action beside Copy source. Defaults to true. */
+  downloadSvg?: boolean;
   /** Enables actor interaction, selection callbacks, and controller selection. */
   selectableActors?: boolean;
   /** Receives immutable actor details after enabled selection changes. */

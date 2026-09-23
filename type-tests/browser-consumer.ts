@@ -24,6 +24,7 @@ const controller = renderDiagram(
   "Client -> API: Request",
   {
     palette,
+    downloadSvg: false,
     selectableActors: true,
     onActorSelect(actor: ActorDetails | null) {
       void actor?.tooltip;
@@ -42,6 +43,9 @@ element.source = "Client -> API: Request";
 element.mode = "edit";
 element.theme = "auto";
 element.palette = palette;
+element.downloadSvg = false;
+const downloadSvg: boolean = element.downloadSvg;
+void downloadSvg;
 element.selectActor(null);
 element.addEventListener("la-change", (event) => {
   const source: string = event.detail.source;

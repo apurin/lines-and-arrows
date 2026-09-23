@@ -487,6 +487,7 @@ test("unknown icon names keep the generic fallback", async (testContext) => {
       const rendered = window.linesAndArrows.renderDiagram(target, source, {
         branding: false,
         copySource: false,
+        downloadSvg: false,
       });
       return new Function(`return (${snapshot})`)()(rendered.svg);
     },
@@ -922,6 +923,177 @@ test("view canvases stay at natural size, shrink, then scroll", async (
   }
 });
 
+test("view mode downloads the visible diagram as standalone SVG", async (
+  testContext,
+) => {
+  const page = await openPage(testContext);
+  await page.evaluate(() => {
+    const target = document.createElement("div");
+    target.id = "download-target";
+    document.body.append(target);
+    window.downloadController = window.linesAndArrows.renderDiagram(
+      target,
+      "@Client\n  icon user\n  tag human\n  tooltip Starts work\n\n" +
+        "Client -> API: Start job\n  tooltip Carries the request\n" +
+        "critical Retry\n  API --> Client: Accepted\ngap Later",
+      {
+        theme: "dark",
+        palette: { accent: "var(--test-accent)" },
+        label: "Payment flow: retries & IDs",
+        selectableActors: true,
+      },
+    );
+    document.body.style.setProperty("--test-accent", "rgb(200, 30, 60)");
+    window.downloadController.selectActor("Client");
+  });
+  const target = page.locator("#download-target");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    target.getByRole("button", { name: "Download SVG" }).click(),
+  ]);
+  assert.equal(download.suggestedFilename(), "payment-flow-retries-ids.svg");
+  const markup = readFileSync(await download.path(), "utf8");
+  assert.doesNotMatch(markup, /var\(--/);
+
+  const parsed = await page.evaluate((markup) => {
+    const document = new DOMParser().parseFromString(markup, "image/svg+xml");
+    const svg = document.documentElement;
+    return {
+      parserErrors: document.querySelectorAll("parsererror").length,
+      root: svg.localName,
+      namespace: svg.namespaceURI,
+      xmlns: svg.getAttribute("xmlns"),
+      xlink: svg.getAttribute("xmlns:xlink"),
+      width: svg.getAttribute("width"),
+      height: svg.getAttribute("height"),
+      viewBox: svg.getAttribute("viewBox"),
+      texts: [...svg.querySelectorAll("text")].map((text) => text.textContent),
+      popovers: svg.querySelectorAll(".la-tooltip-popover").length,
+      controls: svg.querySelectorAll(
+        ".la-header-control, .la-diagram-header, [role='button'], [tabindex]",
+      ).length,
+      selected: svg.querySelectorAll("[data-selected], .la-selectable").length,
+      fontFamily: svg.querySelector("style")?.textContent.includes("font-family"),
+      tooltipTriggers: svg.querySelectorAll(".la-tooltip-trigger").length,
+    };
+  }, markup);
+  const [, , viewWidth, viewHeight] = parsed.viewBox.split(" ");
+  assert.deepEqual(
+    {
+      ...parsed,
+      texts: undefined,
+      viewBox: undefined,
+    },
+    {
+      parserErrors: 0,
+      root: "svg",
+      namespace: "http://www.w3.org/2000/svg",
+      xmlns: "http://www.w3.org/2000/svg",
+      xlink: "http://www.w3.org/1999/xlink",
+      width: viewWidth,
+      height: viewHeight,
+      texts: undefined,
+      viewBox: undefined,
+      popovers: 0,
+      controls: 0,
+      selected: 0,
+      fontFamily: true,
+      tooltipTriggers: 2,
+    },
+  );
+  assert.ok(parsed.texts.includes("Start job"), parsed.texts.join(", "));
+  assert.ok(!parsed.texts.includes("Powered by Lines & Arrows"));
+
+  const standalone = await page.context().newPage();
+  await standalone.goto(
+    `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`,
+  );
+  const rendered = await standalone.evaluate(() => {
+    const label = [...document.querySelectorAll("text")].find(
+      (text) => text.textContent === "Start job",
+    );
+    const actor = document.querySelector(".la-actor-shape");
+    return {
+      labelWidth: label.getBBox().width,
+      background: getComputedStyle(document.documentElement).backgroundColor,
+      actorFill: getComputedStyle(actor).fill,
+      canvasBounds: document.documentElement.getBoundingClientRect().width,
+    };
+  });
+  assert.ok(rendered.labelWidth > 20, JSON.stringify(rendered));
+  assert.equal(rendered.canvasBounds, Number(viewWidth));
+  assert.equal(rendered.actorFill, "rgb(200, 30, 60)");
+  assert.equal(rendered.background, "rgb(17, 19, 25)");
+
+  const downloadControl = target.locator(".la-download-svg");
+  await page.evaluate(() => {
+    window.originalCreateObjectURL = URL.createObjectURL;
+    URL.createObjectURL = () => {
+      throw new Error("Blocked");
+    };
+  });
+  await downloadControl.click();
+  assert.equal(
+    await downloadControl.getAttribute("aria-label"),
+    "Download failed",
+  );
+  await page.evaluate(() => {
+    URL.createObjectURL = window.originalCreateObjectURL;
+  });
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector("#download-target .la-download-svg")
+        .getAttribute("aria-label") === "Download SVG",
+  );
+  assert.equal(
+    await downloadControl.locator("title").textContent(),
+    "Download SVG",
+  );
+
+  const hidden = await page.evaluate(() => {
+    const target = document.createElement("div");
+    document.body.append(target);
+    const withoutActions = window.linesAndArrows.renderDiagram(
+      target,
+      "A -> B: Start",
+      { branding: false, copySource: false, downloadSvg: false },
+    );
+    const snapshot = {
+      header: withoutActions.svg.querySelectorAll(".la-diagram-header").length,
+      actorY: withoutActions.svg
+        .querySelector(".la-actor")
+        .getAttribute("transform"),
+    };
+    const element = document.createElement("lines-and-arrows");
+    element.source = "A -> B: Start";
+    element.downloadSvg = false;
+    document.body.append(element);
+    snapshot.elementActions = [
+      ...element.shadowRoot.querySelectorAll(".la-header-control"),
+    ].map((control) => control.getAttribute("aria-label"));
+    snapshot.attribute = element.getAttribute("download-svg");
+    element.mode = "edit";
+    snapshot.editActions = [
+      ...element.shadowRoot.querySelectorAll(".la-header-control"),
+    ].map((control) => control.getAttribute("aria-label"));
+    element.downloadSvg = true;
+    element.mode = "view";
+    snapshot.viewActions = [
+      ...element.shadowRoot.querySelectorAll(".la-header-control"),
+    ].map((control) => control.getAttribute("aria-label"));
+    return snapshot;
+  });
+  assert.deepEqual(hidden, {
+    header: 0,
+    actorY: "translate(2 0)",
+    elementActions: ["Copy source"],
+    attribute: "false",
+    editActions: ["Undo", "Redo", "Copy source"],
+    viewActions: ["Download SVG", "Copy source"],
+  });
+});
+
 test(
   "inline element owns valid source and clears stale actor selection",
   async (testContext) => {
@@ -1014,6 +1186,7 @@ test(
       const transition = document.createElement("lines-and-arrows");
       transition.branding = false;
       transition.copySource = false;
+      transition.downloadSvg = false;
       transition.source = "A -> B: Start";
       document.body.append(transition);
       const viewCanvas = transition.shadowRoot.querySelector(".la-canvas");
@@ -1773,6 +1946,7 @@ test("constructor preserves diagram source in generated HTML", async (testContex
       ["[data-option-selectable-actors]", true],
       ["[data-option-branding]", false],
       ["[data-option-copy-source]", false],
+      ["[data-option-download-svg]", false],
       ["[data-option-transparent]", false],
     ]) {
       const input = document.querySelector(selector);
@@ -1802,6 +1976,7 @@ test("constructor preserves diagram source in generated HTML", async (testContex
         selectableActors: diagram?.hasAttribute("selectable-actors"),
         branding: diagram?.getAttribute("branding"),
         copySource: diagram?.getAttribute("copy-source"),
+        downloadSvg: diagram?.getAttribute("download-svg"),
         canvasBackground: diagram?.getAttribute("canvas-background"),
       },
     };
@@ -1831,6 +2006,7 @@ test("constructor preserves diagram source in generated HTML", async (testContex
       selectableActors: true,
       branding: "false",
       copySource: "false",
+      downloadSvg: "false",
       canvasBackground: "solid",
     },
   });
