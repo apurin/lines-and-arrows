@@ -1035,3 +1035,41 @@ test("group type field uses a pattern valid under the v flag", async (
     [],
   );
 });
+
+test("undo shortcuts inside text fields stay with the field", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "@Client\n  icon user\n\nClient -> API: Start",
+  );
+  const source = () => element.evaluate((node) => node.source);
+  await element.getByRole("button", { name: /Actor Client/ }).click();
+  const name = element.getByLabel("Actor name");
+  await name.fill("Customer");
+  await name.press("Enter");
+  const renamed = await source();
+  assert.match(renamed, /@Customer/);
+
+  await element.getByRole("button", { name: /Actor Customer/ }).click();
+  await element.getByRole("button", { name: "Choose actor icon" }).click();
+  const search = element.getByRole("searchbox", { name: "Search icons" });
+  await search.pressSequentially("data");
+  await search.press("ControlOrMeta+z");
+  assert.equal(await source(), renamed);
+  assert.notEqual(await search.inputValue(), "data");
+
+  const tooltipText = element.getByLabel("actor tooltip text");
+  await element
+    .getByRole("button", { name: "Edit actor tooltip" })
+    .click();
+  await tooltipText.pressSequentially("Hi");
+  await tooltipText.press("ControlOrMeta+z");
+  assert.equal(await source(), renamed);
+
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector(".la-frame").focus(),
+  );
+  await page.keyboard.press("ControlOrMeta+z");
+  assert.match(await source(), /@Client/);
+});

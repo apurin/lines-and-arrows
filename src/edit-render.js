@@ -2745,6 +2745,13 @@ function messageEndpoint(
   return group;
 }
 
+function isEditableField(element) {
+  return (
+    element.matches("input, textarea, select") ||
+    element.isContentEditable === true
+  );
+}
+
 function applySelectedVisuals(svg, ids) {
   const selected = new Set(ids);
   const hasSelection = selected.size > 0;
@@ -5143,10 +5150,11 @@ export function renderEditor(target, editor, options = {}) {
     });
 
     frame.addEventListener("keydown", (event) => {
-      const editing = event.target.matches("input, textarea, select");
+      // Text fields keep the browser's own undo stack and key handling.
+      const editing = isEditableField(event.target);
       const command = event.metaKey || event.ctrlKey;
 
-      if (command && event.key.toLowerCase() === "z") {
+      if (!editing && command && event.key.toLowerCase() === "z") {
         event.preventDefault();
         run(
           () => (event.shiftKey ? editor.redo() : editor.undo()),
@@ -5154,7 +5162,7 @@ export function renderEditor(target, editor, options = {}) {
         );
         return;
       }
-      if (command && event.key.toLowerCase() === "y") {
+      if (!editing && command && event.key.toLowerCase() === "y") {
         event.preventDefault();
         run(() => editor.redo(), []);
         return;

@@ -88,7 +88,8 @@ The element's `source` property accepts diagram text. Assigning different valid
 source starts a fresh editor session; a syntax error throws synchronously and
 preserves the current diagram. Visual edits emit `la-change` with `{ source }`,
 while rendering failures emit `la-error` with `{ error }`. Undo and redo are
-built into edit mode.
+built into edit mode; while a text field has focus, the undo and redo shortcuts
+apply to that field instead of the diagram.
 
 ## Diagram source
 
