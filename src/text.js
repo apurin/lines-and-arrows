@@ -53,26 +53,6 @@ export function estimatedCompactTextWidth(value, fontSize) {
   );
 }
 
-export function truncateTextToWidth(value, maximumWidth, fontSize) {
-  const text = String(value ?? "");
-  if (estimatedTextWidth(text, fontSize) <= maximumWidth) {
-    return text;
-  }
-
-  const ellipsis = "…";
-  let width = graphemeWidth(ellipsis, fontSize);
-  const visible = [];
-  for (const grapheme of graphemes(text)) {
-    const nextWidth = width + graphemeWidth(grapheme, fontSize);
-    if (nextWidth > maximumWidth) {
-      break;
-    }
-    visible.push(grapheme);
-    width = nextWidth;
-  }
-  return `${visible.join("")}${ellipsis}`;
-}
-
 export function decodeText(value) {
   const source = String(value ?? "");
   let result = "";

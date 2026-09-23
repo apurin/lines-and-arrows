@@ -16,7 +16,6 @@ import {
   estimatedTextWidth,
   graphemes,
   textLines,
-  truncateTextToWidth,
 } from "./text.js";
 import { resolvePaletteTheme, resolveTheme } from "./theme.js";
 
@@ -454,17 +453,42 @@ function textWidth(text, fontSize = 12, minimum = 0) {
   return Math.max(minimum, estimatedTextWidth(text, fontSize));
 }
 
-function textMeasurer(fontSize, fontWeight) {
+const DEFAULT_MEASURE_FONT_FAMILY = [
+  "system-ui",
+  "-apple-system",
+  "BlinkMacSystemFont",
+  '"Segoe UI"',
+  "sans-serif",
+].join(", ");
+
+function textMeasurer(fontSize, fontWeight, fontFamily) {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
-  context.font = [
-    `${fontWeight} ${fontSize}px system-ui`,
-    "-apple-system",
-    "BlinkMacSystemFont",
-    '"Segoe UI"',
-    "sans-serif",
-  ].join(", ");
+  // An unparsable family is ignored by the canvas and keeps the default.
+  context.font = `${fontWeight} ${fontSize}px ${DEFAULT_MEASURE_FONT_FAMILY}`;
+  context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
   return (text) => context.measureText(text).width;
+}
+
+// One canvas measurer per font configuration, shared by a single render.
+// The font family is read from the canvas once it is attached, so a host's
+// --la-font-family is measured with the font the SVG text actually uses.
+function createTextMeasurers(fontSource) {
+  const measurers = new Map();
+  let fontFamily = null;
+  return (fontSize, fontWeight) => {
+    fontFamily ??=
+      (fontSource.isConnected &&
+        getComputedStyle(fontSource).fontFamily) ||
+      DEFAULT_MEASURE_FONT_FAMILY;
+    const key = `${fontWeight} ${fontSize}`;
+    let measure = measurers.get(key);
+    if (!measure) {
+      measure = textMeasurer(fontSize, fontWeight, fontFamily);
+      measurers.set(key, measure);
+    }
+    return measure;
+  };
 }
 
 function truncateToWidth(text, maximumWidth, measure) {
@@ -506,28 +530,45 @@ function appendTextLines(
   }
 }
 
-function groupHeaderGeometry(group) {
+function groupHeaderGeometry(group, measurers) {
   const left = group.left + 16;
   const right = group.right - 16;
   const y = group.top + 19;
-  const typeWidth = textWidth(group.groupType, 11);
+  const measureType = measurers(11, 700);
+  const measureLabel = measurers(11, 650);
   const headerTextGap = 8;
-  const labelX = left + typeWidth + headerTextGap;
   const backplatePadding = 6;
+  // The type keeps priority; with a label it leaves room for at least "…".
+  const typeMaxWidth = Math.max(
+    0,
+    right -
+      left -
+      (group.label
+        ? headerTextGap + backplatePadding + measureLabel("…")
+        : 0),
+  );
+  const visibleType = truncateToWidth(
+    group.groupType,
+    typeMaxWidth,
+    measureType,
+  );
+  const typeWidth = measureType(visibleType);
+  const labelX = left + typeWidth + headerTextGap;
   const availableLabelWidth = Math.max(
-    36,
+    0,
     right - labelX - backplatePadding,
   );
   const visibleLines = textLines(group.label).map((line) =>
-    truncateTextToWidth(line, availableLabelWidth, 11),
+    truncateToWidth(line, availableLabelWidth, measureLabel),
   );
   const labelWidth = Math.max(
     0,
-    ...visibleLines.map((line) => textWidth(line, 11)),
+    ...visibleLines.map((line) => measureLabel(line)),
   );
   return {
     left,
     y,
+    visibleType,
     typeWidth,
     labelX,
     visibleLines,
@@ -536,9 +577,9 @@ function groupHeaderGeometry(group) {
   };
 }
 
-function sectionLabelGeometry(section) {
+function sectionLabelGeometry(section, measurers) {
   const fontSize = 10;
-  const measure = textMeasurer(fontSize, 650);
+  const measure = measurers(fontSize, 650);
   const lineGap = 4;
   const leftLineWidth = 6;
   const rightLineMinimum = 8;
@@ -1284,6 +1325,7 @@ function renderGroupHeader(
   group,
   tokens,
   editActivate,
+  measurers,
 ) {
   const activatePart = editActivate
     ? (part) => editActivate(group.id, part)
@@ -1291,12 +1333,13 @@ function renderGroupHeader(
   const {
     left,
     y,
+    visibleType,
     typeWidth,
     labelX,
     visibleLines,
     labelWidth,
     backplatePadding,
-  } = groupHeaderGeometry(group);
+  } = groupHeaderGeometry(group, measurers);
   const header = svgElement("g", {
     class: "la-group-header",
     "data-la-group-header-id": group.id,
@@ -1345,7 +1388,7 @@ function renderGroupHeader(
     "font-weight": 700,
     fill: tokens.mutedText,
   });
-  type.textContent = group.groupType;
+  type.textContent = visibleType;
 
   header.append(type, label);
   if (activatePart) {
@@ -1409,7 +1452,7 @@ function renderGroupHeader(
   parent.append(header);
 }
 
-function renderSection(parent, section, tokens, selection) {
+function renderSection(parent, section, tokens, selection, measurers) {
   const group = svgElement("g", {
     class: "la-section",
   });
@@ -1421,7 +1464,7 @@ function renderSection(parent, section, tokens, selection) {
     labelX,
     leftLineEnd,
     rightLineStart,
-  } = sectionLabelGeometry(section);
+  } = sectionLabelGeometry(section, measurers);
 
   for (const [x1, x2] of [
     [lineStart, leftLineEnd],
@@ -1742,7 +1785,7 @@ function renderMessage(
         labelSpan - 16,
       ),
     );
-    const measure = textMeasurer(fontSize, fontWeight);
+    const measure = options.measurers(fontSize, fontWeight);
     const visibleLines = textLines(row.label).map((line) =>
       truncateToWidth(line, availableTextWidth, measure),
     );
@@ -1795,7 +1838,7 @@ function renderMessage(
   parent.append(group);
 }
 
-function renderGap(parent, row, layout, tokens, selection) {
+function renderGap(parent, row, layout, tokens, selection, measurers) {
   const group = svgElement("g", {
     class: "la-gap",
   });
@@ -1805,11 +1848,12 @@ function renderGap(parent, row, layout, tokens, selection) {
     selection,
     `Gap: ${row.label}`,
   );
+  const measure = measurers(10, 650);
   const visibleLines = textLines(row.label).map((line) =>
-    truncateTextToWidth(
+    truncateToWidth(
       line,
       layout.contentRight - layout.contentLeft - 20,
-      10,
+      measure,
     ),
   );
   const centerX = layout.width / 2;
@@ -2322,8 +2366,10 @@ function renderDiagramSurface(
   });
   svg.style.aspectRatio = `${layout.width} / ${layout.height}`;
   appendDefinitions(svg, tokens, prefix);
+  const measurers = createTextMeasurers(svg);
   const renderOptions = {
     ...options,
+    measurers,
     iconResolver: phosphorIconResolver,
     actorIconFilter: `url(#${markerId(
       prefix,
@@ -2349,6 +2395,12 @@ function renderDiagramSurface(
   if (copyDialog) {
     tooltipLayer.cleanups.push(copyDialog.cleanup);
   }
+  // Attach before drawing so text measurement sees the resolved font.
+  frame.append(svg, tooltipLayer);
+  if (copyDialog) {
+    frame.append(copyDialog.dialog);
+  }
+  target.replaceChildren(style, frame);
 
   const selection =
     selectionMode === "editor"
@@ -2385,10 +2437,11 @@ function renderDiagramSurface(
       group,
       tokens,
       editActivate,
+      measurers,
     );
   }
   for (const section of layout.sections) {
-    renderSection(headerLayer, section, tokens, selection);
+    renderSection(headerLayer, section, tokens, selection, measurers);
   }
   svg.append(lifelineLayer, groupLayer, headerLayer);
   for (const row of layout.rows) {
@@ -2405,7 +2458,7 @@ function renderDiagramSurface(
         editActivate,
       );
     } else {
-      renderGap(svg, row, layout, tokens, selection);
+      renderGap(svg, row, layout, tokens, selection, measurers);
     }
   }
   for (const actor of layout.actors) {
@@ -2442,12 +2495,6 @@ function renderDiagramSurface(
       }
     });
   }
-
-  frame.append(svg, tooltipLayer);
-  if (copyDialog) {
-    frame.append(copyDialog.dialog);
-  }
-  target.replaceChildren(style, frame);
 
   let destroyed = false;
   const commonController = {

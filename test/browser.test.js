@@ -584,6 +584,105 @@ test("icons that fail to load keep the generic fallback", async (
   );
 });
 
+test("group and gap labels use measured width", async (testContext) => {
+  const page = await openPage(testContext);
+  const label = "Retry the payment authorization until the provider confirms";
+  const longType = "a-really-long-group-type-for-narrow-frames";
+  const wide = `@A\n@B\n@C\n@D\n\nrepeat ${label}\\nsecond line\n  A -> D: Go\n  gap ${label}`;
+  const oversizedType = "x".repeat(80);
+  const narrow = `A -> B: Go\ncritical Outer\n  parallel Middle\n    ${longType} ${label}\n      A -> B: Go\n  ${oversizedType} Label\n    A -> B: Go`;
+  const result = await page.evaluate(
+    ({ wide, narrow }) => {
+      const headerGeometry = (root) =>
+        [...root.querySelectorAll(".la-group-header")].map((header, index) => {
+          const frame = root
+            .querySelectorAll(".la-group-shape")
+            [index].getBBox();
+          const [type, text] = header.querySelectorAll("text");
+          const inside = (element) => {
+            const box = element.getBBox();
+            return (
+              box.x >= frame.x && box.x + box.width <= frame.x + frame.width
+            );
+          };
+          return {
+            type: type.textContent,
+            lines: [...text.querySelectorAll("tspan")].map(
+              (line) => line.textContent,
+            ),
+            typeInside: inside(type),
+            labelInside: inside(text),
+            gapBetween: text.getBBox().x - (type.getBBox().x + type.getBBox().width),
+          };
+        });
+      const gapGeometry = (root) =>
+        [...root.querySelectorAll(".la-gap")].map((gap) => {
+          const frame = gap.querySelector("rect").getBBox();
+          const text = gap.querySelector(".la-gap-label");
+          const box = text.getBBox();
+          return {
+            text: text.textContent,
+            inside: box.x >= frame.x && box.x + box.width <= frame.x + frame.width,
+          };
+        });
+      const snapshot = (root) => ({
+        groups: headerGeometry(root),
+        gaps: gapGeometry(root),
+      });
+      const view = (source) => {
+        const target = document.createElement("div");
+        target.style.width = "1200px";
+        document.body.append(target);
+        const rendered = window.linesAndArrows.renderDiagram(target, source, {
+          branding: false,
+          copySource: false,
+        });
+        const result = snapshot(rendered.svg);
+        rendered.destroy();
+        target.remove();
+        return result;
+      };
+      const edit = (source) => {
+        const element = document.createElement("lines-and-arrows");
+        element.mode = "edit";
+        element.source = source;
+        element.style.width = "1200px";
+        document.body.append(element);
+        const result = snapshot(element.shadowRoot);
+        element.remove();
+        return result;
+      };
+      return {
+        wideView: view(wide),
+        wideEdit: edit(wide),
+        narrowView: view(narrow),
+        narrowEdit: edit(narrow),
+      };
+    },
+    { wide, narrow },
+  );
+
+  for (const mode of ["wideView", "wideEdit"]) {
+    const [group] = result[mode].groups;
+    assert.deepEqual(group.lines, [label, "second line"], mode);
+    assert.equal(group.typeInside && group.labelInside, true, mode);
+    assert.ok(group.gapBetween < 16, `${mode}: ${group.gapBetween}`);
+    assert.deepEqual(result[mode].gaps, [{ text: label, inside: true }], mode);
+  }
+  for (const mode of ["narrowView", "narrowEdit"]) {
+    const inner = result[mode].groups[2];
+    assert.equal(inner.type, longType, mode);
+    assert.match(inner.lines[0], /…$/, mode);
+    assert.ok(label.startsWith(inner.lines[0].slice(0, -1)), mode);
+    assert.equal(inner.typeInside, true, mode);
+    assert.equal(inner.labelInside, true, mode);
+    assert.match(result[mode].groups[3].type, /^x+…$/, mode);
+    for (const group of result[mode].groups) {
+      assert.equal(group.typeInside && group.labelInside, true, mode);
+    }
+  }
+});
+
 test(
   "inline element owns valid source and clears stale actor selection",
   async (testContext) => {
@@ -1890,5 +1989,72 @@ test("restored focus stays with the control's own diagram item", async (
         .querySelector('.la-actor[aria-label^="Actor B"]')
         .getAttribute("aria-label"),
     ),
+  );
+});
+
+test("label measurement follows the host font family", async (
+  testContext,
+) => {
+  const page = await openPage(testContext);
+  const label = "Reconcile every settlement batch with the downstream ledgers";
+  const result = await page.evaluate((label) => {
+    const target = document.createElement("div");
+    target.style.setProperty("--la-font-family", '"Courier New", monospace');
+    document.body.append(target);
+    const rendered = window.linesAndArrows.renderDiagram(
+      target,
+      `A -> B: ${label}\ncritical ${label}\n  | ${label} ${label}\n    A -> B: Go\n` +
+        `gap ${label} and then some more words to fill the row`,
+      { branding: false, copySource: false, downloadSvg: false },
+    );
+    const inside = (text, frame) => {
+      const box = text.getBBox();
+      return (
+        box.x >= frame.x - 0.5 &&
+        box.x + box.width <= frame.x + frame.width + 0.5
+      );
+    };
+    const svg = rendered.svg;
+    const group = svg.querySelector(".la-group-shape").getBBox();
+    const sectionFrame = { x: group.x + 14, width: group.width - 28 };
+    const message = svg.querySelector(".la-message");
+    const snapshot = {
+      font: getComputedStyle(svg.querySelector(".la-message-label"))
+        .fontFamily,
+      message: inside(
+        message.querySelector(".la-message-label"),
+        message.querySelector(".la-message-line").getBBox(),
+      ),
+      group: inside(
+        svg.querySelector(".la-group-header text:last-of-type"),
+        group,
+      ),
+      section: inside(svg.querySelector(".la-section-label"), sectionFrame),
+      gap: inside(
+        svg.querySelector(".la-gap-label"),
+        svg.querySelector(".la-gap rect").getBBox(),
+      ),
+      truncated: [
+        ".la-message-label",
+        ".la-group-header text:last-of-type",
+        ".la-section-label",
+        ".la-gap-label",
+      ].map((selector) => svg.querySelector(selector).textContent.endsWith("…")),
+    };
+    rendered.destroy();
+    target.remove();
+    return snapshot;
+  }, label);
+  assert.match(result.font, /Courier New/);
+  assert.deepEqual(
+    { ...result, font: undefined },
+    {
+      font: undefined,
+      message: true,
+      group: true,
+      section: true,
+      gap: true,
+      truncated: [true, true, true, true],
+    },
   );
 });
