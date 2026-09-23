@@ -182,3 +182,17 @@ test("group type pattern source is valid for HTML pattern attributes", () => {
     assert.equal(pattern.test(value), false, value);
   }
 });
+
+test("ignores one leading byte order mark", () => {
+  const source = "@Client\n  tag caller\n\nClient -> API: Start";
+  const document = parse(`﻿${source}`);
+
+  assert.deepEqual(document, parse(source));
+  assert.equal(serialize(document).startsWith("﻿"), false);
+  assert.deepEqual(parse("﻿// Context\ngap Later").comments, ["Context"]);
+  assert.equal(
+    parse("A -> B: x﻿y").items[0].label,
+    "x﻿y",
+  );
+  assert.equal(validate("﻿﻿@Client\nClient -> API").valid, false);
+});

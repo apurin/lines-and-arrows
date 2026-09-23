@@ -90,7 +90,8 @@ function assertActorName(value, line) {
 }
 
 function createCursor(source) {
-  const normalized = source.replace(/\r\n?/g, "\n");
+  const withoutMark = source.startsWith("\uFEFF") ? source.slice(1) : source;
+  const normalized = withoutMark.replace(/\r\n?/g, "\n");
   return {
     lines: normalized.split("\n").map(makeLine),
     index: 0,

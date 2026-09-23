@@ -74,6 +74,8 @@ API --> Customer: Job complete
 
 The format is UTF-8, line-oriented, and indentation-based.
 
+- A single byte order mark (U+FEFF) at the very start of the source is
+  ignored. Canonical output never writes one.
 - One indentation level is two spaces.
 - Tabs are invalid in actors, properties, and timeline constructs.
 - Blank lines, including lines containing only spaces or tabs, are ignored.
