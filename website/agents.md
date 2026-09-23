@@ -147,7 +147,10 @@ Assign diagram text through the element's `source` property. Assigning different
 valid source starts a fresh editor session. A syntax error throws synchronously
 and preserves the current diagram. Visual edits emit `la-change` with
 `{ source }`, while rendering failures emit `la-error` with `{ error }`.
-External source assignment does not emit `la-change`.
+External source assignment does not emit `la-change` and discards an inline
+edit that has not been committed yet. Changing `theme`, `palette`, `mode`, or
+another attribute instead commits a pending inline edit and emits `la-change`
+synchronously, as does an operating-system theme change under `theme="auto"`.
 
 Prefer the built-in `theme="auto"` unless the diagram needs to blend into a
 specific host surface. The canvas is transparent by default, and built-in

@@ -89,6 +89,7 @@ function createElementClass() {
       if (source === this.source) {
         return;
       }
+      this.#destroyController();
       this.#source = source;
       this.#editor = null;
       this.#clearActorSelection();
@@ -353,6 +354,7 @@ function createElementClass() {
 
     #render(previousFrame = null) {
       this.#cancelModeTransition();
+      this.#controller?.commitPending?.();
       if (!this.source.trim()) {
         this.#destroyController();
         this.shadowRoot.replaceChildren();

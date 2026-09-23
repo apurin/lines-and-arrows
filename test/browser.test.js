@@ -814,6 +814,79 @@ test(
   },
 );
 
+test(
+  "source replacement drops an uncommitted inline edit without la-change",
+  async (testContext) => {
+    const page = await openPage(testContext);
+    const openInlineLabel = async (source) => {
+      await page.evaluate((initialSource) => {
+        document.querySelector("#pending")?.remove();
+        const diagram = document.createElement("lines-and-arrows");
+        diagram.id = "pending";
+        diagram.mode = "edit";
+        diagram.source = initialSource;
+        window.pendingChanges = [];
+        diagram.addEventListener("la-change", (event) =>
+          window.pendingChanges.push(event.detail.source),
+        );
+        document.body.append(diagram);
+      }, source);
+      const diagram = page.locator("#pending");
+      await diagram.getByRole("button", { name: "A to B: Start" }).click();
+      await diagram.getByLabel("Arrow label").fill("Uncommitted");
+    };
+
+    await openInlineLabel("A -> B: Start\n");
+    const replaced = await page.evaluate(async () => {
+      const diagram = document.querySelector("#pending");
+      const assigned = "C -> D: Replacement\n";
+      diagram.source = assigned;
+      const duringAssignment = [...window.pendingChanges];
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return {
+        duringAssignment,
+        afterAssignment: window.pendingChanges,
+        source: diagram.source,
+        assigned,
+        labels: [
+          ...diagram.shadowRoot.querySelectorAll(".la-message-label"),
+        ].map((label) => label.textContent),
+        inlineEditors: diagram.shadowRoot.querySelectorAll(
+          ".la-inline-message-editor",
+        ).length,
+        undoDisabled: diagram.shadowRoot
+          .querySelector('[aria-label="Undo"]')
+          .getAttribute("aria-disabled"),
+      };
+    });
+    assert.deepEqual(replaced.duringAssignment, []);
+    assert.deepEqual(replaced.afterAssignment, []);
+    assert.equal(replaced.source, replaced.assigned);
+    assert.deepEqual(replaced.labels, ["Replacement"]);
+    assert.equal(replaced.inlineEditors, 0);
+    assert.equal(replaced.undoDisabled, "true");
+
+    await openInlineLabel("A -> B: Start\n");
+    const switched = await page.evaluate(async () => {
+      const diagram = document.querySelector("#pending");
+      diagram.mode = "view";
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return {
+        changes: window.pendingChanges,
+        source: diagram.source,
+        labels: [
+          ...diagram.shadowRoot.querySelectorAll(".la-message-label"),
+        ].map((label) => label.textContent),
+      };
+    });
+    assert.deepEqual(switched, {
+      changes: ["A -> B: Uncommitted\n"],
+      source: "A -> B: Uncommitted\n",
+      labels: ["Uncommitted"],
+    });
+  },
+);
+
 test("constructor preserves diagram source in generated HTML", async (testContext) => {
   const context = await browser.newContext();
   testContext.after(() => context.close());

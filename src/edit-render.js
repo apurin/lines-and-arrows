@@ -2884,6 +2884,9 @@ export function renderEditor(target, editor, options = {}) {
     focusField = null,
     errorResult = null,
   ) {
+    if (destroyed) {
+      return errorResult;
+    }
     const previousDocument = editor.document;
     try {
       const result = command();
@@ -3176,6 +3179,9 @@ export function renderEditor(target, editor, options = {}) {
       focusField = null,
       deferDraw = false,
     ) => {
+      if (destroyed) {
+        return "unchanged";
+      }
       const previousDocument = editor.document;
       const patch = { ...extraPatch };
       if (dirtyFields.has("name")) {
@@ -3483,6 +3489,9 @@ export function renderEditor(target, editor, options = {}) {
       focusField = null,
       deferDraw = false,
     ) => {
+      if (destroyed) {
+        return "unchanged";
+      }
       const previousDocument = editor.document;
       const patch = {};
       if (dirtyFields.has("type")) {
@@ -3717,7 +3726,7 @@ export function renderEditor(target, editor, options = {}) {
     });
 
     const commit = (deferDraw = false) => {
-      if (!dirty) {
+      if (destroyed || !dirty) {
         return "unchanged";
       }
       const previousDocument = editor.document;
@@ -3928,6 +3937,9 @@ export function renderEditor(target, editor, options = {}) {
       focusField = null,
       deferDraw = false,
     ) => {
+      if (destroyed) {
+        return "unchanged";
+      }
       const previousDocument = editor.document;
       const patch = { ...extraPatch };
       if (dirtyFields.has("label")) {
@@ -4331,7 +4343,7 @@ export function renderEditor(target, editor, options = {}) {
     let cancelled = false;
     let committedValue = model.label;
     const commit = (focusAfter = false, deferDraw = false) => {
-      if (control.value === committedValue) {
+      if (destroyed || control.value === committedValue) {
         return;
       }
       if (!control.value.trim()) {
@@ -5443,6 +5455,15 @@ export function renderEditor(target, editor, options = {}) {
   draw();
 
   return {
+    commitPending() {
+      if (destroyed) {
+        return;
+      }
+      baseController?.svg
+        ?.closest(".la-frame")
+        ?.querySelector(":focus")
+        ?.blur();
+    },
     destroy() {
       destroyed = true;
       transient = null;
