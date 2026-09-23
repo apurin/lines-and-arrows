@@ -159,8 +159,12 @@ Stable npm releases are produced by the
 [release workflow](https://github.com/apurin/lines-and-arrows/blob/main/.github/workflows/release.yml)
 from an annotated `vX.Y.Z` tag whose commit is already on remote `main`.
 Release preparation runs `npm ci` and `npm run check`. After npm publication,
-`npm run website:prepare` synchronizes the website with the package version for
-its independent deployment.
+the workflow creates the GitHub release with the annotated tag message as its
+notes, so write that message as release notes: a summary line followed by the
+notable changes.
+
+`npm run website:prepare` then synchronizes the website with the package
+version for its independent deployment.
 
 ## License
 

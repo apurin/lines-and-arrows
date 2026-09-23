@@ -117,7 +117,8 @@ If the current branch has unrelated commits or worktree changes, do not tag or
 push from that mixed history. Prepare the release from a clean checkout of
 `origin/main`, apply only the intended release changes, verify them, push that
 commit to `main`, and confirm the remote branch contains it. Only then create
-and push the annotated release tag.
+and push the annotated release tag. The tag message becomes the GitHub release
+notes, so write it as notes rather than a bare version.
 
 Package releases otherwise follow the trusted-publishing procedure documented
 in the [README](./README.md#publishing). Website deployment is independent of
