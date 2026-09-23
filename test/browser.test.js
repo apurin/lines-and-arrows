@@ -820,7 +820,12 @@ test("view canvases stay at natural size, shrink, then scroll", async (
         const view = { width: width(), sizing: inlineSizing(element) };
         element.mode = "edit";
         const toEdit = await settle(element);
-        const edit = { width: width(), sizing: inlineSizing(element) };
+        const edit = {
+          width: width(),
+          natural: element.shadowRoot.querySelector(".la-canvas").viewBox
+            .baseVal.width,
+          sizing: inlineSizing(element),
+        };
         element.mode = "view";
         const toView = await settle(element);
         const restored = { width: width(), sizing: inlineSizing(element) };
@@ -892,13 +897,16 @@ test("view canvases stay at natural size, shrink, then scroll", async (
   assert.equal(result.edit.width, 1200);
   assert.equal(result.edit.afterTransition, result.edit.viewNatural);
 
+  // The editor fills its container but never drops below its natural width,
+  // so in a narrow container the transition widens the canvas.
   const narrow = result.narrowTransition;
   assert.ok(narrow.view.width > 375, JSON.stringify(narrow.view));
-  assert.equal(narrow.edit.width, 375);
+  assert.equal(narrow.edit.width, narrow.edit.natural);
+  assert.ok(narrow.edit.width > narrow.view.width, JSON.stringify(narrow));
   assert.deepEqual(narrow.restored, narrow.view);
   assert.deepEqual(narrow.edit.sizing, {
     width: "",
-    minWidth: "",
+    minWidth: `${narrow.edit.natural}px`,
     maxWidth: "",
   });
   for (const [from, to, widths] of [
@@ -3402,5 +3410,266 @@ test("clicking into an open editor from a later element keeps focus", async (
   assert.equal(
     await page.evaluate(() => window.changes.length),
     0,
+  );
+});
+
+test("edit mode keeps controls full size on a phone and scrolls", async (
+  testContext,
+) => {
+  const page = await openPage(testContext);
+  await page.setViewportSize({ width: 375, height: 812 });
+  const source =
+    "@A\n@B\n@C\n@D\n@E\n\nA -> B: First\n  tooltip Why\n" +
+    "B -> C: Second\nB -> C: Third";
+  await page.evaluate((diagramSource) => {
+    document.querySelector("main").remove();
+    for (const mode of ["edit", "view"]) {
+      const diagram = document.createElement("lines-and-arrows");
+      diagram.id = `phone-${mode}`;
+      diagram.mode = mode;
+      diagram.branding = false;
+      diagram.source = diagramSource;
+      document.body.append(diagram);
+    }
+  }, source);
+  const element = page.locator("#phone-edit");
+  const geometry = () =>
+    element.evaluate((node) => {
+      const root = node.shadowRoot;
+      const frame = root.querySelector(".la-frame");
+      const canvas = root.querySelector(".la-canvas");
+      const size = (selector) => {
+        const rect = root.querySelector(selector).getBoundingClientRect();
+        return Math.min(rect.width, rect.height);
+      };
+      return {
+        natural: canvas.viewBox.baseVal.width,
+        width: canvas.getBoundingClientRect().width,
+        frameWidth: frame.clientWidth,
+        scrollWidth: frame.scrollWidth,
+        controls: {
+          insertion: size(".la-insertion-circle[tabindex]"),
+          tooltip: size(".la-tooltip-trigger-shape"),
+          handle: size(".la-reorder-handle circle"),
+        },
+      };
+    });
+
+  const edit = await geometry();
+  assert.equal(edit.width, edit.natural, JSON.stringify(edit));
+  assert.ok(edit.scrollWidth > edit.frameWidth, JSON.stringify(edit));
+  // Scale 1.0 keeps every control at its designed size; the smallest is
+  // the 16 px insertion mark.
+  assert.deepEqual(edit.controls, { insertion: 16, tooltip: 20, handle: 22 });
+
+  // Each control takes pointers across a target at least 24 px wide and
+  // tall around its smaller visible shape. A circle's transparent stroke is
+  // outside its bounding box, so circles are probed 11.5 px from center;
+  // other controls include their target in the box and are probed 0.5 px
+  // inside each edge of a box at least 24 px on each side. The timeline
+  // insertion band is drawn above a message's metadata row and takes the
+  // lowest pixels of its tooltip trigger, so that edge is not probed there.
+  const hitTargets = (selectors, skipBottom = false) =>
+    element.evaluate((node, { list, skip }) => {
+      const root = node.shadowRoot;
+      return Object.fromEntries(
+        list.map((selector) => {
+          const controls = [...root.querySelectorAll(selector)].filter(
+            (control) => control.getClientRects().length > 0,
+          );
+          return [
+            selector,
+            controls.every((control) => {
+              const rect = control.getBoundingClientRect();
+              const x = rect.left + rect.width / 2;
+              const y = rect.top + rect.height / 2;
+              const circle = control.tagName === "circle";
+              if (!circle && (rect.width < 24 || rect.height < 24)) {
+                return false;
+              }
+              const reachX = circle ? 11.5 : rect.width / 2 - 0.5;
+              const reachY = circle ? 11.5 : rect.height / 2 - 0.5;
+              return [
+                [x - reachX, y],
+                [x + reachX, y],
+                [x, y - reachY],
+                ...(skip ? [] : [[x, y + reachY]]),
+              ].every(([pointX, pointY]) => {
+                const hit = root.elementFromPoint(pointX, pointY);
+                return hit === control || control.contains(hit);
+              });
+            }) && controls.length > 0,
+          ];
+        }),
+      );
+    }, { list: selectors, skip: skipBottom });
+  assert.deepEqual(await hitTargets([".la-insertion-circle[tabindex]"]), {
+    ".la-insertion-circle[tabindex]": true,
+  });
+  assert.deepEqual(await hitTargets([".la-tooltip-trigger"], true), {
+    ".la-tooltip-trigger": true,
+  });
+  assert.deepEqual(
+    await element.evaluate((node) => {
+      const rect = node.shadowRoot
+        .querySelector(".la-tooltip-trigger-hit")
+        .getBoundingClientRect();
+      return [rect.width, rect.height];
+    }),
+    [24, 24],
+  );
+
+  const view = await page.locator("#phone-view").evaluate((node) => {
+    const frame = node.shadowRoot.querySelector(".la-frame");
+    const canvas = node.shadowRoot.querySelector(".la-canvas");
+    return {
+      natural: canvas.viewBox.baseVal.width,
+      width: canvas.getBoundingClientRect().width,
+      scrolls: frame.scrollWidth > frame.clientWidth,
+    };
+  });
+  assert.ok(
+    Math.abs(view.width - view.natural * 0.75) < 0.5,
+    JSON.stringify(view),
+  );
+  assert.equal(view.scrolls, true);
+
+  // A shown tooltip follows its trigger when the frame scrolls.
+  const tooltipOffsets = await page.locator("#phone-view").evaluate(
+    async (node) => {
+      const frame = node.shadowRoot.querySelector(".la-frame");
+      const trigger = node.shadowRoot.querySelector(".la-tooltip-trigger");
+      const popover = node.shadowRoot.querySelector(".la-tooltip-popover");
+      const offset = () => {
+        const anchor = trigger.getBoundingClientRect();
+        const tip = popover.getBoundingClientRect();
+        return {
+          trigger: anchor.left,
+          offset: tip.left + tip.width / 2 - (anchor.left + anchor.width / 2),
+        };
+      };
+      trigger.focus();
+      const before = offset();
+      frame.scrollLeft = 30;
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      return { before, after: offset() };
+    },
+  );
+  assert.equal(
+    tooltipOffsets.after.trigger,
+    tooltipOffsets.before.trigger - 30,
+  );
+  assert.ok(
+    Math.abs(tooltipOffsets.after.offset - tooltipOffsets.before.offset) < 0.5,
+    JSON.stringify(tooltipOffsets),
+  );
+
+  // Inline editors and the marquee use the scrolled frame's coordinates.
+  const scrollTo = (left) =>
+    element.evaluate(async (node, scrollLeft) => {
+      node.shadowRoot.querySelector(".la-frame").scrollLeft = scrollLeft;
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }, left);
+  const rowCenter = (label) =>
+    element.evaluate((node, name) => {
+      const message = node.shadowRoot.querySelector(
+        `.la-message[aria-label="${name}"]`,
+      );
+      const line = message
+        .querySelector(".la-message-line")
+        .getBoundingClientRect();
+      const text = message
+        .querySelector(".la-message-label")
+        .getBoundingClientRect();
+      return {
+        lineX: line.left + line.width / 2,
+        lineY: line.top + line.height / 2,
+        labelX: text.left + text.width / 2,
+        labelY: text.top + text.height / 2,
+      };
+    }, label);
+  const labelField = () =>
+    element.evaluate((node) => {
+      const rect = node.shadowRoot
+        .querySelector(".la-inline-message-label")
+        .getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+        left: rect.left,
+        right: rect.right,
+      };
+    });
+
+  await scrollTo(200);
+  const second = await rowCenter("B to C: Second");
+  assert.ok(
+    second.lineX > 0 && second.lineX < 375,
+    JSON.stringify(second),
+  );
+  await page.mouse.click(second.lineX, second.lineY);
+  assert.equal(
+    await element.evaluate(
+      (node) => node.shadowRoot.querySelector(".la-frame").scrollLeft,
+    ),
+    200,
+  );
+  let field = await labelField();
+  assert.ok(field.left >= 0 && field.right <= 375, JSON.stringify(field));
+  assert.ok(Math.abs(field.x - second.labelX) < 1, JSON.stringify(field));
+  assert.ok(Math.abs(field.y - second.labelY) < 3, JSON.stringify(field));
+
+  // The editor toolbar keeps 18 px controls inside 24 px targets.
+  const toolbar = ".la-inline-message-endpoint, .la-inline-message-arrow-style";
+  assert.deepEqual(
+    await element.evaluate((node, selector) =>
+      [...node.shadowRoot.querySelectorAll(selector)].map((control) => {
+        const rect = control.getBoundingClientRect();
+        return [
+          control.getAttribute("aria-label"),
+          rect.width >= 24 && rect.height >= 24,
+          control.clientHeight,
+        ];
+      }),
+    toolbar),
+    [
+      ["Arrow source", true, 18],
+      ["Solid arrow", true, 18],
+      ["Dashed arrow", true, 18],
+      ["Lost message", true, 18],
+      ["Arrow target", true, 18],
+    ],
+  );
+  assert.deepEqual(await hitTargets([toolbar]), { [toolbar]: true });
+
+  await scrollTo(150);
+  field = await labelField();
+  assert.ok(Math.abs(field.x - (second.labelX + 50)) < 1, JSON.stringify(field));
+
+  await page.keyboard.press("Escape");
+  await scrollTo(200);
+  const third = await rowCenter("B to C: Third");
+  const lifelines = await element.evaluate((node) =>
+    [...node.shadowRoot.querySelectorAll(".la-lifeline")].map((line) => {
+      const rect = line.getBoundingClientRect();
+      return rect.left + rect.width / 2;
+    }),
+  );
+  // Start between the C and D lifelines, clear of both messages.
+  const [, , c, d] = lifelines;
+  await page.mouse.move((c + d) / 2, second.lineY - 4);
+  await page.mouse.down();
+  await page.mouse.move(d - 20, third.lineY + 4, { steps: 4 });
+  await page.mouse.up();
+  assert.deepEqual(
+    await element.evaluate((node) =>
+      [
+        ...node.shadowRoot.querySelectorAll(
+          '.la-message[data-selected="true"]',
+        ),
+      ].map((message) => message.getAttribute("aria-label")),
+    ),
+    ["B to C: Second", "B to C: Third"],
   );
 });

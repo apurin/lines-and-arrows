@@ -33,6 +33,15 @@ const LIFELINE_LABEL_BASELINE_OFFSET = 14;
 // horizontally: 0.75 keeps 11 px message labels at about 8 px and 13 px
 // actor names near 10 px.
 const VIEW_MIN_SCALE = 0.75;
+// Edit-mode canvases fill their container but stop shrinking at their natural
+// width and scroll horizontally below it. Editor controls are drawn in
+// diagram units, so any smaller scale shrinks their targets: the view floor
+// would turn a 16 px insertion mark into 12 px, and fitting a five-actor
+// diagram onto a 375 px phone made it 7 px. Scale 1.0 keeps every control at
+// its designed size.
+const EDIT_MIN_SCALE = 1;
+// Minimum pointer target for small controls, in diagram units.
+export const CONTROL_HIT_SIZE = 24;
 let tooltipSequence = 0;
 
 const VIEW_STYLES = `
@@ -991,7 +1000,21 @@ function renderMetadata(
     "aria-describedby": id,
     "aria-expanded": "false",
   });
+  // A transparent target around the visible control keeps it at least
+  // CONTROL_HIT_SIZE wide and tall at scale 1.0, the editor's minimum. It
+  // grows upward: the timeline insertion band below a message's metadata
+  // row sits above it and would take the lower edge.
+  const hitSize = Math.max(triggerSize, CONTROL_HIT_SIZE);
   trigger.append(
+    svgElement("rect", {
+      class: "la-tooltip-trigger-hit",
+      x: -(hitSize - triggerSize) / 2,
+      y: triggerSize - hitSize,
+      width: hitSize,
+      height: hitSize,
+      fill: "transparent",
+      "pointer-events": "all",
+    }),
     svgElement("rect", {
       class: "la-tooltip-trigger-shape",
       width: triggerSize,
@@ -1042,15 +1065,22 @@ function renderMetadata(
   let pinned = false;
   let tracking = false;
   const position = () => positionTooltipPopover(popover, trigger);
+  // A frame's own scroll does not reach window listeners from inside the
+  // shadow root, so the frame is tracked separately.
+  let scrollingFrame = null;
   const setTracking = (enabled) => {
     if (tracking === enabled) {
       return;
     }
     tracking = enabled;
     if (enabled) {
+      scrollingFrame = trigger.closest(".la-frame");
+      scrollingFrame?.addEventListener("scroll", position);
       globalThis.addEventListener("scroll", position, true);
       globalThis.addEventListener("resize", position);
     } else {
+      scrollingFrame?.removeEventListener("scroll", position);
+      scrollingFrame = null;
       globalThis.removeEventListener("scroll", position, true);
       globalThis.removeEventListener("resize", position);
     }
@@ -2577,7 +2607,9 @@ function renderDiagramSurface(
     preserveAspectRatio: "xMinYMin meet",
   });
   svg.style.aspectRatio = `${layout.width} / ${layout.height}`;
-  if (selectionMode !== "editor") {
+  if (selectionMode === "editor") {
+    svg.style.minWidth = `${layout.width * EDIT_MIN_SCALE}px`;
+  } else {
     svg.style.maxWidth = `${layout.width}px`;
     svg.style.minWidth = `${layout.width * VIEW_MIN_SCALE}px`;
   }

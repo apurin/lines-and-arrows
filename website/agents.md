@@ -100,7 +100,7 @@ Set configuration through attributes on `<lines-and-arrows>`:
 
 | Attribute | Values and behavior |
 | --- | --- |
-| `mode` | `view` by default. Use `edit` to enable the visual editor, undo and redo controls, and editing keyboard shortcuts. Editing also works from the keyboard alone: Tab follows the diagram layout, and each timeline insertion mark offers Message, Group, and Gap. |
+| `mode` | `view` by default. Use `edit` to enable the visual editor, undo and redo controls, and editing keyboard shortcuts. Editing also works from the keyboard alone: Tab follows the diagram layout, and each timeline insertion mark offers Message, Group, and Gap. The editor fills its container but never shrinks below its natural width, so its controls keep their full size and a narrow screen such as a phone scrolls horizontally instead. |
 | `selectable-actors` | Boolean attribute. View mode is static by default; add this attribute to let people select actors. Edit mode keeps its own required selection behavior. |
 | `branding` | The compact header shows “Powered by Lines & Arrows” by default. Use `false` to hide the attribution text. |
 | `copy-source` | The Copy source action is shown by default. Use `false` to hide it. |

@@ -18,7 +18,7 @@ import {
   metadataMetrics,
   selfMessageWidth,
 } from "./metadata.js";
-import { renderDiagramForEditor } from "./render.js";
+import { CONTROL_HIT_SIZE, renderDiagramForEditor } from "./render.js";
 import { estimatedTextWidth, graphemes } from "./text.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -38,10 +38,6 @@ const EDIT_STYLES = `
   .la-frame[data-mode="edit"] {
     --la-inline-scale: 1;
     position: relative;
-  }
-
-  .la-frame[data-mode="edit"] .la-canvas {
-    min-width: min(720px, 100%);
   }
 
   .la-frame[data-mode="edit"]:focus-visible {
@@ -899,6 +895,11 @@ const EDIT_STYLES = `
   }
 
   .la-inline-message-toolbar {
+    /* Transparent borders widen each 18 px control to a 24 px target. */
+    --la-inline-hit-inset: max(
+      0px,
+      (24px - 18px * var(--la-inline-scale)) / 2
+    );
     position: absolute;
     z-index: 6;
     display: flex;
@@ -919,15 +920,23 @@ const EDIT_STYLES = `
 
   .la-inline-message-endpoint {
     box-sizing: border-box;
-    max-width: calc(96px * var(--la-inline-scale));
-    height: calc(18px * var(--la-inline-scale));
+    max-width: calc(
+      96px * var(--la-inline-scale) + var(--la-inline-hit-inset) * 2
+    );
+    height: calc(
+      18px * var(--la-inline-scale) + var(--la-inline-hit-inset) * 2
+    );
     margin: 0;
     padding: 0 calc(4px * var(--la-inline-scale));
     cursor: pointer;
-    border: 1px solid var(--la-section-line);
-    border-radius: calc(9px * var(--la-inline-scale));
+    border: var(--la-inline-hit-inset) solid transparent;
+    border-radius: calc(
+      9px * var(--la-inline-scale) + var(--la-inline-hit-inset)
+    );
     outline: none;
     background: var(--la-surface);
+    background-clip: padding-box;
+    box-shadow: inset 0 0 0 1px var(--la-section-line);
     color: var(--la-text);
     font: 560 calc(10px * var(--la-inline-scale)) / 1 var(
         --la-font-family,
@@ -940,34 +949,43 @@ const EDIT_STYLES = `
 
   .la-inline-message-endpoint:hover,
   .la-inline-message-endpoint:focus-visible {
-    border-color: var(--la-selection);
+    box-shadow: inset 0 0 0 1px var(--la-selection);
   }
 
   .la-inline-message-arrow-style {
     display: grid;
-    width: calc(18px * var(--la-inline-scale));
-    min-width: calc(18px * var(--la-inline-scale));
-    height: calc(18px * var(--la-inline-scale));
+    width: calc(
+      18px * var(--la-inline-scale) + var(--la-inline-hit-inset) * 2
+    );
+    min-width: calc(
+      18px * var(--la-inline-scale) + var(--la-inline-hit-inset) * 2
+    );
+    height: calc(
+      18px * var(--la-inline-scale) + var(--la-inline-hit-inset) * 2
+    );
     margin: 0;
     padding: 0;
     place-items: center;
     cursor: pointer;
-    border: 1px solid var(--la-section-line);
+    border: var(--la-inline-hit-inset) solid transparent;
     border-radius: 50%;
     outline: none;
     background: var(--la-surface);
+    background-clip: padding-box;
+    box-shadow: inset 0 0 0 1px var(--la-section-line);
     color: var(--la-muted-text);
   }
 
   .la-inline-message-arrow-style:hover,
   .la-inline-message-arrow-style:focus-visible {
-    border-color: var(--la-selection);
+    box-shadow: inset 0 0 0 1px var(--la-selection);
     color: var(--la-text);
   }
 
   .la-inline-message-arrow-style[aria-pressed="true"] {
-    border-color: var(--la-selection);
+    box-shadow: inset 0 0 0 1px var(--la-selection);
     background: var(--la-accent-soft);
+    background-clip: padding-box;
     color: var(--la-text);
   }
 
@@ -1881,6 +1899,10 @@ function observePosition(element, position) {
   };
   const resizeObserver = new ResizeObserver(reposition);
   resizeObserver.observe(element);
+  // The frame scrolls horizontally below the editor's minimum scale. Its
+  // scroll events stay inside the shadow root and never reach the window.
+  const scrollingFrame = element.closest(".la-frame");
+  scrollingFrame?.addEventListener("scroll", reposition);
   globalThis.addEventListener("scroll", reposition, true);
   globalThis.addEventListener("resize", reposition);
 
@@ -1888,6 +1910,7 @@ function observePosition(element, position) {
     reposition,
     disconnect() {
       resizeObserver.disconnect();
+      scrollingFrame?.removeEventListener("scroll", reposition);
       globalThis.removeEventListener("scroll", reposition, true);
       globalThis.removeEventListener("resize", reposition);
       if (frame !== null) {
@@ -2561,12 +2584,17 @@ function insertionMark(
       slot.controlX ??
       slot.left + TIMELINE_INSERTION_CONTROL_OFFSET;
     const hitLeft = Math.min(slot.left, controlX - 10);
+    // A transparent stroke, centered on the edge, widens the pointer target
+    // to CONTROL_HIT_SIZE without changing the visible circle.
     const circle = svgElement("circle", {
       class: "la-insertion-circle",
       cx: controlX,
       cy: slot.y,
       r: TIMELINE_INSERTION_CONTROL_RADIUS,
       fill: "var(--la-selection)",
+      stroke: "transparent",
+      "stroke-width":
+        CONTROL_HIT_SIZE - TIMELINE_INSERTION_CONTROL_RADIUS * 2,
       "pointer-events": "all",
     });
     if (interactionOptions.controlOnly) {

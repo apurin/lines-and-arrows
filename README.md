@@ -62,7 +62,9 @@ collapsed, and selection and controls are left out.
 
 A view never grows past its natural width and sits at the left edge of its
 container. In a narrower container it shrinks down to 75% of that width, then
-scrolls horizontally.
+scrolls horizontally. The editor fills its container but never shrinks below
+its natural width, so its controls keep their full size and a narrow screen
+such as a phone scrolls horizontally instead.
 
 Built-in icons load from the pinned Phosphor package on jsDelivr. Allow that
 origin in browser content policies, or omit icon properties for offline embeds.
