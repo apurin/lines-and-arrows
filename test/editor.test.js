@@ -126,6 +126,45 @@ test("actor removal deletes references and empty wrappers", () => {
   assert.match(editor.source, /API --> Client: Done/);
 });
 
+test("removals that would empty the timeline are refused with a reason", () => {
+  const keepOne = /^A diagram must keep at least one message or gap\.$/;
+  const refuses = (source, command, expected = keepOne) => {
+    const editor = new DiagramEditor(source);
+    const before = editor.document;
+    assert.throws(
+      () => command(editor),
+      (error) =>
+        error.constructor === Error &&
+        expected.test(error.message) &&
+        !/Line \d/.test(error.message),
+    );
+    assert.equal(editor.document, before);
+    assert.equal(editor.canUndo, false);
+  };
+
+  refuses("A -> B: Start", (editor) =>
+    editor.removeItem(editor.document.items[0].id),
+  );
+  refuses("gap Later", (editor) =>
+    editor.removeItem(editor.document.items[0].id),
+  );
+  refuses("A -> B: Start\nA -> B: Done", (editor) =>
+    editor.removeItems(editor.document.items.map(({ id }) => id)),
+  );
+  refuses("opt Retry\n  A -> B: Start", (editor) =>
+    editor.removeItem(editor.document.items[0].body[0].id),
+  );
+  refuses(
+    "A -> B: Start\nopt Retry\n  B -> A: Done",
+    (editor) => editor.removeActor(editor.document.actors[0].id),
+    /^Removing actor "A" would also remove every message; a diagram must keep at least one message or gap\.$/,
+  );
+
+  const editor = new DiagramEditor("A -> B: Start\ngap Later");
+  editor.removeActor(editor.document.actors[0].id);
+  assert.equal(editor.source, "@B\n\ngap Later\n");
+});
+
 test("invalid commands leave the current snapshot and history unchanged", () => {
   const editor = new DiagramEditor(SOURCE);
   const beforeDocument = editor.document;

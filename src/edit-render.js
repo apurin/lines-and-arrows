@@ -32,6 +32,7 @@ const GROUP_EDITOR_HANDLE_GAP = 1;
 const GROUP_EDITOR_LEFT_INSET =
   GROUP_REORDER_HANDLE_RADIUS * 2 + GROUP_EDITOR_HANDLE_GAP;
 const GROUP_EDITOR_RIGHT_INSET = 10;
+const STATUS_DURATION = 5000;
 
 const EDIT_STYLES = `
   .la-frame[data-mode="edit"] {
@@ -1396,6 +1397,42 @@ const EDIT_STYLES = `
     margin: 8px 0 0;
     color: var(--la-danger);
     font-size: 11px;
+  }
+
+  .la-edit-status {
+    position: absolute;
+    z-index: 6;
+    top: 8px;
+    left: 50%;
+    box-sizing: border-box;
+    width: max-content;
+    max-width: min(360px, calc(100% - 16px));
+    margin: 0;
+    padding: 6px 10px;
+    border: 1px solid
+      color-mix(in srgb, var(--la-danger) 40%, var(--la-section-line));
+    border-radius: 8px;
+    background: var(--la-surface);
+    color: var(--la-danger);
+    box-shadow: 0 3px 10px
+      color-mix(in srgb, var(--la-text) 10%, transparent);
+    font: 600 11px/1.35 var(
+      --la-font-family,
+      ui-sans-serif,
+      system-ui,
+      sans-serif
+    );
+    text-align: center;
+    pointer-events: none;
+    transform: translateX(-50%);
+  }
+
+  /* The live region stays rendered while empty so screen readers announce
+     the next message placed in it. */
+  .la-edit-status:empty {
+    padding: 0;
+    border: 0;
+    box-shadow: none;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -2875,6 +2912,7 @@ export function renderEditor(target, editor, options = {}) {
   let pendingFocus = null;
   let pendingInlineDraw = null;
   let pressActive = false;
+  let statusTimer = null;
   let inlineDrawAfterPress = null;
 
   function notifyChange() {
@@ -2884,9 +2922,43 @@ export function renderEditor(target, editor, options = {}) {
     options.onChange?.(detail);
   }
 
+  function clearStatus() {
+    clearTimeout(statusTimer);
+    statusTimer = null;
+  }
+
+  // Errors without a popover, such as a refused keyboard delete or drop,
+  // are explained in the frame's status line until the next redraw.
+  function showStatus(error) {
+    const frame = baseController?.svg?.closest(".la-frame");
+    const status = frame?.querySelector(".la-edit-status");
+    if (!status) {
+      return;
+    }
+    clearStatus();
+    // Sit below the header row so the status never covers undo and redo.
+    const actions = frame.querySelector(".la-header-actions");
+    if (actions) {
+      const top =
+        actions.getBoundingClientRect().bottom -
+        frame.getBoundingClientRect().top +
+        frame.scrollTop +
+        6;
+      status.style.top = `${top}px`;
+    }
+    status.textContent =
+      error instanceof Error ? error.message : "The edit could not be applied.";
+    statusTimer = setTimeout(() => {
+      statusTimer = null;
+      status.textContent = "";
+    }, STATUS_DURATION);
+  }
+
   function notifyError(error, popover = null) {
     if (popover) {
       showError(popover, error);
+    } else {
+      showStatus(error);
     }
     options.onError?.(error);
   }
@@ -2922,6 +2994,22 @@ export function renderEditor(target, editor, options = {}) {
       notifyError(error, popover);
       return errorResult;
     }
+  }
+
+  // Pressing a delete control cancels its inline editor's commit on blur.
+  // The caller restores that commit when the removal is refused and the
+  // editor stays open.
+  function runRemoval(command, popover = null) {
+    return run(
+      () => {
+        command();
+        return true;
+      },
+      [],
+      popover,
+      null,
+      false,
+    );
   }
 
   function focusPendingField(frame, defer = false) {
@@ -3414,7 +3502,9 @@ export function renderEditor(target, editor, options = {}) {
     deleteControl.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      run(() => editor.removeActor(model.id), []);
+      if (!runRemoval(() => editor.removeActor(model.id))) {
+        cancelled = false;
+      }
     });
 
     inlineEditor.cleanup = () => {
@@ -3617,7 +3707,9 @@ export function renderEditor(target, editor, options = {}) {
     deleteControl.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      run(() => editor.removeItem(model.id), []);
+      if (!runRemoval(() => editor.removeItem(model.id))) {
+        cancelled = false;
+      }
     });
 
     typeControl.addEventListener("keydown", (event) => {
@@ -3832,7 +3924,9 @@ export function renderEditor(target, editor, options = {}) {
     deleteControl.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      run(() => editor.removeSection(model.id), []);
+      if (!runRemoval(() => editor.removeSection(model.id))) {
+        cancelled = false;
+      }
     });
 
     const positionEditor = () => {
@@ -4287,7 +4381,9 @@ export function renderEditor(target, editor, options = {}) {
     deleteControl.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      run(() => editor.removeItem(model.id), []);
+      if (!runRemoval(() => editor.removeItem(model.id))) {
+        cancelled = false;
+      }
     });
 
     inlineEditor.cleanup = () => {
@@ -4466,7 +4562,12 @@ export function renderEditor(target, editor, options = {}) {
       event.preventDefault();
       event.stopPropagation();
       cancelled = true;
-      run(() => editor.removeItem(model.id), [], body);
+      if (!runRemoval(() => editor.removeItem(model.id))) {
+        cancelled = false;
+        // The delete control sits outside the label editor, so focus
+        // returns to the label, whose blur commits a pending edit.
+        control.focus({ preventScroll: true });
+      }
     };
     deleteControl.addEventListener("pointerdown", (event) => {
       cancelled = true;
@@ -4807,6 +4908,11 @@ export function renderEditor(target, editor, options = {}) {
     frame.prepend(editStyle);
     frame.dataset.mode = "edit";
     frame.tabIndex = 0;
+    const status = document.createElement("p");
+    status.className = "la-edit-status";
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    frame.append(status);
     for (const group of layout.groups) {
       const element = svg.querySelector(`[data-la-id="${CSS.escape(group.id)}"]`);
       element?.querySelector("rect")?.setAttribute(
@@ -5474,6 +5580,7 @@ export function renderEditor(target, editor, options = {}) {
       return;
     }
     cancelInlineDraw();
+    clearStatus();
 
     const previousFrame = baseController?.svg?.closest(".la-frame");
     const previousFocus = captureFocus(previousFrame);
@@ -5548,6 +5655,7 @@ export function renderEditor(target, editor, options = {}) {
       transient = null;
       activeCancel?.();
       cancelInlineDraw();
+      clearStatus();
       const frame = baseController?.svg?.closest(".la-frame");
       removeContextualEditor(frame);
       baseController?.destroy();

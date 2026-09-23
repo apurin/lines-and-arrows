@@ -2825,3 +2825,144 @@ test("mouse drags select a range, reconnect, and reorder", async (
     "A -> B: Two\nA -> C: One\nA -> B: Three\n",
   );
 });
+
+test("refused deletions explain themselves in the editor", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "@A\n@B\n@C\n\nA -> B: Start",
+  );
+  await page.clock.install();
+  await page.evaluate(() => {
+    window.editorErrors = [];
+    document
+      .querySelector("#focus-editor")
+      .addEventListener("la-error", (event) =>
+        window.editorErrors.push(event.detail.error.message),
+      );
+  });
+  const source = () => element.evaluate((node) => node.source);
+  const status = element.getByRole("status");
+  const keepOne = "A diagram must keep at least one message or gap.";
+  const actorOwnsAll =
+    'Removing actor "A" would also remove every message; ' +
+    "a diagram must keep at least one message or gap.";
+  const statusText = () =>
+    element.evaluate((node) =>
+      [...node.shadowRoot.querySelectorAll(".la-edit-status")].map(
+        (item) => item.textContent,
+      ),
+    );
+
+  assert.deepEqual(await statusText(), [""]);
+  await element.getByRole("button", { name: "A to B: Start" }).click();
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector(".la-frame").focus(),
+  );
+  await page.keyboard.press("Delete");
+  assert.equal(await source(), "@A\n\n@B\n\n@C\n\nA -> B: Start\n");
+  assert.deepEqual(await selectedLabels(element), ["A to B: Start"]);
+  assert.equal(await status.textContent(), keepOne);
+  assert.equal(await status.isVisible(), true);
+  assert.equal(await status.getAttribute("aria-live"), "polite");
+
+  await element.getByRole("button", { name: /^Actor A/ }).click();
+  const name = element.getByLabel("Actor name");
+  await name.fill("Alpha");
+  await element
+    .getByRole("button", { name: "Delete actor and messages" })
+    .click();
+  assert.deepEqual(await statusText(), [actorOwnsAll]);
+  assert.deepEqual(await page.evaluate(() => window.editorErrors), [
+    keepOne,
+    actorOwnsAll,
+  ]);
+  assert.equal(await source(), "@A\n\n@B\n\n@C\n\nA -> B: Start\n");
+
+  // The refused delete leaves the inline editor committing on blur.
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector(".la-frame").focus(),
+  );
+  await page.waitForFunction(() =>
+    document.querySelector("#focus-editor").source.includes("@Alpha"),
+  );
+  await page.clock.runFor(10);
+  assert.deepEqual(await statusText(), [""]);
+
+  await element.getByRole("button", { name: "Alpha to B: Start" }).click();
+  await page.keyboard.press("Escape");
+  await element.getByRole("button", { name: "Alpha to B: Start" }).click();
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector(".la-frame").focus(),
+  );
+  await page.keyboard.press("Backspace");
+  assert.equal(await status.textContent(), keepOne);
+  await page.clock.runFor(4000);
+  assert.equal(await status.textContent(), keepOne);
+  await page.clock.runFor(1500);
+  assert.equal(await status.textContent(), "");
+
+  await page.keyboard.press("Backspace");
+  assert.equal(await status.textContent(), keepOne);
+  await element.getByRole("button", { name: /^Actor C/ }).click();
+  await element
+    .getByRole("button", { name: "Delete actor and messages" })
+    .click();
+  assert.equal(await source(), "Alpha -> B: Start\n");
+  assert.deepEqual(await statusText(), [""]);
+
+  // On a phone-width frame the status sits below undo and redo.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await element.getByRole("button", { name: "Alpha to B: Start" }).click();
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector(".la-frame").focus(),
+  );
+  await page.keyboard.press("Delete");
+  assert.equal(await status.textContent(), keepOne);
+  assert.equal(
+    await element.evaluate((node) => {
+      const status = node.shadowRoot
+        .querySelector(".la-edit-status")
+        .getBoundingClientRect();
+      return [
+        ...node.shadowRoot.querySelectorAll(".la-history-control"),
+      ].some((control) => {
+        const rect = control.getBoundingClientRect();
+        return (
+          rect.left < status.right &&
+          status.left < rect.right &&
+          rect.top < status.bottom &&
+          status.top < rect.bottom
+        );
+      });
+    }),
+    false,
+  );
+});
+
+test("a refused gap delete keeps the typed label and the selection free", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "@A\n@B\n\ngap Wait",
+  );
+  const changes = await recordChanges(page, "#focus-editor");
+  await element.getByRole("button", { name: "Gap: Wait" }).click();
+  await element.getByLabel("Gap label").fill("Later");
+  await element.getByRole("button", { name: "Delete gap" }).click();
+  assert.equal(
+    await element.getByRole("status").textContent(),
+    "A diagram must keep at least one message or gap.",
+  );
+  assert.equal(await element.locator(".la-edit-error").count(), 0);
+  assert.deepEqual(await changes(), []);
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector(".la-frame").focus(),
+  );
+  await page.waitForFunction(() =>
+    document.querySelector("#focus-editor").source.includes("gap Later"),
+  );
+  assert.deepEqual(await changes(), ["@A\n\n@B\n\ngap Later\n"]);
+});

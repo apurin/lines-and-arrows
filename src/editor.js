@@ -19,6 +19,9 @@ import {
 } from "./grammar.js";
 import { encodeText } from "./text.js";
 
+const EMPTY_TIMELINE_MESSAGE =
+  "A diagram must keep at least one message or gap.";
+
 class EditorIdAllocator {
   #nextByKind = new Map();
 
@@ -225,6 +228,11 @@ export class DiagramEditor {
     const before = this.#snapshot;
     const draft = cloneDocument(before.document);
     const result = mutate(draft);
+    // Refuse before serialization, whose syntax error would name a line of
+    // source the person editing never wrote.
+    if (draft.items.length === 0) {
+      throw new Error(EMPTY_TIMELINE_MESSAGE);
+    }
     const afterSource = serialize(draft);
 
     if (afterSource === before.source) {
@@ -348,6 +356,12 @@ export class DiagramEditor {
       document.items = pruneTimeline(document.items, {
         actorName: actor.name,
       });
+      if (document.items.length === 0) {
+        throw new Error(
+          `Removing actor "${actor.name}" would also remove every message; ` +
+            "a diagram must keep at least one message or gap.",
+        );
+      }
       return null;
     });
   }

@@ -153,7 +153,9 @@ Assign diagram text through the element's `source` property. Assigning different
 valid source starts a fresh editor session. A syntax error throws synchronously
 and preserves the current diagram. The property is never reflected to the
 `source` attribute. Visual edits emit `la-change` with `{ source }`, while
-rendering failures emit `la-error` with `{ error }`.
+rendering failures emit `la-error` with `{ error }`. A visual edit the editor
+refuses, such as deleting the last message, also emits `la-error` and shows
+the reason inside the editor.
 External source assignment does not emit `la-change` and discards an inline
 edit that has not been committed yet. Changing `theme`, `palette`, `mode`, or
 another attribute instead commits a pending inline edit and emits `la-change`
