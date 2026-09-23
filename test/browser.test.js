@@ -2473,3 +2473,355 @@ test("label measurement follows the host font family", async (
     },
   );
 });
+
+function selectedLabels(element) {
+  return element.evaluate((node) =>
+    [...node.shadowRoot.querySelectorAll('[data-selected="true"]')].map(
+      (item) => item.getAttribute("aria-label"),
+    ),
+  );
+}
+
+test("one click moves the selection and history stays reachable", async (
+  testContext,
+) => {
+  const { element } = await openEditor(
+    testContext,
+    "@A\n@B\n\nA -> B: Start\nA -> B: Next\nopt Batch\n  B -> A: Done",
+  );
+  const source = () => element.evaluate((node) => node.source);
+  const label = element.getByLabel("Arrow label");
+  const undo = element.getByRole("button", { name: "Undo" });
+
+  await element.getByRole("button", { name: "A to B: Start" }).click();
+  assert.equal(await undo.isVisible(), true);
+  await element.getByRole("button", { name: "A to B: Next" }).click();
+  assert.deepEqual(await selectedLabels(element), ["A to B: Next"]);
+  assert.equal(await label.inputValue(), "Next");
+
+  await element.getByRole("button", { name: /^Actor A/ }).click();
+  await element.getByRole("button", { name: /^Actor B/ }).click();
+  assert.deepEqual(await selectedLabels(element), [
+    await element
+      .getByRole("button", { name: /^Actor B/ })
+      .getAttribute("aria-label"),
+  ]);
+  assert.equal(await element.getByLabel("Actor name").inputValue(), "B");
+
+  await element.getByRole("button", { name: "Edit group label" }).click();
+  assert.equal(
+    await element.getByRole("textbox", { name: "Group label" }).inputValue(),
+    "Batch",
+  );
+
+  // An uncommitted edit is committed by the same press that moves the
+  // selection, even when the button is held while the commit redraws.
+  await element.getByRole("button", { name: "A to B: Start" }).click();
+  await label.fill("Begin");
+  await element
+    .getByRole("button", { name: "A to B: Next" })
+    .click({ delay: 80 });
+  assert.match(await source(), /A -> B: Begin\n/);
+  assert.deepEqual(await selectedLabels(element), ["A to B: Next"]);
+  assert.equal(await label.inputValue(), "Next");
+
+  await label.fill("Later");
+  await label.press("Enter");
+  assert.match(await source(), /A -> B: Later\n/);
+  assert.deepEqual(await selectedLabels(element), ["A to B: Later"]);
+  assert.equal(await undo.isVisible(), true);
+  await undo.click();
+  assert.match(await source(), /A -> B: Next\n/);
+  assert.deepEqual(await selectedLabels(element), []);
+  assert.equal(
+    await element.evaluate((node) =>
+      node.shadowRoot.activeElement?.getAttribute("aria-label"),
+    ),
+    "Undo",
+  );
+});
+
+async function openTouchEditor(testContext, source) {
+  const context = await browser.newContext({
+    hasTouch: true,
+    isMobile: true,
+    viewport: { width: 390, height: 844 },
+  });
+  testContext.after(() => context.close());
+  const page = await context.newPage();
+  await stubCdn(page);
+  await page.goto(`${origin}/test/browser.html`);
+  await page.waitForFunction(() => window.linesAndArrows);
+  await page.evaluate((diagramSource) => {
+    const viewport = document.createElement("meta");
+    viewport.name = "viewport";
+    viewport.content = "width=device-width, initial-scale=1";
+    document.head.append(viewport);
+    document.querySelector("main").remove();
+    window.pointerCancels = 0;
+    window.changes = [];
+    globalThis.addEventListener(
+      "pointercancel",
+      () => {
+        window.pointerCancels += 1;
+      },
+      true,
+    );
+    const diagram = document.createElement("lines-and-arrows");
+    diagram.id = "touch-editor";
+    diagram.mode = "edit";
+    diagram.branding = false;
+    diagram.source = diagramSource;
+    diagram.addEventListener("la-change", (event) =>
+      window.changes.push(event.detail.source),
+    );
+    const spacer = document.createElement("div");
+    spacer.style.height = "2000px";
+    document.body.append(diagram, spacer);
+  }, source);
+  await page.waitForFunction(() => innerWidth === 390);
+  return { page, element: page.locator("#touch-editor") };
+}
+
+async function touchDrag(page, from, to, steps = 8) {
+  const session = await page.context().newCDPSession(page);
+  const point = (step) => ({
+    x: from.x + ((to.x - from.x) * step) / steps,
+    y: from.y + ((to.y - from.y) * step) / steps,
+  });
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [point(0)],
+  });
+  for (let step = 1; step <= steps; step += 1) {
+    await session.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [point(step)],
+    });
+  }
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  await session.detach();
+}
+
+async function recordChanges(page, selector) {
+  await page.evaluate((target) => {
+    window.changes = [];
+    document
+      .querySelector(target)
+      .addEventListener("la-change", (event) =>
+        window.changes.push(event.detail.source),
+      );
+  }, selector);
+  return () => page.evaluate(() => window.changes);
+}
+
+test("a press that ends without a click does not swallow the next click", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "A -> B: One\nA -> B: Two",
+  );
+  await element.getByRole("button", { name: "A to B: One" }).click();
+  const frame = await element.evaluate((node) => {
+    const rect = node.shadowRoot
+      .querySelector(".la-frame")
+      .getBoundingClientRect();
+    return { x: rect.x, top: rect.top, bottom: rect.bottom };
+  });
+  const one = await partCenter(element, "A to B: One", ".la-message-line");
+  await page.mouse.move(frame.x + 4, one.y - 8);
+  await page.mouse.down();
+  await page.mouse.move(frame.x + 4, frame.bottom + 40, { steps: 4 });
+  await page.mouse.up();
+  await element.getByRole("button", { name: "A to B: Two" }).click();
+  assert.deepEqual(await selectedLabels(element), ["A to B: Two"]);
+
+  const touch = await openTouchEditor(
+    testContext,
+    "A -> B: One\nA -> B: Two",
+  );
+  await touch.element.getByRole("button", { name: "A to B: One" }).tap();
+  const empty = await touch.element.evaluate((node) => {
+    const rect = node.shadowRoot
+      .querySelector(".la-frame")
+      .getBoundingClientRect();
+    return { x: rect.x + 4, y: rect.bottom - 12 };
+  });
+  await touchDrag(touch.page, empty, { x: empty.x, y: empty.y - 150 });
+  await touch.page.waitForFunction(() => scrollY > 0);
+  await touch.element.getByRole("button", { name: "A to B: Two" }).tap();
+  assert.deepEqual(await selectedLabels(touch.element), ["A to B: Two"]);
+});
+
+test("only a primary press holds back an inline commit redraw", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "A -> B: One\nA -> B: Two",
+  );
+  await element.getByRole("button", { name: "A to B: One" }).click();
+  await element.getByLabel("Arrow label").fill("First");
+  await element.evaluate((node) => {
+    node.shadowRoot
+      .querySelector(".la-canvas")
+      .dispatchEvent(
+        new PointerEvent("pointerdown", {
+          button: 2,
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    node.shadowRoot.querySelector(".la-frame").focus();
+  });
+  await page.waitForFunction(
+    () =>
+      [
+        ...document
+          .querySelector("#focus-editor")
+          .shadowRoot.querySelectorAll(".la-message-label"),
+      ].some((label) => label.textContent === "First"),
+    null,
+    { timeout: 2000 },
+  );
+});
+
+test("undo commits a pending field edit before reverting it", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "A -> B: Start\nA -> B: Next",
+  );
+  const changes = await recordChanges(page, "#focus-editor");
+  const label = element.getByLabel("Arrow label");
+  await element.getByRole("button", { name: "A to B: Start" }).click();
+  await label.fill("First");
+  await label.press("Enter");
+  await element.getByRole("button", { name: "A to B: Next" }).click();
+  await label.fill("Later");
+  await element.getByRole("button", { name: "Undo" }).click();
+  assert.deepEqual(await changes(), [
+    "A -> B: First\nA -> B: Next\n",
+    "A -> B: First\nA -> B: Later\n",
+    "A -> B: First\nA -> B: Next\n",
+  ]);
+  await element.getByRole("button", { name: "Redo" }).click();
+  assert.equal(
+    (await changes()).at(-1),
+    "A -> B: First\nA -> B: Later\n",
+  );
+});
+
+// Client coordinates of the center of an editor part, located through the
+// accessible label of the item that owns it. A selector containing `$id`
+// matches anywhere in the editor with the owner's ID substituted; any other
+// selector matches inside the owner.
+function partCenter(element, ownerLabel, partSelector = null) {
+  return element.evaluate(
+    (node, [label, selector]) => {
+      const owner = node.shadowRoot.querySelector(
+        `[aria-label="${CSS.escape(label)}"]`,
+      );
+      let part = owner;
+      if (selector?.includes("$id")) {
+        part = node.shadowRoot.querySelector(
+          selector.replaceAll("$id", CSS.escape(owner.dataset.laId)),
+        );
+      } else if (selector) {
+        part = owner.querySelector(selector);
+      }
+      const rect = part.getBoundingClientRect();
+      return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+    },
+    [ownerLabel, partSelector],
+  );
+}
+
+async function mouseDrag(page, from, to) {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, (from.y + to.y) / 2, { steps: 4 });
+  await page.mouse.move(to.x, to.y, { steps: 4 });
+  await page.mouse.up();
+}
+
+test("mouse drags select a range, reconnect, and reorder", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "@A\n@B\n@C\n\nA -> B: One\nA -> B: Two\nA -> B: Three",
+  );
+  const source = () => element.evaluate((node) => node.source);
+  await element.scrollIntoViewIfNeeded();
+  const one = await partCenter(element, "A to B: One", ".la-message-line");
+  const two = await partCenter(element, "A to B: Two", ".la-message-line");
+  const three = await partCenter(
+    element,
+    "A to B: Three",
+    ".la-message-line",
+  );
+  const frameLeft = await element.evaluate(
+    (node) =>
+      node.shadowRoot.querySelector(".la-frame").getBoundingClientRect().x,
+  );
+  const empty = { x: frameLeft + 4, y: one.y - 8 };
+  assert.equal(
+    await element.evaluate(
+      (node, point) =>
+        node.shadowRoot
+          .elementFromPoint(point.x, point.y)
+          ?.closest("[data-la-id], .la-insertion, .la-header-control") ??
+        null,
+      empty,
+    ),
+    null,
+  );
+
+  await mouseDrag(page, empty, { x: frameLeft + 40, y: two.y + 8 });
+  assert.deepEqual(await selectedLabels(element), [
+    "A to B: One",
+    "A to B: Two",
+  ]);
+  await page.keyboard.press("Escape");
+  assert.deepEqual(await selectedLabels(element), []);
+
+  await element.getByRole("button", { name: "A to B: One" }).click();
+  const endpoint = await partCenter(
+    element,
+    "A to B: One",
+    '.la-message-endpoint[data-owner-id="$id"][data-endpoint="target"] circle',
+  );
+  const actorC = await partCenter(
+    element,
+    await element
+      .getByRole("button", { name: /^Actor C/ })
+      .getAttribute("aria-label"),
+    ".la-actor-shape",
+  );
+  await mouseDrag(page, endpoint, { x: actorC.x, y: endpoint.y });
+  assert.equal(
+    await source(),
+    "@A\n\n@B\n\nA -> C: One\nA -> B: Two\nA -> B: Three\n",
+  );
+  assert.deepEqual(await selectedLabels(element), ["A to C: One"]);
+
+  const handle = await partCenter(
+    element,
+    "A to C: One",
+    '.la-reorder-handle[data-owner-id="$id"] circle',
+  );
+  await mouseDrag(page, handle, {
+    x: handle.x,
+    y: (two.y + three.y) / 2,
+  });
+  assert.equal(
+    await source(),
+    "A -> B: Two\nA -> C: One\nA -> B: Three\n",
+  );
+});

@@ -53,32 +53,16 @@ const EDIT_STYLES = `
     cursor: grab;
   }
 
+  /*
+   * While an item is selected, hover-revealed affordances stay hidden:
+   * insertion marks and tooltips would open over the contextual editor, and
+   * connection origins would turn a press on a lifeline into a new message.
+   * Other items, undo, and redo stay live so one click moves the selection
+   * or reverts the last change.
+   */
   .la-frame[data-selection-active="true"] .la-insertion-layer,
   .la-frame[data-selection-active="true"] .la-connection-layer,
-  .la-frame[data-selection-active="true"] .la-history-control,
-  .la-frame[data-selection-active="true"] .la-tooltip-layer {
-    display: none;
-  }
-
-  .la-frame[data-selection-active="true"]
-    .la-selectable:not([data-selected="true"]),
-  .la-frame[data-selection-active="true"]
-    .la-selectable:not([data-selected="true"])
-    *,
-  .la-frame[data-selection-active="true"] .la-group-part-hit,
-  .la-frame[data-selection-active="true"]
-    .la-message-endpoint:not([data-visible="true"]) {
-    pointer-events: none;
-  }
-
-  .la-frame[data-selection-active="true"]
-    .la-selectable:not([data-selected="true"]),
-  .la-frame[data-selection-active="true"]
-    .la-selectable:not([data-selected="true"])
-    * {
-    cursor: default;
-  }
-
+  .la-frame[data-selection-active="true"] .la-tooltip-layer,
   .la-frame[data-selection-active="true"]
     .la-message-endpoint:not([data-visible="true"]) {
     display: none;
@@ -2890,6 +2874,8 @@ export function renderEditor(target, editor, options = {}) {
   let transient = null;
   let pendingFocus = null;
   let pendingInlineDraw = null;
+  let pressActive = false;
+  let inlineDrawAfterPress = null;
 
   function notifyChange() {
     const detail = Object.freeze({
@@ -3092,10 +3078,19 @@ export function renderEditor(target, editor, options = {}) {
     focusPendingField(frame, true);
   }
 
-  function scheduleInlineDraw(frame) {
+  function cancelInlineDraw() {
     if (pendingInlineDraw !== null) {
       clearTimeout(pendingInlineDraw);
+      pendingInlineDraw = null;
     }
+    inlineDrawAfterPress = null;
+  }
+
+  // A focusout commit redraws on a timer. While a press is held, the redraw
+  // waits for its release so the press's click still reaches the element it
+  // started on, such as another item that should become selected.
+  function scheduleInlineDraw(frame) {
+    cancelInlineDraw();
     const redraw = () => {
       pendingInlineDraw = null;
       if (destroyed) {
@@ -3106,7 +3101,37 @@ export function renderEditor(target, editor, options = {}) {
       }
       draw();
     };
+    if (pressActive) {
+      inlineDrawAfterPress = redraw;
+      return;
+    }
     pendingInlineDraw = setTimeout(redraw, 0);
+  }
+
+  function trackPress(event) {
+    if (event.button !== 0 || pressActive) {
+      return;
+    }
+    pressActive = true;
+    // A press can also end without pointerup, when a context menu opens or
+    // the window loses focus.
+    const release = () => {
+      globalThis.removeEventListener("pointerup", release, true);
+      globalThis.removeEventListener("pointercancel", release, true);
+      globalThis.removeEventListener("contextmenu", release, true);
+      globalThis.removeEventListener("blur", release);
+      // The click follows pointerup within the same task.
+      setTimeout(() => {
+        pressActive = false;
+        const redraw = inlineDrawAfterPress;
+        inlineDrawAfterPress = null;
+        redraw?.();
+      }, 0);
+    };
+    globalThis.addEventListener("pointerup", release, true);
+    globalThis.addEventListener("pointercancel", release, true);
+    globalThis.addEventListener("contextmenu", release, true);
+    globalThis.addEventListener("blur", release);
   }
 
   function addInlineActorEditor(frame, layout, model) {
@@ -5166,6 +5191,11 @@ export function renderEditor(target, editor, options = {}) {
     }
     svg.append(handleLayer);
 
+    frame.addEventListener("pointerdown", trackPress, true);
+
+    // Swallows the click that ends a press the canvas already handled. A
+    // press that ends in pointercancel, or is released outside the canvas,
+    // produces no click here, so each new press starts unsuppressed.
     let suppressClick = false;
     svg.addEventListener(
       "click",
@@ -5178,10 +5208,18 @@ export function renderEditor(target, editor, options = {}) {
       },
       true,
     );
+    svg.addEventListener(
+      "pointercancel",
+      () => {
+        suppressClick = false;
+      },
+      true,
+    );
 
     svg.addEventListener(
       "pointerdown",
       (event) => {
+        suppressClick = false;
         if (event.button !== 0 || selectedIds.length === 0) {
           return;
         }
@@ -5189,15 +5227,14 @@ export function renderEditor(target, editor, options = {}) {
           "[data-la-id], [data-owner-id]",
         );
         const ownerId = owner?.dataset.laId ?? owner?.dataset.ownerId;
-        if (ownerId && selectedIds.includes(ownerId)) {
+        if (
+          (ownerId && selectedIds.includes(ownerId)) ||
+          event.target.closest(".la-header-control")
+        ) {
           return;
         }
 
-        suppressClick = true;
-        event.preventDefault();
-        event.stopImmediatePropagation();
         activeCancel?.();
-
         const focusedControl = frame.querySelector(
           ".la-inline-gap-editor :focus, " +
             ".la-inline-actor-editor :focus, " +
@@ -5206,7 +5243,20 @@ export function renderEditor(target, editor, options = {}) {
             ".la-inline-message-editor :focus",
         );
         focusedControl?.blur();
-        if (frame.querySelector(".la-edit-error")) {
+        const keepsSelection = frame.querySelector(".la-edit-error");
+        // Another item's own click selects it, so the switch takes one
+        // click; only a press on empty canvas clears the selection here.
+        if (
+          !keepsSelection &&
+          event.target.closest(".la-selectable, .la-group-part-hit")
+        ) {
+          return;
+        }
+
+        suppressClick = true;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (keepsSelection) {
           return;
         }
 
@@ -5423,10 +5473,7 @@ export function renderEditor(target, editor, options = {}) {
     if (destroyed) {
       return;
     }
-    if (pendingInlineDraw !== null) {
-      clearTimeout(pendingInlineDraw);
-      pendingInlineDraw = null;
-    }
+    cancelInlineDraw();
 
     const previousFrame = baseController?.svg?.closest(".la-frame");
     const previousFocus = captureFocus(previousFrame);
@@ -5500,10 +5547,7 @@ export function renderEditor(target, editor, options = {}) {
       destroyed = true;
       transient = null;
       activeCancel?.();
-      if (pendingInlineDraw !== null) {
-        clearTimeout(pendingInlineDraw);
-        pendingInlineDraw = null;
-      }
+      cancelInlineDraw();
       const frame = baseController?.svg?.closest(".la-frame");
       removeContextualEditor(frame);
       baseController?.destroy();
