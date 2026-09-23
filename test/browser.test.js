@@ -1073,3 +1073,58 @@ test("undo shortcuts inside text fields stay with the field", async (
   await page.keyboard.press("ControlOrMeta+z");
   assert.match(await source(), /@Client/);
 });
+
+test("deletion keys apply only to the frame or the selected element", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "A -> B: Start\nA -> B: Next\nA -> B: Done",
+  );
+  const source = () => element.evaluate((node) => node.source);
+  const dashed = "A --> B: Start\nA -> B: Next\nA -> B: Done\n";
+  const focusInFrame = (selector) =>
+    element.evaluate(
+      (node, target) => node.shadowRoot.querySelector(target).focus(),
+      selector,
+    );
+
+  await element.getByRole("button", { name: "A to B: Start" }).click();
+  await element.getByRole("button", { name: "Dashed arrow" }).click();
+  assert.equal(await source(), dashed);
+  assert.equal(
+    await element.evaluate((node) =>
+      node.shadowRoot.activeElement?.getAttribute("aria-label"),
+    ),
+    "Dashed arrow",
+  );
+  await page.keyboard.press("Backspace");
+  await page.keyboard.press("Delete");
+  assert.equal(await source(), dashed);
+  await focusInFrame(".la-inline-actor-tooltip-trigger");
+  assert.equal(
+    await element.evaluate((node) =>
+      node.shadowRoot.activeElement?.getAttribute("aria-label"),
+    ),
+    "Edit arrow tooltip",
+  );
+  await page.keyboard.press("Backspace");
+  await page.keyboard.press("Delete");
+  await page.keyboard.press("Alt+ArrowDown");
+  assert.equal(await source(), dashed);
+
+  await focusInFrame('.la-message[data-selected="true"]');
+  await page.keyboard.press("Alt+ArrowDown");
+  assert.equal(
+    await source(),
+    "A -> B: Next\nA --> B: Start\nA -> B: Done\n",
+  );
+  await focusInFrame('.la-message[data-selected="true"]');
+  await page.keyboard.press("Delete");
+  assert.equal(await source(), "A -> B: Next\nA -> B: Done\n");
+
+  await element.getByRole("button", { name: "A to B: Next" }).click();
+  await focusInFrame(".la-frame");
+  await page.keyboard.press("Delete");
+  assert.equal(await source(), "A -> B: Done\n");
+});

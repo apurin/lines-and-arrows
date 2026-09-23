@@ -2745,6 +2745,9 @@ function messageEndpoint(
   return group;
 }
 
+const FOCUSABLE_CONTROL_SELECTOR =
+  "a[href], button, input, select, textarea, [tabindex], [contenteditable]";
+
 function isEditableField(element) {
   return (
     element.matches("input, textarea, select") ||
@@ -2893,6 +2896,20 @@ export function renderEditor(target, editor, options = {}) {
     } else {
       focus();
     }
+  }
+
+  // Selection shortcuts act only from the frame itself or from a selected
+  // element; buttons and fields inside or around it keep their own keys.
+  function targetsSelection(frame, target) {
+    if (target === frame) {
+      return true;
+    }
+    const selectable = target.closest(".la-selectable");
+    return (
+      selectable !== null &&
+      selectedIds.includes(selectable.dataset.laId) &&
+      target.closest(FOCUSABLE_CONTROL_SELECTOR) === selectable
+    );
   }
 
   function cancelInlineEditor(event, frame) {
@@ -5177,7 +5194,7 @@ export function renderEditor(target, editor, options = {}) {
         return;
       }
       if (
-        !editing &&
+        targetsSelection(frame, event.target) &&
         (event.key === "Delete" || event.key === "Backspace") &&
         selectedIds.length > 0
       ) {
@@ -5194,7 +5211,11 @@ export function renderEditor(target, editor, options = {}) {
         }
         return;
       }
-      if (!editing && event.altKey && selectedIds.length === 1) {
+      if (
+        targetsSelection(frame, event.target) &&
+        event.altKey &&
+        selectedIds.length === 1
+      ) {
         const id = selectedIds[0];
         const actorIndex = editor.document.actors.findIndex(
           (actor) => actor.id === id,
