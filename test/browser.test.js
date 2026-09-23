@@ -988,3 +988,50 @@ API --> Client: Done`;
       "  | inspect\n    Worker -> Worker: Check\nAPI --> Client: Done\n",
   );
 });
+
+async function openEditor(testContext, source) {
+  const page = await openPage(testContext);
+  await page.evaluate((diagramSource) => {
+    const diagram = document.createElement("lines-and-arrows");
+    diagram.id = "focus-editor";
+    diagram.mode = "edit";
+    diagram.branding = false;
+    diagram.source = diagramSource;
+    document.body.append(diagram);
+  }, source);
+  return { page, element: page.locator("#focus-editor") };
+}
+
+test("group type field uses a pattern valid under the v flag", async (
+  testContext,
+) => {
+  const { page, element } = await openEditor(
+    testContext,
+    "A -> B: Start\nchoice Result\n  A -> B: Done",
+  );
+  const messages = [];
+  page.on("console", (message) => messages.push(message.text()));
+  await element.getByRole("button", { name: "Edit group label" }).click();
+  const typeControl = element.getByRole("textbox", { name: "Group type" });
+  assert.equal(await typeControl.inputValue(), "choice");
+  const validity = await typeControl.evaluate((node) =>
+    Object.fromEntries(
+      ["choice", "my-type", "a1", "Gap", "-x", "a b"].map((value) => {
+        node.value = value;
+        return [value, node.validity.patternMismatch];
+      }),
+    ),
+  );
+  assert.deepEqual(validity, {
+    choice: false,
+    "my-type": false,
+    a1: false,
+    Gap: true,
+    "-x": true,
+    "a b": true,
+  });
+  assert.deepEqual(
+    messages.filter((text) => /regular expression/i.test(text)),
+    [],
+  );
+});

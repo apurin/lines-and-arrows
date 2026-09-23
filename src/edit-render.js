@@ -6,6 +6,7 @@ import {
   findSectionLocation,
   groupSections,
 } from "./document.js";
+import { GROUP_TYPE_PATTERN_SOURCE } from "./grammar.js";
 import {
   phosphorIconCatalog,
   phosphorIconResolver,
@@ -3262,7 +3263,7 @@ export function renderEditor(target, editor, options = {}) {
     typeControl.className = "la-inline-group-type";
     typeControl.dataset.field = "group-type";
     typeControl.placeholder = "Type";
-    typeControl.pattern = "[a-z][a-z0-9-]*";
+    typeControl.pattern = GROUP_TYPE_PATTERN_SOURCE;
     typeControl.setAttribute("aria-label", "Group type");
     typeControl.value = model.groupType;
 

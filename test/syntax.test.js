@@ -8,6 +8,8 @@ import {
   validate,
 } from "lines-and-arrows/syntax";
 
+import { GROUP_TYPE_PATTERN_SOURCE } from "../src/grammar.js";
+
 const SOURCE = `// Customer journey
 @Customer
   icon user
@@ -166,3 +168,17 @@ Client -> Missing: Start`),
   assert.throws(() => serialize(missingActor), /Unknown actor "B"/);
 });
 
+test("group type pattern source is valid for HTML pattern attributes", () => {
+  // Browsers compile the pattern attribute as ^(?:pattern)$ with the v flag.
+  const pattern = new RegExp(`^(?:${GROUP_TYPE_PATTERN_SOURCE})$`, "v");
+  for (const value of ["choice", "my-type", "a1"]) {
+    assert.equal(pattern.test(value), true, value);
+    assert.equal(
+      parse(`${value} Label\n  A -> B: Go`).items[0].groupType,
+      value,
+    );
+  }
+  for (const value of ["Gap", "-x", "a b"]) {
+    assert.equal(pattern.test(value), false, value);
+  }
+});
