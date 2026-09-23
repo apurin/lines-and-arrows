@@ -4,6 +4,7 @@ import { initializeSiteTheme } from "./site.js?v=20260806-2";
 const heroSource = `// Powered by https://lines-and-arrows.dev/
 @Client
   icon browser
+  tag API
 
 @API Gateway
   icon network
