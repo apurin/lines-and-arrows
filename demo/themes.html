@@ -377,7 +377,7 @@
 
       const source = `@Operator
   icon user-circle
-  tag human approval
+  tag approver
   tooltip Reviews a consequential rollback\\nbefore the workflow can continue
   tooltip-icon eye
 @API Gateway
@@ -396,7 +396,7 @@
   icon queue
 
 Operator -> API Gateway: Submit settlement request
-  tag signed request
+  tag signed
   tooltip Carries an idempotency key\\nand a short-lived authorization
   tooltip-icon key
 API Gateway --> Coordinator: Request accepted
@@ -405,7 +405,7 @@ critical Commit settlement
   parallel Reserve dependencies
     | fraud decision
       Coordinator -> Risk Engine: Score the transfer
-        tag 350 ms budget
+        tag 350 ms limit
       Risk Engine -> Risk Engine: Refresh behavioral features
         tooltip Uses the latest device and account signals
         tooltip-icon pulse
@@ -418,14 +418,14 @@ critical Commit settlement
   choice Commit outcome
     | every dependency is ready
       Coordinator -> Ledger: Commit journal entry
-        tag durable write
+        tag durable
         tooltip The transaction becomes externally visible\\nonly after the journal commit succeeds
         tooltip-icon lock-key
       Coordinator -> Event Bus: Publish settlement event
       Event Bus --> Coordinator: Event persisted
     | event bus is unavailable
       Coordinator ->x Event Bus: Publish settlement event
-        tag delivery failed
+        tag undelivered
       gap Recovery worker starts on another node
       Coordinator --> API Gateway: Hold response for review
 

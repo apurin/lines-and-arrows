@@ -242,7 +242,7 @@ if (!result.valid) {
 
 @Source
   icon catalog-identifier
-  tag short visible text
+  tag short text
   tooltip Additional detail\non another line
   tooltip-icon catalog-identifier
 
@@ -332,6 +332,8 @@ multiple paragraphs.
   tag PCI scope
   tooltip Accepts requests across the\ncardholder-data trust boundary
   tooltip-icon shield-check
+
+Checkout -> Payments API: Charge card
 ```
 
 ## Decorate messages

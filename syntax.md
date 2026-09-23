@@ -47,7 +47,7 @@ tooltips.
 
 @API
   icon cloud
-  tag internet-facing
+  tag external
   tooltip Accepts requests outside the trust boundary
   tooltip-icon shield-check
 
@@ -110,8 +110,10 @@ An actor declaration begins with `@`:
 ```lines-and-arrows
 @API
   icon cloud
-  tag internet-facing
+  tag external
   tooltip Accepts requests outside the trust boundary
+
+Client -> API: Start job
 ```
 
 Actor properties are optional:

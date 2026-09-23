@@ -375,7 +375,7 @@ legacy Living genomes
   icon app-window
 @Database
   icon database
-  tag shared schema
+  tag shared
 @Backfill Worker
   icon arrows-clockwise
 @Telemetry
@@ -400,7 +400,7 @@ choice Canary reads
     Release -> Application: Prefer display_name
   | mismatches appear
     Telemetry -> Release: Hold the rollout
-      tag SLO guardrail
+      tag guardrail
       tooltip Keeps the compatible path while engineers inspect the cohort
       tooltip-icon warning
     Release -> Application: Keep reading name
@@ -541,7 +541,7 @@ choice Arrival timing
   icon terminal
 @Research Agent
   icon robot
-  tag advisory only
+  tag advisory
   tooltip Builds claims from retrieved evidence but cannot approve action
   tooltip-icon shield-check
 @Search Index
@@ -550,9 +550,9 @@ choice Arrival timing
   icon books
 @Human Reviewer
   icon user-check
-  tag approval gate
+  tag gatekeeper
 
-Engineer -> Research Agent: Investigate the failed deployment
+Engineer -> Research Agent: Investigate failed deployment
 Research Agent -> Search Index: Query errors and change history
 parallel Gather grounded context
   Search Index --> Research Agent: Return relevant records
@@ -560,7 +560,7 @@ parallel Gather grounded context
   Source Documents --> Research Agent: Return versioned evidence
 Research Agent -> Research Agent: Draft a diagnosis with citations
 Research Agent -> Human Reviewer: Propose cause and rollback
-  tag cited evidence
+  tag citations
   tooltip Every claim points to a retrieved passage
   tooltip-icon file-text
 Human Reviewer -> Source Documents: Verify cited passages
@@ -607,10 +607,10 @@ Investor -> Broker: Submit a market-on-open order
 Broker -> Opening Auction: Route the eligible order
 repeat Until the opening cutoff
   Opening Auction -> Opening Auction: Add and cancel auction orders
-  Opening Auction -> Market Data: Publish indicative price and imbalance
+  Opening Auction -> Market Data: Publish indicative price\nand imbalance
   Market Data --> Investor: Show the changing auction signal
 gap Opening auction cutoff
-Opening Auction -> Opening Auction: Choose the price that matches the most shares
+Opening Auction -> Opening Auction: Choose the price\nthat matches the most shares
 choice Executable cross
   | enough opposing volume
     Opening Auction --> Broker: Fill at one opening price
@@ -744,7 +744,7 @@ B Cell --> Pathogen: Mount a faster response</lines-and-arrows>
 
 Warm Ocean -> Coral: Sustain heat stress
 Coral -> Symbiotic Algae: Expel stressed partners
-Symbiotic Algae --> Coral: Supply less photosynthetic energy
+Symbiotic Algae --> Coral: Supply less\nphotosynthetic energy
 gap If the heat lasts for weeks
 choice Temperature trend
   | stays high
