@@ -104,6 +104,7 @@ Set configuration through attributes on `<lines-and-arrows>`:
 | `theme` | `auto`, `light`, or `dark`. The default is `auto`. |
 | `canvas-background` | `transparent` by default. Use `solid` when the component should paint its theme or palette background. |
 | `label` | An accessible name describing the diagram. |
+| `source` | Diagram text as an alternative to inline text, dedented the same way. It wins over inline text, and a `source` property assigned before the element loads wins over it. After that, the latest attribute change or property assignment replaces the diagram and starts a fresh editor session; removing the attribute clears the diagram. An invalid value emits `la-error` instead of throwing and shows the error until a valid source replaces it, keeping the previous valid source. Escape `&` as `&amp;` and `"` as `&quot;`. |
 
 Copy source uses the browser Clipboard API in a secure context such as HTTPS or
 localhost. Keep `clipboard-write` enabled in the page's Permissions Policy. A
@@ -145,8 +146,9 @@ and gaps remain static in view mode.
 
 Assign diagram text through the element's `source` property. Assigning different
 valid source starts a fresh editor session. A syntax error throws synchronously
-and preserves the current diagram. Visual edits emit `la-change` with
-`{ source }`, while rendering failures emit `la-error` with `{ error }`.
+and preserves the current diagram. The property is never reflected to the
+`source` attribute. Visual edits emit `la-change` with `{ source }`, while
+rendering failures emit `la-error` with `{ error }`.
 External source assignment does not emit `la-change` and discards an inline
 edit that has not been committed yet. Changing `theme`, `palette`, `mode`, or
 another attribute instead commits a pending inline edit and emits `la-change`

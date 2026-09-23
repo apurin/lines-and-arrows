@@ -42,7 +42,11 @@ Load the registered web component from jsDelivr:
 
 Diagram source inside HTML is text content, so generated embeds must escape
 `&`, `<`, and `>`. The element's `source` property and `renderDiagram()` accept
-raw diagram source.
+raw diagram source. A `source` attribute is also accepted, with `&` and `"`
+escaped. It wins over inline text, and a property assigned before the element
+loads wins over it; after that, the latest attribute change or property
+assignment applies, and removing the attribute clears the diagram. The property
+throws on invalid source; the attribute shows the error and emits `la-error`.
 
 Set `mode="edit"` to open the visual editor. The
 [Constructor](https://lines-and-arrows.dev/constructor) produces complete HTML

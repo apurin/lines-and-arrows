@@ -32,6 +32,7 @@ function createElementClass() {
         "branding",
         "copy-source",
         "canvas-background",
+        "source",
       ];
     }
 
@@ -55,7 +56,7 @@ function createElementClass() {
     connectedCallback() {
       const inlineSource = dedentInlineSource(this.textContent);
       if (inlineSource) {
-        if (!this.#source) {
+        if (!this.#source && !this.hasAttribute("source")) {
           this.#source = inlineSource;
         }
         this.textContent = "";
@@ -77,6 +78,10 @@ function createElementClass() {
     }
 
     attributeChangedCallback(name) {
+      if (name === "source") {
+        this.#applySourceAttribute();
+        return;
+      }
       const previousFrame =
         name === "mode" && this.#live
           ? this.#currentCanvasFrame()
@@ -251,6 +256,22 @@ function createElementClass() {
       if (this.#live) {
         this.#render();
       }
+    }
+
+    // Attribute values have no caller to throw to, so an invalid value is
+    // shown and reported as la-error while the previous valid source stays.
+    #applySourceAttribute() {
+      const source = dedentInlineSource(this.getAttribute("source") ?? "");
+      try {
+        if (source.trim()) {
+          parse(source);
+        }
+      } catch (error) {
+        this.#reportSourceError(error);
+        return;
+      }
+      this.textContent = "";
+      this.#replaceSource(source);
     }
 
     // The error stays visible, including across re-renders and reconnection,

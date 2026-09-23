@@ -1065,6 +1065,185 @@ test(
   },
 );
 
+test("source attribute supplies, replaces, and reports diagram text", async (
+  testContext,
+) => {
+  const page = await openFixture(
+    testContext,
+    `
+    <lines-and-arrows
+      id="markup"
+      source="
+        @Client
+        Client -> API: Say &quot;hello&quot;
+        API --> Client: First\\nSecond
+      "
+    >
+      Inline -> Text: Ignored
+    </lines-and-arrows>
+    <lines-and-arrows id="broken" source="A -> B:"></lines-and-arrows>
+    <lines-and-arrows id="owned" source="A -> B: Attribute">
+    </lines-and-arrows>
+    <lines-and-arrows id="editing" mode="edit" source="A -> B: Before">
+    </lines-and-arrows>
+    <script type="module">
+      window.attributeErrors = { markup: [], broken: [] };
+      for (const id of ["markup", "broken"]) {
+        document.querySelector("#" + id).addEventListener(
+          "la-error",
+          (event) =>
+            window.attributeErrors[id].push(event.detail.error.message),
+        );
+      }
+      document.querySelector("#owned").source = "A -> B: Property";
+    </script>`,
+  );
+  const result = await page.evaluate(() => {
+    const labels = (element) =>
+      [...element.shadowRoot.querySelectorAll(".la-message-label")].map(
+        (label) => label.textContent,
+      );
+    const alert = (element) =>
+      element.shadowRoot.querySelector('[role="alert"]')?.textContent ?? null;
+    const markup = document.querySelector("#markup");
+    const broken = document.querySelector("#broken");
+    const owned = document.querySelector("#owned");
+    const editing = document.querySelector("#editing");
+
+    const initial = {
+      source: markup.source,
+      labels: labels(markup),
+      lines: [
+        ...markup.shadowRoot.querySelectorAll(".la-message-label"),
+      ].map((label) => label.querySelectorAll("tspan").length),
+      inlineText: markup.textContent,
+    };
+    const brokenInitial = {
+      errors: [...window.attributeErrors.broken],
+      alert: alert(broken),
+      source: broken.source,
+    };
+    broken.theme = "dark";
+    const brokenAfterTheme = alert(broken);
+    broken.remove();
+    document.body.append(broken);
+    const brokenPersisted = {
+      afterTheme: brokenAfterTheme,
+      afterReconnect: alert(broken),
+      errors: window.attributeErrors.broken.length,
+    };
+
+    markup.setAttribute("source", "X -> Y: Changed");
+    const changed = { source: markup.source, labels: labels(markup) };
+    markup.setAttribute("source", "X -> Y:");
+    const invalidChange = {
+      errors: [...window.attributeErrors.markup],
+      alert: alert(markup),
+      source: markup.source,
+    };
+    markup.setAttribute("source", "X -> Y: Changed");
+    const recovered = { alert: alert(markup), labels: labels(markup) };
+    markup.removeAttribute("source");
+    const removed = {
+      source: markup.source,
+      canvas: Boolean(markup.shadowRoot.querySelector("svg")),
+    };
+
+    const ownedInitial = { source: owned.source, labels: labels(owned) };
+    owned.setAttribute("source", "A -> B: Later attribute");
+    const laterAttribute = { source: owned.source, labels: labels(owned) };
+    owned.source = "A -> B: Later property";
+    const laterProperty = {
+      source: owned.source,
+      labels: labels(owned),
+      attribute: owned.getAttribute("source"),
+    };
+
+    const changes = [];
+    editing.addEventListener("la-change", (event) =>
+      changes.push(event.detail.source),
+    );
+    editing.shadowRoot
+      .querySelector('.la-message[aria-label="A to B: Before"]')
+      .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const field = editing.shadowRoot.querySelector(
+      ".la-inline-message-label",
+    );
+    field.focus();
+    field.value = "Uncommitted";
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+    editing.setAttribute("source", "C -> D: After");
+    const edited = {
+      changes,
+      source: editing.source,
+      labels: labels(editing),
+      undoDisabled: editing.shadowRoot
+        .querySelector('[aria-label="Undo"]')
+        .getAttribute("aria-disabled"),
+    };
+
+    return {
+      initial,
+      brokenInitial,
+      brokenPersisted,
+      changed,
+      invalidChange,
+      recovered,
+      removed,
+      ownedInitial,
+      laterAttribute,
+      laterProperty,
+      edited,
+    };
+  });
+
+  assert.deepEqual(result.initial, {
+    source:
+      '@Client\nClient -> API: Say "hello"\nAPI --> Client: First\\nSecond',
+    labels: ['Say "hello"', "FirstSecond"],
+    lines: [1, 2],
+    inlineText: "",
+  });
+  assert.equal(result.brokenInitial.errors.length, 1);
+  assert.match(result.brokenInitial.errors[0], /label cannot be empty/i);
+  assert.equal(result.brokenInitial.alert, result.brokenInitial.errors[0]);
+  assert.equal(result.brokenInitial.source, "");
+  assert.deepEqual(result.brokenPersisted, {
+    afterTheme: result.brokenInitial.errors[0],
+    afterReconnect: result.brokenInitial.errors[0],
+    errors: 3,
+  });
+  assert.deepEqual(result.changed, {
+    source: "X -> Y: Changed",
+    labels: ["Changed"],
+  });
+  assert.equal(result.invalidChange.errors.length, 1);
+  assert.match(result.invalidChange.errors[0], /label cannot be empty/i);
+  assert.equal(result.invalidChange.alert, result.invalidChange.errors[0]);
+  assert.equal(result.invalidChange.source, "X -> Y: Changed");
+  assert.deepEqual(result.recovered, { alert: null, labels: ["Changed"] });
+  assert.deepEqual(result.removed, { source: "", canvas: false });
+  assert.deepEqual(result.ownedInitial, {
+    source: "A -> B: Property",
+    labels: ["Property"],
+  });
+  assert.deepEqual(result.laterAttribute, {
+    source: "A -> B: Later attribute",
+    labels: ["Later attribute"],
+  });
+  assert.deepEqual(result.laterProperty, {
+    source: "A -> B: Later property",
+    labels: ["Later property"],
+    attribute: "A -> B: Later attribute",
+  });
+  assert.deepEqual(result.edited, {
+    changes: [],
+    source: "C -> D: After\n",
+    labels: ["After"],
+    undoDisabled: "true",
+  });
+});
+
 test("constructor preserves diagram source in generated HTML", async (testContext) => {
   const context = await browser.newContext();
   testContext.after(() => context.close());
