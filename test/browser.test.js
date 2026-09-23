@@ -243,6 +243,79 @@ test("unknown website paths show the 404 page with a 404 status", async (
   assert.deepEqual(problems, []);
 });
 
+test("website view stages leave horizontal scrolling to the diagram", async (
+  testContext,
+) => {
+  for (const path of ["index.html", "features.html", "showcase.html"]) {
+    for (const width of [375, 1400]) {
+      const context = await browser.newContext({
+        viewport: { width, height: 900 },
+      });
+      testContext.after(() => context.close());
+      const page = await context.newPage();
+      await stubCdn(page);
+      await page.goto(`${origin}/website/${path}`);
+      await page.waitForFunction(() =>
+        [...document.querySelectorAll("lines-and-arrows")].every(
+          (diagram) => diagram.shadowRoot?.querySelector("svg"),
+        ),
+      );
+      const layout = await page.evaluate(() => ({
+        pageOverflow:
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+        scrollingStages: [
+          ...document.querySelectorAll(
+            ".diagram-stage, .feature-diagram, .showcase-stage, .braided-diagram-pane",
+          ),
+        ]
+          .filter((stage) => stage.scrollWidth > stage.clientWidth + 1)
+          .map((stage) => stage.className),
+        heroControls:
+          document
+            .querySelector("#hero-diagram")
+            ?.shadowRoot.querySelectorAll(".la-copy-source, .la-download-svg")
+            .length ?? 0,
+      }));
+      assert.deepEqual(
+        layout,
+        { pageOverflow: 0, scrollingStages: [], heroControls: 0 },
+        `${path} at ${width}px`,
+      );
+    }
+  }
+});
+
+test("the social card shows its whole diagram without header actions", async (
+  testContext,
+) => {
+  const context = await browser.newContext({
+    viewport: { width: 1200, height: 630 },
+  });
+  testContext.after(() => context.close());
+  const page = await context.newPage();
+  await stubCdn(page);
+  await page.goto(`${origin}/scripts/social-card.html`);
+  await page.waitForFunction(() =>
+    document.querySelector("lines-and-arrows")?.shadowRoot?.querySelector("svg"),
+  );
+  const card = await page.evaluate(() => {
+    const diagram = document.querySelector("lines-and-arrows");
+    const frame = document.querySelector(".diagram-frame").getBoundingClientRect();
+    const svg = diagram.shadowRoot.querySelector("svg").getBoundingClientRect();
+    return {
+      fits:
+        svg.top >= frame.top &&
+        svg.bottom <= frame.bottom &&
+        svg.right <= frame.right,
+      controls: diagram.shadowRoot.querySelectorAll(
+        ".la-copy-source, .la-download-svg",
+      ).length,
+    };
+  });
+  assert.deepEqual(card, { fits: true, controls: 0 });
+});
+
 test("homepage CDN example disables email address rewriting", () => {
   const source = readFileSync(join(ROOT, "website", "index.html"), "utf8");
   assert.doesNotMatch(

@@ -848,10 +848,6 @@ lines-and-arrows:not(:defined) {
   padding: 8px 0 0;
 }
 
-.feature-diagram lines-and-arrows {
-  min-width: 460px;
-}
-
 .feature-error {
   min-height: 1.2em;
   margin-top: 10px;
@@ -1507,10 +1503,6 @@ lines-and-arrows:not(:defined) {
   scrollbar-color: var(--line) transparent;
 }
 
-.braided-diagram-pane lines-and-arrows {
-  min-width: 650px;
-}
-
 .braided-detail {
   min-height: 680px;
   display: flex;
@@ -1719,10 +1711,6 @@ lines-and-arrows:not(:defined) {
   padding: 8px 0 0;
 }
 
-.showcase-stage lines-and-arrows {
-  min-width: 580px;
-}
-
 .site-footer {
   min-height: 130px;
   display: flex;
@@ -1891,7 +1879,8 @@ lines-and-arrows:not(:defined) {
     padding-inline: 4px;
   }
 
-  .diagram-stage-hero lines-and-arrows {
+  /* View mode shrinks to its floor and then scrolls inside its own frame. */
+  .diagram-stage-hero lines-and-arrows[mode="edit"] {
     min-width: 760px;
   }
 
@@ -2116,14 +2105,6 @@ lines-and-arrows:not(:defined) {
   .feature-figure,
   .showcase-figure {
     min-width: 0;
-  }
-
-  .feature-diagram lines-and-arrows {
-    min-width: 470px;
-  }
-
-  .showcase-stage lines-and-arrows {
-    min-width: 600px;
   }
 
   .site-footer p span {
