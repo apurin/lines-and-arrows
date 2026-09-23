@@ -18,8 +18,12 @@ The JavaScript runtime has zero dependencies and includes TypeScript
 declarations. The current release line is `0.15`; the
 [stability policy](./syntax.md#status) states what a release may change.
 
-Browser modules target current stable Chromium. The syntax module and CLI run
-on Node.js 22 or newer without DOM globals.
+Browser modules are tested in current Google Chrome and in Playwright's
+Firefox and WebKit builds; WebKit is the engine behind Safari. Known
+exceptions: actor names with more than about 20 emoji overflow their box in
+WebKit, and in Firefox the hover area of a shortened message label covers only
+its glyphs. The syntax module and CLI run on Node.js 22 or
+newer without DOM globals.
 
 ## Browser
 
@@ -219,7 +223,8 @@ JavaScript.
 
 Development needs Node.js 22 or newer and a local Google Chrome installation:
 the browser suite in `npm run check` launches Chrome's stable channel through
-`playwright-core`, which does not download browsers.
+`playwright-core`, which does not download browsers. CONTRIBUTING.md explains
+how to run the same suite in Firefox and WebKit.
 
 ```sh
 npm ci

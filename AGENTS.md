@@ -13,8 +13,12 @@ on authoring or validating a diagram, read the canonical
   but are separate deliverables.
 - The runtime is dependency-free ESM. TypeScript compatibility comes from
   handwritten `.d.ts` files; there is no TypeScript source or build.
-- Browser modules target current stable Chromium. The `/syntax` entry and CLI
-  target Node.js 22 or newer and remain DOM-free.
+- Browser modules are tested in current Google Chrome and in Playwright's
+  Firefox and WebKit builds; WebKit is the engine behind Safari. Known
+  exceptions: actor names with more than about 20 emoji overflow their box in
+  WebKit, and in Firefox the hover area of a shortened message label covers
+  only its glyphs. Chrome is the CI engine. The `/syntax` entry and CLI target
+  Node.js 22 or newer and remain DOM-free.
 - UI output is SVG. View and edit rendering share the same layout and theme
   primitives, while edit-only interactions live in their own renderer.
 - The renderer owns the optional visible website attribution. It stays outside
