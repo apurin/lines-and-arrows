@@ -192,7 +192,8 @@ import "lines-and-arrows/auto";
 
 This import must run through the application's bundler or development server.
 Then use the same `<lines-and-arrows>` HTML shown above, without the CDN
-`<script>`.
+`<script>`. The import is safe during server rendering: it registers the
+element only where custom elements exist.
 
 Validate source in JavaScript without a browser or DOM:
 

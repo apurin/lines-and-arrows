@@ -132,8 +132,35 @@ try {
     if (JSON.stringify(syntaxExports) !== JSON.stringify(expectedSyntax)) {
       throw new Error(\`unexpected syntax exports: \${syntaxExports.join(", ")}\`);
     }
-    import.meta.resolve("lines-and-arrows/element");
-    import.meta.resolve("lines-and-arrows/auto");
+    if ("HTMLElement" in globalThis || "customElements" in globalThis) {
+      throw new Error("smoke test must run without DOM globals");
+    }
+    const element = await import("lines-and-arrows/element");
+    const auto = await import("lines-and-arrows/auto");
+    if (typeof element.defineLinesAndArrows !== "function") {
+      throw new Error("element entry must export defineLinesAndArrows");
+    }
+    if (Object.keys(auto).length !== 0) {
+      throw new Error("auto entry must not export bindings");
+    }
+    let defineError = null;
+    try {
+      element.defineLinesAndArrows();
+    } catch (error) {
+      defineError = error;
+    }
+    if (!/custom elements are unavailable/i.test(defineError?.message)) {
+      throw new Error("explicit registration without a DOM must throw");
+    }
+    globalThis.customElements = {
+      get() {
+        throw new Error("auto must not register without HTMLElement");
+      },
+    };
+    const partialAuto =
+      import.meta.resolve("lines-and-arrows/auto") + "?partial-dom";
+    await import(partialAuto);
+    delete globalThis.customElements;
     if (!syntax.validate("A -> B").valid) throw new Error("syntax import failed");
   `;
   run("node", ["--input-type=module", "--eval", smoke], { cwd: consumer });

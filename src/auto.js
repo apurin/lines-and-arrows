@@ -1,3 +1,8 @@
 import { defineLinesAndArrows } from "./element.js";
 
-defineLinesAndArrows();
+if (
+  typeof customElements !== "undefined" &&
+  typeof HTMLElement !== "undefined"
+) {
+  defineLinesAndArrows();
+}

@@ -82,7 +82,10 @@ Package entry points:
 | `lines-and-arrows/element` | Exports explicit element registration |
 | `lines-and-arrows/syntax` | DOM-free parsing, serialization, and validation |
 
-Node.js 22 or newer is required for the syntax API and CLI.
+Node.js 22 or newer is required for the syntax API and CLI. The element entries
+import safely without a DOM, such as during server rendering: `/auto` registers
+the element only where custom elements exist, and an explicit
+`defineLinesAndArrows()` call without them throws.
 
 The element's `source` property accepts diagram text. Assigning different valid
 source starts a fresh editor session; a syntax error throws synchronously and
