@@ -1,0 +1,40 @@
+name: Bug report
+description: Report incorrect parsing, rendering, editing, or CLI behavior.
+labels:
+  - bug
+body:
+  - type: textarea
+    id: source
+    attributes:
+      label: Diagram source
+      description: The smallest diagram source that shows the problem.
+      render: lines-and-arrows
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      description: For example Chrome 140. Write "Node.js 22" for syntax or CLI issues.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package or CDN version
+      description: The npm package version, or the CDN script URL the page loads.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: Include error messages, and screenshots for visual issues.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true

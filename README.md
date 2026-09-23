@@ -151,7 +151,9 @@ python3 -m http.server 4173
 ```
 
 The interactive development demo is available at
-`http://localhost:4173/demo/`.
+`http://localhost:4173/demo/`. [CONTRIBUTING.md](./CONTRIBUTING.md) covers
+prerequisites and focused test runs; [AGENTS.md](./AGENTS.md) documents the
+repository conventions.
 
 ## Publishing
 
