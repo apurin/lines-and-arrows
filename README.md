@@ -40,21 +40,80 @@ Load the registered web component from jsDelivr:
 </lines-and-arrows>
 ```
 
-Diagram source inside HTML is text content, so generated embeds must escape
-`&`, `<`, and `>`. The element's `source` property and `renderDiagram()` accept
-raw diagram source. A `source` attribute is also accepted, with `&` and `"`
-escaped. It wins over inline text, and a property assigned before the element
-loads wins over it; after that, the latest attribute change or property
-assignment applies, and removing the attribute clears the diagram. The property
-throws on invalid source; the attribute shows the error and emits `la-error`.
+Diagram source inside HTML is text content. Write arrows such as `->`
+literally; escape `&` as `&amp;` and `<` as `&lt;`. The element's `source`
+property and `renderDiagram()` accept raw diagram source.
 
-Set `mode="edit"` to open the visual editor. The
-[Constructor](https://lines-and-arrows.dev/constructor) produces complete HTML
-for themes, editing controls, actor selection, branding, copy source, and canvas
-behavior. Set `copy-source="false"` to hide the Copy source action and
-`download-svg="false"` to hide the view-mode Download SVG action. When a view
-sets `branding="false"`, `copy-source="false"`, and `download-svg="false"`, the
-diagram starts at the top edge.
+The [Constructor](https://lines-and-arrows.dev/constructor) produces complete
+HTML for themes, editing controls, actor selection, branding, copy source, and
+canvas behavior.
+
+### Attributes and properties
+
+Each attribute has a matching property. The [agent guide][agent-guide]
+describes the same attributes with authoring examples.
+
+| Attribute | Property | Values and behavior |
+| --- | --- | --- |
+| `mode` | `mode` | `view` by default. `edit` opens the visual editor with undo and redo. |
+| `theme` | `theme` | `auto` by default, `light`, or `dark`. |
+| `selectable-actors` | `selectableActors` | Boolean by presence: any value, including `"false"`, lets people select actors in view mode; remove the attribute to disable it. |
+| `branding` | `branding` | Shows “Powered by Lines & Arrows” by default; `false` hides it. |
+| `copy-source` | `copySource` | Shows the Copy source action by default; `false` hides it. |
+| `download-svg` | `downloadSvg` | Shows the view-mode Download SVG action by default; `false` hides it. |
+| `canvas-background` | `canvasBackground` | `transparent` by default; `solid` paints the theme or palette background. |
+| `label` | `label` | The diagram's accessible name. Download SVG names its file after it. |
+| `source` | `source` | Diagram text as an alternative to inline text. See [Source](#source). |
+| none | `palette` | Host colors as an object whose keys are all optional: `background`, `foreground`, `accent`, `danger`, `accentForeground`, and `dangerForeground`. |
+
+When a view sets `branding="false"`, `copy-source="false"`, and
+`download-svg="false"`, the diagram starts at the top edge.
+
+### Source
+
+The `source` attribute holds diagram text with `&` escaped as `&amp;` and `"`
+as `&quot;`. It wins over inline text, and a `source` property assigned before
+the element loads wins over it; after that, the latest attribute change or
+property assignment applies, and removing the attribute clears the diagram.
+The property is never reflected to the attribute.
+
+Assigning the `source` property with a syntax error throws synchronously and
+keeps the current diagram. An invalid `source` attribute instead shows the
+error and emits `la-error`, keeping the previous valid source until a valid one
+replaces it. Assigning different valid source starts a fresh editor session,
+never emits `la-change`, and discards an uncommitted inline edit. Changing
+`theme`, `palette`, `mode`, or another attribute instead commits a pending
+inline edit and emits `la-change` synchronously, as does an operating-system
+theme change under `theme="auto"`. Properties assigned before the element is
+defined apply when it upgrades, reporting invalid values through `la-error`
+instead of throwing.
+
+### Events and actor selection
+
+| Event | Detail |
+| --- | --- |
+| `la-change` | `{ source }` after each visual edit. |
+| `la-error` | `{ error }` when rendering fails, the editor refuses a visual edit, the `source` attribute is invalid, or a property assigned before the element loads is invalid. |
+| `la-actor-select` | The selected actor's `name`, `icon`, `tag`, `tooltip`, and `tooltipIcon`, or `null` when selection clears. |
+
+With `selectable-actors` in view mode, `selectActor(name)` selects an existing
+actor and `selectActor(null)` clears the selection; selecting an actor in any
+other configuration throws. Messages, groups, sections, and gaps stay static in
+view mode. TypeScript users can import `ChangeDetail`,
+`ErrorDetail`, and `LinesAndArrowsEventMap` from `lines-and-arrows/element`;
+the event map extends `HTMLElementEventMap`, so standard DOM events keep their
+types.
+
+### Edit mode
+
+A visual edit the editor refuses, such as deleting the last message, emits
+`la-error` and shows the reason inside the editor. Undo and redo are built into edit mode; while a text field has focus, the undo
+and redo shortcuts apply to that field instead of the diagram. Delete,
+Backspace, and Alt+Arrow reordering act on the selection only while the canvas
+or the selected element has focus, never while a button or field in the editor
+does.
+
+### View mode and icons
 
 Download SVG saves the diagram as shown, in its current theme, as a standalone
 `.svg` file named after the `label`. Icons stay linked to the CDN, tooltips stay
@@ -104,26 +163,6 @@ import safely without a DOM, such as during server rendering: `/auto` registers
 the element only where custom elements exist, and an explicit
 `defineLinesAndArrows()` call without them throws.
 
-The element's `source` property accepts diagram text. Assigning different valid
-source starts a fresh editor session; a syntax error throws synchronously and
-preserves the current diagram. Assigning source never emits `la-change` and
-discards an uncommitted inline edit. Changing `theme`, `palette`, `mode`, or
-another attribute instead commits a pending inline edit and emits `la-change`
-synchronously, as does an operating-system theme change under `theme="auto"`.
-Properties assigned before the element is defined apply when it upgrades,
-reporting invalid values through `la-error` instead of throwing. Visual edits
-emit `la-change` with `{ source }`, while rendering failures emit `la-error`
-with `{ error }`. A visual edit the editor refuses, such as deleting the last
-message, also emits `la-error` and shows the reason inside the editor. Undo
-and redo are built into edit mode; while a text field has focus, the undo and
-redo shortcuts apply to that field instead of the diagram. Delete, Backspace,
-and Alt+Arrow reordering act on the selection only while the canvas or the
-selected element has focus, never while a button or field in the editor does.
-TypeScript users can import `ChangeDetail`,
-`ErrorDetail`, and `LinesAndArrowsEventMap` from
-`lines-and-arrows/element`; the event map extends `HTMLElementEventMap`, so
-standard DOM events keep their types.
-
 ## Diagram source
 
 ```lines-and-arrows
@@ -159,11 +198,11 @@ embedding workflow.
 Validate one or more files, or standard input, with the published CLI:
 
 ```sh
-lines-and-arrows diagram.txt
-lines-and-arrows first.txt second.txt
-lines-and-arrows --json diagram.txt
-lines-and-arrows - < diagram.txt
-lines-and-arrows --version
+npx lines-and-arrows diagram.txt
+npx lines-and-arrows first.txt second.txt
+npx lines-and-arrows --json diagram.txt
+npx lines-and-arrows - < diagram.txt
+npx lines-and-arrows --version
 ```
 
 The exit code is 0 when every input is valid, 1 when any input is invalid, and
@@ -171,7 +210,7 @@ The exit code is 0 when every input is valid, 1 when any input is invalid, and
 checked and reported. With `--json`, a single input prints one object and
 several inputs print an array. Each object has `valid` and `file`; an invalid
 input adds `error` with `line` and `message`, while a read error has only
-`error.message`. Run `lines-and-arrows --help` for every option.
+`error.message`. Run `npx lines-and-arrows --help` for every option.
 
 Use `validate`, `parse`, and `serialize` from `lines-and-arrows/syntax` in
 JavaScript.
