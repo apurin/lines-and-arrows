@@ -8,6 +8,7 @@ const PHOSPHOR_ICON_BASE =
   `/assets/${PHOSPHOR_ICON_WEIGHT}`;
 
 export const phosphorIconCatalog = phosphorIconNames;
+const phosphorIconNameSet = new Set(phosphorIconNames);
 
 export const recommendedActorIconNames = Object.freeze([
   // People, clients, and runtimes.
@@ -71,9 +72,11 @@ export const recommendedActorIconNames = Object.freeze([
   "map-pin",
 ]);
 
+// Only catalog names resolve to a URL. Unknown identifiers stay in the
+// document, and renderers show their generic fallback for them.
 export function phosphorIconResolver(name) {
   const normalizedName = String(name ?? "").trim();
-  if (!normalizedName) {
+  if (!phosphorIconNameSet.has(normalizedName)) {
     return null;
   }
   return `${PHOSPHOR_ICON_BASE}/${encodeURIComponent(normalizedName)}-${PHOSPHOR_ICON_WEIGHT}.svg`;

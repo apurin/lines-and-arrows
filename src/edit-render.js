@@ -1350,6 +1350,14 @@ const EDIT_STYLES = `
     line-height: 1;
   }
 
+  .la-icon-picker-current {
+    margin: 0 2px 6px;
+    overflow-wrap: anywhere;
+    color: var(--la-muted-text);
+    font-size: 10px;
+    font-weight: 560;
+  }
+
   .la-icon-picker-empty {
     margin: 8px 2px 2px;
     color: var(--la-muted-text);
@@ -2002,6 +2010,12 @@ function createIconSelector(
   const toolbar = document.createElement("div");
   toolbar.className = "la-icon-picker-toolbar";
   toolbar.append(search, clear);
+  if (currentName) {
+    const current = document.createElement("p");
+    current.className = "la-icon-picker-current";
+    current.textContent = `Current: ${currentName}`;
+    selector.append(current);
+  }
 
   const grid = document.createElement("div");
   grid.className = "la-icon-grid";
@@ -2306,9 +2320,19 @@ function createIconPicker(
   if (options.field) {
     trigger.dataset.field = options.field;
   }
-  trigger.setAttribute("aria-label", options.label);
+  // Unknown identifiers render the fallback, so the stored name stays
+  // reachable through the accessible name, the hover title, and the panel.
+  trigger.setAttribute(
+    "aria-label",
+    currentName
+      ? `${options.label}, currently ${currentName}`
+      : options.label,
+  );
   trigger.setAttribute("aria-haspopup", "dialog");
   trigger.setAttribute("aria-expanded", "false");
+  if (currentName) {
+    trigger.title = currentName;
+  }
   const triggerIconName = currentName || options.defaultIcon || null;
   trigger.append(
     iconVisual(

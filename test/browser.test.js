@@ -217,13 +217,14 @@ test("showcase uses static view-mode diagrams with source copy available", async
   );
 });
 
-async function openPage(testContext) {
+async function openPage(testContext, beforeLoad = async () => {}) {
   const context = await browser.newContext();
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
   const page = await context.newPage();
   const requests = [];
   iconRequests.set(page, requests);
   await stubCdn(page, requests);
+  await beforeLoad(page);
   await page.goto(`${origin}/test/browser.html`);
   await page.waitForFunction(() => window.linesAndArrows);
   testContext.after(() => context.close());
@@ -454,6 +455,133 @@ test("copy source offers selectable text when clipboard access fails", async (
   await dialog.getByRole("button", { name: "Close" }).click();
   assert.equal(await dialog.isVisible(), false);
   await diagram.getByRole("button", { name: "Copy source" }).waitFor();
+});
+
+function iconFallbackSnapshot(svg) {
+  const visible = (element) =>
+    Boolean(element) &&
+    getComputedStyle(element).opacity !== "0" &&
+    getComputedStyle(element).display !== "none";
+  const actorFallback = svg.querySelector(".la-actor-icon-fallback");
+  const tooltipFallback = svg.querySelector(".la-tooltip-trigger-fallback");
+  return {
+    images: [...svg.querySelectorAll("image")].map((image) =>
+      image.getAttribute("class"),
+    ),
+    actorFallback: actorFallback?.textContent,
+    actorFallbackVisible: visible(actorFallback),
+    tooltipFallback: tooltipFallback?.textContent,
+    tooltipFallbackVisible: visible(tooltipFallback),
+  };
+}
+
+test("unknown icon names keep the generic fallback", async (testContext) => {
+  const page = await openPage(testContext);
+  const source =
+    "@Server\n  icon server\n  tooltip Runs jobs\n  tooltip-icon nope\n\n" +
+    "Server -> Server: Check";
+  const view = await page.evaluate(
+    ({ source, snapshot }) => {
+      const target = document.createElement("div");
+      document.body.append(target);
+      const rendered = window.linesAndArrows.renderDiagram(target, source, {
+        branding: false,
+        copySource: false,
+      });
+      return new Function(`return (${snapshot})`)()(rendered.svg);
+    },
+    { source, snapshot: iconFallbackSnapshot.toString() },
+  );
+  assert.deepEqual(view, {
+    images: [],
+    actorFallback: "S",
+    actorFallbackVisible: true,
+    tooltipFallback: "i",
+    tooltipFallbackVisible: true,
+  });
+  assert.equal(
+    iconRequests
+      .get(page)
+      .filter((url) => /\/(server|nope)-bold\.svg$/.test(url)).length,
+    0,
+  );
+
+  const edit = await page.evaluate((source) => {
+    const element = document.createElement("lines-and-arrows");
+    element.mode = "edit";
+    element.source = source;
+    document.body.append(element);
+    element.shadowRoot
+      .querySelector('.la-actor[aria-label^="Actor Server"]')
+      .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const trigger = element.shadowRoot.querySelector(
+      ".la-inline-actor-icon-picker .la-icon-picker-trigger",
+    );
+    const currentText = (selector) =>
+      element.shadowRoot.querySelector(`${selector} .la-icon-picker-current`)
+        ?.textContent;
+    return {
+      images: element.shadowRoot.querySelectorAll(
+        ".la-actor-icon, .la-tooltip-trigger-icon",
+      ).length,
+      pickerName: trigger?.getAttribute("aria-label"),
+      pickerTitle: trigger?.title,
+      pickerCurrent: currentText(".la-inline-actor-icon-picker"),
+      tooltipIconCurrent: currentText(".la-inline-tooltip-icon-selector"),
+      pickerImages: trigger?.querySelectorAll("img").length,
+      source: element.source,
+    };
+  }, source);
+  assert.deepEqual(edit, {
+    images: 0,
+    pickerName: "Choose actor icon, currently server",
+    pickerTitle: "server",
+    pickerCurrent: "Current: server",
+    tooltipIconCurrent: "Current: nope",
+    pickerImages: 0,
+    source: `${source}\n`,
+  });
+});
+
+test("icons that fail to load keep the generic fallback", async (
+  testContext,
+) => {
+  const page = await openPage(testContext, (page) =>
+    page.route("https://cdn.jsdelivr.net/npm/@phosphor-icons/**", (route) =>
+      route.abort(),
+    ),
+  );
+  await page.evaluate(() => {
+    const target = document.createElement("div");
+    target.id = "offline-icons";
+    document.body.append(target);
+    window.offlineIcons = window.linesAndArrows.renderDiagram(
+      target,
+      "@Server\n  icon cloud\n  tooltip Runs jobs\n  tooltip-icon key\n\n" +
+        "Server -> Server: Check",
+    );
+  });
+  await page.waitForFunction(
+    () => window.offlineIcons.svg.querySelectorAll("image").length === 0,
+  );
+  const result = await page.evaluate(
+    (snapshot) =>
+      new Function(`return (${snapshot})`)()(window.offlineIcons.svg),
+    iconFallbackSnapshot.toString(),
+  );
+  assert.deepEqual(result, {
+    images: [],
+    actorFallback: "S",
+    actorFallbackVisible: true,
+    tooltipFallback: "i",
+    tooltipFallbackVisible: true,
+  });
+  assert.equal(
+    await page
+      .locator("#offline-icons .la-copy-source .la-header-control-fallback")
+      .evaluate((node) => getComputedStyle(node).display !== "none"),
+    true,
+  );
 });
 
 test(
@@ -1507,6 +1635,8 @@ test("undo shortcuts inside text fields stay with the field", async (
   await search.press("ControlOrMeta+z");
   assert.equal(await source(), renamed);
   assert.notEqual(await search.inputValue(), "data");
+  // Close the picker so its panel no longer covers the tooltip control.
+  await search.press("Escape");
 
   const tooltipText = element.getByLabel("actor tooltip text");
   await element
@@ -1716,11 +1846,11 @@ test("picking an actor icon returns focus to the picker trigger", async (
   await element.getByRole("button", { name: "Choose actor icon" }).click();
   await element.locator(".la-icon-option").first().click();
   assert.match(await source(), /@Lonely\n  icon /);
-  assert.equal(
+  assert.match(
     await element.evaluate((node) =>
       node.shadowRoot.activeElement?.getAttribute("aria-label"),
     ),
-    "Choose actor icon",
+    /^Choose actor icon/,
   );
   await page.keyboard.press("Backspace");
   await page.keyboard.press("Delete");

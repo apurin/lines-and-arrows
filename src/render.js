@@ -439,6 +439,17 @@ function svgElement(name, attributes = {}) {
   return element;
 }
 
+// Icons load remotely. The fallback stays visible until the image loads, and a
+// failed load removes the image so no broken-image glyph replaces it.
+function iconImage(attributes, onLoad) {
+  const image = svgElement("image", attributes);
+  image.addEventListener("load", onLoad);
+  image.addEventListener("error", () => {
+    image.remove();
+  });
+  return image;
+}
+
 function textWidth(text, fontSize = 12, minimum = 0) {
   return Math.max(minimum, estimatedTextWidth(text, fontSize));
 }
@@ -964,20 +975,21 @@ function renderMetadata(
     ? options.iconResolver(tooltipIcon, tokens.name)
     : null;
   if (iconUrl) {
-    const image = svgElement("image", {
-      class: "la-tooltip-trigger-icon",
-      href: iconUrl,
-      x: 3,
-      y: 3,
-      width: triggerSize - 6,
-      height: triggerSize - 6,
-      filter: options.tooltipIconFilter,
-      "pointer-events": "none",
-    });
-    image.addEventListener("load", () => {
-      fallback.setAttribute("opacity", "0");
-    });
-    trigger.append(image);
+    trigger.append(
+      iconImage(
+        {
+          class: "la-tooltip-trigger-icon",
+          href: iconUrl,
+          x: 3,
+          y: 3,
+          width: triggerSize - 6,
+          height: triggerSize - 6,
+          filter: options.tooltipIconFilter,
+          "pointer-events": "none",
+        },
+        () => fallback.setAttribute("opacity", "0"),
+      ),
+    );
   }
 
   let hovered = false;
@@ -1162,20 +1174,21 @@ function renderActor(
 
     const iconUrl = options.iconResolver(actor.icon, tokens.name);
     if (iconUrl) {
-      const image = svgElement("image", {
-        class: "la-actor-icon",
-        href: iconUrl,
-        x: actor.width / 2 - 9,
-        y: 4,
-        width: 18,
-        height: 18,
-        filter: options.actorIconFilter,
-        "pointer-events": "none",
-      });
-      image.addEventListener("load", () => {
-        fallback.setAttribute("opacity", "0");
-      });
-      iconParent.append(image);
+      iconParent.append(
+        iconImage(
+          {
+            class: "la-actor-icon",
+            href: iconUrl,
+            x: actor.width / 2 - 9,
+            y: 4,
+            width: 18,
+            height: 18,
+            filter: options.actorIconFilter,
+            "pointer-events": "none",
+          },
+          () => fallback.setAttribute("opacity", "0"),
+        ),
+      );
     }
     if (activatePart) {
       group.append(iconParent);
@@ -2017,23 +2030,21 @@ function renderHeaderControl(
 
   const iconUrl = options.iconResolver(action.icon, tokens.name);
   if (iconUrl) {
-    const image = svgElement("image", {
-      class: "la-header-control-icon",
-      href: iconUrl,
-      x: 3,
-      y: 3,
-      width: HEADER_CONTROL_SIZE - 6,
-      height: HEADER_CONTROL_SIZE - 6,
-      filter: options.tooltipIconFilter,
-      "pointer-events": "none",
-    });
-    image.addEventListener("load", () => {
-      fallback.setAttribute("display", "none");
-    });
-    image.addEventListener("error", () => {
-      image.remove();
-    });
-    control.append(image);
+    control.append(
+      iconImage(
+        {
+          class: "la-header-control-icon",
+          href: iconUrl,
+          x: 3,
+          y: 3,
+          width: HEADER_CONTROL_SIZE - 6,
+          height: HEADER_CONTROL_SIZE - 6,
+          filter: options.tooltipIconFilter,
+          "pointer-events": "none",
+        },
+        () => fallback.setAttribute("display", "none"),
+      ),
+    );
   }
 
   const activate = async (event) => {

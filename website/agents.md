@@ -276,9 +276,9 @@ Core rules:
 - Actor and message metadata may contain one `tag`, one `tooltip`, and one
   `tooltip-icon`. Actors may also contain one `icon`.
 - Icon identifiers use Phosphor names such as `robot`, `user`, `cloud`,
-  `database`, `gear-six`, and `tray`. An unknown name remains valid but may
-  render without an icon. Built-in icons load from the pinned Phosphor package
-  on jsDelivr.
+  `database`, `gear-six`, and `tray`. An unknown name remains valid and renders
+  the generic treatment: the actor's initial, or `i` for a tooltip control.
+  Built-in icons load from the pinned Phosphor package on jsDelivr.
 - Any lowercase group type is valid except the reserved word `gap`. Its visible
   label is optional; a bare group type starts an unlabeled group. Common types
   include `choice`, `repeat`, `parallel`, `optional`, and `critical`.

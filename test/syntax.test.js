@@ -10,6 +10,7 @@ import {
 import { roundTripDifference } from "../src/serialize.js";
 
 import { GROUP_TYPE_PATTERN_SOURCE } from "../src/grammar.js";
+import { phosphorIconResolver } from "../src/icons.js";
 
 const SOURCE = `// Customer journey
 @Customer
@@ -529,4 +530,33 @@ choice Result
     change(changed);
     assert.equal(roundTripDifference(changed, reparsed), path, path);
   }
+});
+
+test("unknown icons stay in source and resolve to no icon URL", () => {
+  const source = `@API
+  icon server
+  tooltip Runs jobs
+  tooltip-icon nope
+
+API -> API: Check
+  tooltip Retries
+  tooltip-icon Cloud
+`;
+
+  assert.deepEqual(validate(source), { valid: true });
+  const document = parse(source);
+  assert.equal(document.actors[0].icon, "server");
+  assert.equal(document.actors[0].tooltipIcon, "nope");
+  assert.equal(serialize(document), source);
+
+  assert.equal(phosphorIconResolver("server"), null);
+  assert.equal(phosphorIconResolver("nope"), null);
+  assert.equal(phosphorIconResolver("Cloud"), null);
+  assert.equal(phosphorIconResolver("cloud-"), null);
+  assert.equal(phosphorIconResolver(""), null);
+  assert.equal(phosphorIconResolver(null), null);
+  assert.equal(
+    phosphorIconResolver(" cloud "),
+    "https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/cloud-bold.svg",
+  );
 });

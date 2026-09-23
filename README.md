@@ -57,6 +57,8 @@ the top edge.
 
 Built-in icons load from the pinned Phosphor package on jsDelivr. Allow that
 origin in browser content policies, or omit icon properties for offline embeds.
+Unknown icon names and icons that fail to load fall back to the actor's initial
+and the default `i` tooltip control; the identifier stays in the source.
 
 ## npm
 
