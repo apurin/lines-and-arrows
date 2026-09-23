@@ -299,6 +299,18 @@ Core rules:
 - Use `\n` for a visible line break and `\\` for a literal backslash.
 - Keep coordinates, colors, dimensions, and themes out of diagram source.
 
+## Where information belongs
+
+- A visible remark goes on a second label line with `\n`.
+- A stable qualifier goes in a `tag` of 12 characters or fewer.
+- An explanation goes in a `tooltip`.
+- A discontinuity in time or context is a `gap`.
+- Context for the whole document goes in header comments.
+
+The source has no links, buttons, embedded media, activation boxes, message
+numbering, free-floating notes, or created and destroyed lifelines, and it does
+not pair requests with responses. Interaction belongs to the renderer.
+
 ## Decorate actors
 
 Add metadata when an actor's role, responsibility, boundary, or stable property

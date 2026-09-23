@@ -324,6 +324,29 @@ comments together at the top of the source, and visual edits preserve them.
 Comments stay outside the rendered diagram. Use tags and tooltips for context
 attached to actors and messages.
 
+## Where information belongs
+
+Each kind of information has one place in the source:
+
+| Information | Place |
+| --- | --- |
+| A visible remark on a message, group, section, or gap | A second label line, written with `\n` |
+| A stable qualifier of an actor or message | A `tag`, 12 characters or fewer |
+| An explanation or supporting detail | A `tooltip` |
+| A discontinuity in time or context | A `gap` |
+| Context for the whole document | Header comments |
+
+The language has no links, buttons, or embedded media. Showing tooltips,
+selecting actors, and editing are renderer behavior; the source holds only the
+text they show.
+
+Besides the layout and styling details listed under
+[Design boundaries](#design-boundaries), the language leaves out on purpose:
+activation boxes on lifelines, message numbering, notes as free-floating boxes,
+lifelines created or destroyed mid-sequence, and inferred request/response
+pairing. A diagram that needs one of these expresses it with the constructs
+above, such as a tooltip on the message concerned.
+
 ## Names and text
 
 Actor names, labels, tags, and tooltips are trimmed but otherwise preserve their
