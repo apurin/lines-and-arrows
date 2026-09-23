@@ -2966,3 +2966,109 @@ test("a refused gap delete keeps the typed label and the selection free", async 
   );
   assert.deepEqual(await changes(), ["@A\n\n@B\n\ngap Later\n"]);
 });
+
+test("touch drags reorder items while other touches scroll the page", async (
+  testContext,
+) => {
+  const { page, element } = await openTouchEditor(
+    testContext,
+    "A -> B: One\nA -> B: Two\nA -> B: Three",
+  );
+  const changes = () => page.evaluate(() => window.changes);
+  const pointerCancels = () => page.evaluate(() => window.pointerCancels);
+
+  await element.getByRole("button", { name: "A to B: One" }).tap();
+  const two = await partCenter(element, "A to B: Two", ".la-message-line");
+  const three = await partCenter(
+    element,
+    "A to B: Three",
+    ".la-message-line",
+  );
+  const handle = await partCenter(
+    element,
+    "A to B: One",
+    '.la-reorder-handle[data-owner-id="$id"] circle',
+  );
+  await touchDrag(page, handle, { x: handle.x, y: (two.y + three.y) / 2 });
+  assert.deepEqual(await changes(), [
+    "A -> B: Two\nA -> B: One\nA -> B: Three\n",
+  ]);
+  assert.equal(await pointerCancels(), 0);
+
+  const actorA = await element
+    .getByRole("button", { name: /^Actor A/ })
+    .getAttribute("aria-label");
+  await element.getByRole("button", { name: /^Actor A/ }).tap();
+  // The inline editor covers much of a phone-sized actor; grab the actor
+  // where its own shape is exposed.
+  const from = await element.evaluate((node, label) => {
+    const actor = node.shadowRoot.querySelector(
+      `[aria-label="${CSS.escape(label)}"]`,
+    );
+    const rect = actor
+      .querySelector(".la-actor-shape")
+      .getBoundingClientRect();
+    for (let y = rect.top + 2; y < rect.bottom; y += 2) {
+      for (let x = rect.left + 2; x < rect.right; x += 2) {
+        if (
+          node.shadowRoot.elementFromPoint(x, y)?.closest("[data-la-id]") ===
+          actor
+        ) {
+          return { x, y };
+        }
+      }
+    }
+    return null;
+  }, actorA);
+  const actorB = await partCenter(
+    element,
+    await element
+      .getByRole("button", { name: /^Actor B/ })
+      .getAttribute("aria-label"),
+    ".la-actor-shape",
+  );
+  await touchDrag(page, from, { x: actorB.x + 40, y: from.y });
+  assert.equal(
+    (await changes()).at(-1),
+    "@B\n\nA -> B: Two\nA -> B: One\nA -> B: Three\n",
+  );
+  assert.equal(await pointerCancels(), 0);
+
+  // Hover-only affordances such as connection origins are invisible to
+  // touch, so a touch that starts on one scrolls instead of dragging.
+  await page.keyboard.press("Escape");
+  const origin = await element.evaluate((node) => {
+    const rect = node.shadowRoot
+      .querySelector(".la-connection-origin circle")
+      .getBoundingClientRect();
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  });
+  const changeCount = (await changes()).length;
+  await touchDrag(page, origin, { x: origin.x, y: origin.y - 150 });
+  await page.waitForFunction(() => scrollY > 0);
+  assert.equal((await changes()).length, changeCount);
+  await page.evaluate(() => scrollTo(0, 0));
+
+  const frame = await element.evaluate((node) => {
+    const rect = node.shadowRoot
+      .querySelector(".la-frame")
+      .getBoundingClientRect();
+    return { x: rect.x, bottom: rect.bottom };
+  });
+  const empty = { x: frame.x + 4, y: frame.bottom - 12 };
+  assert.equal(
+    await element.evaluate(
+      (node, point) =>
+        node.shadowRoot
+          .elementFromPoint(point.x, point.y)
+          ?.closest(
+            "[data-la-id], [data-owner-id], .la-insertion, .la-connection-origin",
+          ) ?? null,
+      empty,
+    ),
+    null,
+  );
+  await touchDrag(page, empty, { x: empty.x, y: empty.y - 150 });
+  await page.waitForFunction(() => scrollY > 0);
+  assert.equal((await changes()).length, changeCount);
+});

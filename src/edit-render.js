@@ -1018,7 +1018,6 @@ const EDIT_STYLES = `
     cursor: grab;
     opacity: 0;
     pointer-events: none;
-    touch-action: none;
     transition: opacity 100ms ease;
   }
 
@@ -1038,7 +1037,6 @@ const EDIT_STYLES = `
 
   .la-connection-origin {
     cursor: crosshair;
-    touch-action: none;
   }
 
   .la-connection-origin-visible {
@@ -1062,7 +1060,6 @@ const EDIT_STYLES = `
 
   .la-message-endpoint {
     cursor: ew-resize;
-    touch-action: none;
   }
 
   .la-message-endpoint-visible {
@@ -2848,6 +2845,17 @@ function isEditableField(element) {
   return (
     element.matches("input, textarea, select") ||
     element.isContentEditable === true
+  );
+}
+
+// Touch has no hover, so a touch drags only from an affordance that is
+// visible: a selected actor or the handles of the selected item. Hover-only
+// connection origins and endpoints of unselected messages cover lifelines,
+// and claiming touches there would stop the page from scrolling.
+function startsTouchDrag(handle) {
+  return (
+    handle.dataset.visible === "true" ||
+    handle.dataset.selected === "true"
   );
 }
 
@@ -4744,7 +4752,10 @@ export function renderEditor(target, editor, options = {}) {
   }
 
   function startDrag(handle, event, move, drop) {
-    if (event.button !== 0) {
+    if (
+      event.button !== 0 ||
+      (event.pointerType === "touch" && !startsTouchDrag(handle))
+    ) {
       return;
     }
     event.preventDefault();
@@ -5298,6 +5309,24 @@ export function renderEditor(target, editor, options = {}) {
     svg.append(handleLayer);
 
     frame.addEventListener("pointerdown", trackPress, true);
+
+    // Chromium ignores touch-action on SVG descendants, and touch-action on
+    // the frame would stop every touch on the diagram from scrolling the
+    // page. Instead, once pointerdown has started a drag, this listener
+    // cancels the drag's touchmove events so the browser does not take the
+    // gesture over for panning and cancel the pointer. It is non-passive and
+    // scoped to the frame, since Chromium makes touch listeners on the
+    // window, document, and body passive by default. Touches that start
+    // anywhere else still scroll the page.
+    frame.addEventListener(
+      "touchmove",
+      (event) => {
+        if (frame.dataset.dragging === "true" && event.cancelable) {
+          event.preventDefault();
+        }
+      },
+      { passive: false },
+    );
 
     // Swallows the click that ends a press the canvas already handled. A
     // press that ends in pointercancel, or is released outside the canvas,
