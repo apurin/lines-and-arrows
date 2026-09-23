@@ -3072,3 +3072,335 @@ test("touch drags reorder items while other touches scroll the page", async (
   await page.waitForFunction(() => scrollY > 0);
   assert.equal((await changes()).length, changeCount);
 });
+
+async function openKeyboardEditor(testContext, source) {
+  const { page, element } = await openEditor(testContext, source);
+  await page.evaluate(() => {
+    const diagram = document.querySelector("#focus-editor");
+    const before = document.createElement("button");
+    before.id = "before";
+    before.textContent = "Before";
+    const after = document.createElement("button");
+    after.id = "after";
+    after.textContent = "After";
+    diagram.before(before);
+    diagram.after(after);
+    window.changes = [];
+    diagram.addEventListener("la-change", (event) =>
+      window.changes.push(event.detail.source),
+    );
+  });
+  const focused = () =>
+    page.evaluate(() => {
+      const active = document.activeElement;
+      if (active?.id !== "focus-editor") {
+        return `outside:${active?.id || active?.tagName}`;
+      }
+      const inner = active.shadowRoot.activeElement;
+      if (inner?.classList.contains("la-frame")) {
+        return "frame";
+      }
+      return inner?.getAttribute("aria-label") ?? null;
+    });
+  const press = async (key, count = 1) => {
+    const sequence = [];
+    for (let index = 0; index < count; index += 1) {
+      await page.keyboard.press(key);
+      sequence.push(await focused());
+    }
+    return sequence;
+  };
+  return { page, element, focused, press };
+}
+
+test("Tab follows the diagram layout and leaves at either end", async (
+  testContext,
+) => {
+  const { page, press } = await openKeyboardEditor(
+    testContext,
+    "A -> B: Start\nB --> A: Done",
+  );
+  await page.locator("#before").focus();
+  const forward = [
+    "frame",
+    "Copy source",
+    "Add actor here",
+    "Actor A",
+    "Add actor here",
+    "Actor B",
+    "Add actor here",
+    "Add timeline item here",
+    "A to B: Start",
+    "Add timeline item here",
+    "B to A: Done",
+    "Add timeline item here",
+  ];
+  assert.deepEqual(await press("Tab", forward.length), forward);
+  // The SVG draws insertion marks after every item, so leaving forward must
+  // skip the controls that follow in DOM order.
+  assert.deepEqual(await press("Tab"), ["outside:after"]);
+
+  // Shift+Tab from the following control enters at the end of the layout
+  // order, not at the last control in DOM order.
+  const backward = forward.slice().reverse();
+  assert.deepEqual(await press("Shift+Tab", backward.length), backward);
+  assert.deepEqual(await press("Shift+Tab"), ["outside:before"]);
+});
+
+test("Tab visits an item's own controls and only visible ones", async (
+  testContext,
+) => {
+  const { page, element, press } = await openKeyboardEditor(
+    testContext,
+    "@A\n  tag edge\n\nA -> B: Start\n  tooltip Why\nloop Again\n  B -> A: Next",
+  );
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector(".la-frame").focus(),
+  );
+  assert.deepEqual(await press("Tab", 14), [
+    "Copy source",
+    "Add actor here",
+    "Actor A",
+    "Edit actor tag",
+    "Add actor here",
+    "Actor B",
+    "Add actor here",
+    "Add timeline item here",
+    "A to B: Start. Why",
+    "Edit arrow tooltip",
+    "Add timeline item here",
+    "loop group, Again",
+    "Edit group type",
+    "Edit group label",
+  ]);
+
+  // A selection hides the other items and the insertion marks; Tab moves
+  // from the selected item into its editor and then out of the element.
+  await element.getByRole("button", { name: "A to B: Start. Why" }).click();
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector('.la-message[data-selected="true"]').focus(),
+  );
+  assert.deepEqual(await press("Tab", 3), [
+    "Arrow source",
+    "Solid arrow",
+    "Dashed arrow",
+  ]);
+  assert.deepEqual(await press("Shift+Tab", 4), [
+    "Solid arrow",
+    "Arrow source",
+    "A to B: Start. Why",
+    "Copy source",
+  ]);
+  await page.evaluate(() =>
+    document
+      .querySelector("#focus-editor")
+      .shadowRoot.querySelector(".la-inline-actor-tooltip-trigger")
+      .focus(),
+  );
+  assert.deepEqual(await press("Tab"), ["outside:after"]);
+});
+
+test("Tab walks out of the element while an editor is open", async (
+  testContext,
+) => {
+  const { page, element, press } = await openKeyboardEditor(
+    testContext,
+    "A -> B: Start\nB -> A: Back",
+  );
+  // Walks until focus leaves the element, so a trapped focus shows up as a
+  // repeated control rather than a hang.
+  const walk = async (key) => {
+    const sequence = [];
+    for (let step = 0; step < 30; step += 1) {
+      const [current] = await press(key);
+      sequence.push(current);
+      if (current.startsWith("outside:")) {
+        return sequence;
+      }
+    }
+    return sequence;
+  };
+  const messageEditor = [
+    "Arrow source",
+    "Solid arrow",
+    "Dashed arrow",
+    "Lost message",
+    "Arrow target",
+    "Arrow label",
+    "Delete arrow",
+    "Arrow tag",
+    "Edit arrow tooltip",
+  ];
+
+  // A pointer selection hides the insertion marks and the other items.
+  await element.getByRole("button", { name: "A to B: Start" }).click();
+  await page.locator("#before").focus();
+  const forward = [
+    "frame",
+    "Copy source",
+    "A to B: Start",
+    ...messageEditor,
+    "outside:after",
+  ];
+  assert.deepEqual(await walk("Tab"), forward);
+  assert.deepEqual(
+    await walk("Shift+Tab"),
+    [...forward.slice(0, -1).reverse(), "outside:before"],
+  );
+
+  // Enter on a focused actor opens its inline editor from the keyboard.
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector(".la-frame").focus(),
+  );
+  await page.keyboard.press("Escape");
+  await page.locator("#before").focus();
+  assert.equal((await press("Tab", 4)).at(-1), "Actor A");
+  assert.deepEqual(await press("Enter"), ["Actor name"]);
+  const actorWalk = await walk("Tab");
+  assert.equal(actorWalk.at(-1), "outside:after", JSON.stringify(actorWalk));
+  assert.equal(new Set(actorWalk).size, actorWalk.length, JSON.stringify(actorWalk));
+  const actorBack = await walk("Shift+Tab");
+  assert.equal(actorBack.at(-1), "outside:before", JSON.stringify(actorBack));
+  assert.equal(new Set(actorBack).size, actorBack.length, JSON.stringify(actorBack));
+  assert.ok(actorBack.includes("Actor A"), JSON.stringify(actorBack));
+});
+
+test("the insertion picker needs an actor for messages and groups", async (
+  testContext,
+) => {
+  const { element, press } = await openKeyboardEditor(
+    testContext,
+    "gap Later",
+  );
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector(".la-insertion-circle[tabindex]").focus(),
+  );
+  assert.deepEqual(await press("Enter"), ["Add gap"]);
+  assert.deepEqual(
+    await element
+      .locator(".la-insert-option")
+      .evaluateAll((options) =>
+        options.map((option) => [
+          option.getAttribute("aria-label"),
+          option.disabled,
+        ]),
+      ),
+    [
+      ["Add message", true],
+      ["Add group", true],
+      ["Add gap", false],
+    ],
+  );
+});
+
+test("keyboard alone creates a message and changes its endpoints", async (
+  testContext,
+) => {
+  const { page, element, focused, press } = await openKeyboardEditor(
+    testContext,
+    "@A\n@B\n@C\n\nA -> B: Start\ngap Later\nC -> A: Done",
+  );
+  const lastChange = () => page.evaluate(() => window.changes.at(-1));
+  await element.evaluate((node) =>
+    node.shadowRoot.querySelector(".la-frame").focus(),
+  );
+  let steps = 0;
+  while ((await focused()) !== "A to B: Start" && steps < 20) {
+    await page.keyboard.press("Tab");
+    steps += 1;
+  }
+  assert.deepEqual(await press("Tab"), ["Add timeline item here"]);
+
+  assert.deepEqual(await press("Enter"), ["Add message"]);
+  assert.deepEqual(
+    await element
+      .locator(".la-insert-option")
+      .evaluateAll((options) =>
+        options.map((option) => option.getAttribute("aria-label")),
+      ),
+    ["Add message", "Add group", "Add gap"],
+  );
+  assert.deepEqual(await press("Escape"), ["Add timeline item here"]);
+  assert.equal(await element.locator(".la-insert-option").count(), 0);
+
+  assert.deepEqual(await press("Enter"), ["Add message"]);
+  assert.deepEqual(await press("Enter"), ["Arrow label"]);
+  assert.equal(
+    await lastChange(),
+    "A -> B: Start\nA -> B\ngap Later\nC -> A: Done\n",
+  );
+  assert.deepEqual(
+    [
+      await element.getByLabel("Arrow source").inputValue(),
+      await element.getByLabel("Arrow target").inputValue(),
+    ],
+    ["A", "B"],
+  );
+  await page.keyboard.type("Retry");
+  await page.keyboard.press("Enter");
+  assert.equal(
+    await lastChange(),
+    "A -> B: Start\nA -> B: Retry\ngap Later\nC -> A: Done\n",
+  );
+  assert.equal(await focused(), "Arrow label");
+
+  await element.getByLabel("Arrow target").selectOption("C");
+  assert.equal(
+    await lastChange(),
+    "A -> B: Start\nA -> C: Retry\ngap Later\nC -> A: Done\n",
+  );
+  assert.equal(await focused(), "Arrow target");
+  await element.getByLabel("Arrow source").selectOption("C");
+  assert.match(await lastChange(), /\nC -> C: Retry\n/);
+  assert.equal(await focused(), "Arrow source");
+
+  // Keyboard changes on a closed select wait for Enter: one undo step.
+  const changeCount = () => page.evaluate(() => window.changes.length);
+  const before = await changeCount();
+  await page.keyboard.press("a");
+  assert.equal(await element.getByLabel("Arrow source").inputValue(), "A");
+  assert.equal(await changeCount(), before);
+  await page.keyboard.press("Enter");
+  assert.equal(await changeCount(), before + 1);
+  assert.match(await lastChange(), /\nA -> C: Retry\n/);
+  assert.equal(await focused(), "Arrow source");
+
+  // A select has no undo stack of its own, so the diagram's undo applies.
+  const undo = async () => {
+    await page.keyboard.press("ControlOrMeta+z");
+    return lastChange();
+  };
+  assert.match(await undo(), /\nC -> C: Retry\n/);
+
+  assert.deepEqual(await press("Escape"), ["frame"]);
+  assert.match(await undo(), /\nA -> C: Retry\n/);
+  assert.match(await undo(), /\nA -> B: Retry\n/);
+});
+
+test("clicking into an open editor from a later element keeps focus", async (
+  testContext,
+) => {
+  const { page, element, focused } = await openKeyboardEditor(
+    testContext,
+    "A -> B: Start\nB -> A: Back",
+  );
+  for (const [item, field, typed, expected] of [
+    ["B to A: Back", "Arrow label", "!", "Back!"],
+    ["Actor A", "Actor name", "1", "A1"],
+  ]) {
+    await element.getByRole("button", { name: item }).click();
+    await page.locator("#after").click();
+    assert.equal(await focused(), "outside:after");
+    const control = element.getByLabel(field);
+    await control.click();
+    assert.equal(await focused(), field);
+    await page.keyboard.press("End");
+    await page.keyboard.type(typed);
+    assert.equal(await control.inputValue(), expected);
+    await page.keyboard.press("Escape");
+  }
+  assert.equal(
+    await page.evaluate(() => window.changes.length),
+    0,
+  );
+});

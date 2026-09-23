@@ -898,14 +898,49 @@ const EDIT_STYLES = `
     );
   }
 
-  .la-inline-message-arrow-styles {
+  .la-inline-message-toolbar {
     position: absolute;
     z-index: 6;
     display: flex;
-    gap: calc(3px * var(--la-inline-scale));
+    gap: calc(4px * var(--la-inline-scale));
     align-items: center;
     pointer-events: auto;
-    transform: translateY(-50%);
+    transform: translate(
+      calc(-50% + var(--la-inline-message-toolbar-shift, 0px)),
+      -50%
+    );
+  }
+
+  .la-inline-message-arrow-styles {
+    display: flex;
+    gap: calc(3px * var(--la-inline-scale));
+    align-items: center;
+  }
+
+  .la-inline-message-endpoint {
+    box-sizing: border-box;
+    max-width: calc(96px * var(--la-inline-scale));
+    height: calc(18px * var(--la-inline-scale));
+    margin: 0;
+    padding: 0 calc(4px * var(--la-inline-scale));
+    cursor: pointer;
+    border: 1px solid var(--la-section-line);
+    border-radius: calc(9px * var(--la-inline-scale));
+    outline: none;
+    background: var(--la-surface);
+    color: var(--la-text);
+    font: 560 calc(10px * var(--la-inline-scale)) / 1 var(
+        --la-font-family,
+        ui-sans-serif,
+        system-ui,
+        sans-serif
+      );
+    text-overflow: ellipsis;
+  }
+
+  .la-inline-message-endpoint:hover,
+  .la-inline-message-endpoint:focus-visible {
+    border-color: var(--la-selection);
   }
 
   .la-inline-message-arrow-style {
@@ -1285,7 +1320,7 @@ const EDIT_STYLES = `
 
   .la-insert-picker {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px;
   }
 
@@ -1305,6 +1340,12 @@ const EDIT_STYLES = `
     font-size: 11px;
     font-weight: 650;
     line-height: 1;
+  }
+
+  .la-insert-option:disabled {
+    border-color: var(--la-section-line);
+    cursor: not-allowed;
+    opacity: 0.45;
   }
 
   .la-icon-visual {
@@ -1929,6 +1970,7 @@ function addInsertionPicker(popover, actions) {
     button.type = "button";
     button.className = "la-insert-option";
     button.setAttribute("aria-label", action.label);
+    button.disabled = action.disabled === true;
     button.append(
       iconVisual(
         action.icon,
@@ -2812,6 +2854,156 @@ function ownerSelector(owner) {
       )}"]`;
 }
 
+// Editing forms layered over the diagram. Tab keeps their own DOM order.
+const OVERLAY_SELECTOR = [
+  ".la-edit-popover",
+  ".la-inline-actor-editor",
+  ".la-inline-group-editor",
+  ".la-inline-section-editor",
+  ".la-inline-message-editor",
+  ".la-inline-gap-editor",
+  ".la-inline-gap-delete",
+].join(", ");
+
+// checkVisibility misses SVG content inside a display: none group, such as
+// the insertion layer while something is selected; it has no client rects.
+function isTabbable(element) {
+  return (
+    element.tabIndex >= 0 &&
+    element.disabled !== true &&
+    element.getClientRects().length > 0 &&
+    element.checkVisibility({ visibilityProperty: true })
+  );
+}
+
+function tabbableControls(container) {
+  return [...container.querySelectorAll(FOCUSABLE_CONTROL_SELECTOR)].filter(
+    isTabbable,
+  );
+}
+
+// The element a control follows in the Tab order: the diagram item that owns
+// it, the insertion mark that opened a popover, or the selected item for its
+// inline editor. Controls without an anchor are placed by their position.
+function focusAnchor(element, candidates, selectedElement) {
+  const overlay = element.closest(OVERLAY_SELECTOR);
+  const anchor = overlay
+    ? overlay.insertionTrigger ?? selectedElement
+    : element.parentElement?.closest(OWNER_SELECTOR);
+  if (!anchor) {
+    return null;
+  }
+  const resolved = candidates.has(anchor)
+    ? anchor
+    : [...anchor.querySelectorAll(FOCUSABLE_CONTROL_SELECTOR)].find(
+        (control) => candidates.has(control),
+      );
+  return resolved && resolved !== element ? resolved : null;
+}
+
+// SVG layers put messages before actors and insertion marks last, so the DOM
+// order does not match what people see. Tab instead follows the layout:
+// visual rows from top to bottom (the header, actors with their insertion
+// marks, then timeline rows and the marks between them), left to right within
+// a row. Two controls share a row when their vertical centers are closer than
+// half the height of the smaller one.
+function layoutFocusOrder(frame, selectedElement) {
+  const candidates = tabbableControls(frame);
+  const candidateSet = new Set(candidates);
+  const followers = new Map();
+  const roots = [];
+  for (const element of candidates) {
+    const anchor = focusAnchor(element, candidateSet, selectedElement);
+    if (anchor) {
+      if (!followers.has(anchor)) {
+        followers.set(anchor, []);
+      }
+      followers.get(anchor).push(element);
+    } else {
+      roots.push(element);
+    }
+  }
+
+  const boxes = roots
+    .map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        element,
+        left: rect.left,
+        height: rect.height,
+        center: rect.top + rect.height / 2,
+      };
+    })
+    .sort((first, second) => first.center - second.center);
+  const rows = [];
+  for (const box of boxes) {
+    const row = rows.at(-1);
+    if (
+      row &&
+      Math.abs(box.center - row.center) <
+        Math.min(box.height, row.height) / 2
+    ) {
+      row.boxes.push(box);
+    } else {
+      rows.push({ center: box.center, height: box.height, boxes: [box] });
+    }
+  }
+
+  const order = [];
+  const visited = new Set();
+  const append = (element) => {
+    if (visited.has(element)) {
+      return;
+    }
+    visited.add(element);
+    order.push(element);
+    for (const follower of followers.get(element) ?? []) {
+      append(follower);
+    }
+  };
+  for (const row of rows) {
+    row.boxes.sort((first, second) => first.left - second.left);
+    for (const box of row.boxes) {
+      append(box.element);
+    }
+  }
+  return order;
+}
+
+// Leaving forward cannot be left to the browser: its next control in DOM
+// order may still be inside the frame. For this one keystroke every other
+// frame control leaves the sequential order, so the browser moves past the
+// element. The focused control keeps its place; Chrome restarts from the
+// frame when the starting point itself is no longer tabbable. The order is
+// restored as soon as focus leaves, once the browser has chosen its target.
+function releaseFocusForward(frame, current) {
+  const controls = [
+    ...frame.querySelectorAll(FOCUSABLE_CONTROL_SELECTOR),
+  ]
+    .filter((control) => control !== current)
+    .map((control) => [control, control.getAttribute("tabindex")]);
+  for (const [control] of controls) {
+    control.setAttribute("tabindex", "-1");
+  }
+  let restored = false;
+  const restore = () => {
+    if (restored) {
+      return;
+    }
+    restored = true;
+    current.removeEventListener("focusout", restore);
+    for (const [control, tabIndex] of controls) {
+      if (tabIndex === null) {
+        control.removeAttribute("tabindex");
+      } else {
+        control.setAttribute("tabindex", tabIndex);
+      }
+    }
+  };
+  current.addEventListener("focusout", restore);
+  setTimeout(restore, 0);
+}
+
 function canReceiveFocus(element) {
   return (
     element.disabled !== true &&
@@ -2841,9 +3033,11 @@ function focusElement(element) {
   return true;
 }
 
+// Text fields own an undo stack. A select has none, so diagram undo and redo
+// keep working while one of the message endpoint selects has focus.
 function isEditableField(element) {
   return (
-    element.matches("input, textarea, select") ||
+    element.matches("input, textarea") ||
     element.isContentEditable === true
   );
 }
@@ -2922,6 +3116,16 @@ export function renderEditor(target, editor, options = {}) {
   let pressActive = false;
   let statusTimer = null;
   let inlineDrawAfterPress = null;
+  // Set between a Shift+Tab keydown and the next key or pointer event, the
+  // window within which the browser moves focus for that keystroke.
+  let reverseTabPending = false;
+  const trackReverseTab = (event) => {
+    reverseTabPending =
+      event.type === "keydown" && event.key === "Tab" && event.shiftKey;
+  };
+  for (const type of ["keydown", "keyup", "pointerdown"]) {
+    globalThis.addEventListener(type, trackReverseTab, true);
+  }
 
   function notifyChange() {
     const detail = Object.freeze({
@@ -3136,6 +3340,80 @@ export function renderEditor(target, editor, options = {}) {
       selectedIds.includes(selectable.dataset.laId) &&
       target.closest(FOCUSABLE_CONTROL_SELECTOR) === selectable
     );
+  }
+
+  function moveFocusInLayoutOrder(frame, event) {
+    const current = event.target;
+    const overlay = current.closest(OVERLAY_SELECTOR);
+    if (overlay) {
+      const controls = tabbableControls(overlay);
+      const edge = event.shiftKey ? controls[0] : controls.at(-1);
+      if (current !== edge) {
+        return;
+      }
+    }
+    const selectedElement = selectedIds.length
+      ? frame.querySelector(
+          `.la-selectable[data-la-id="${CSS.escape(selectedIds[0])}"]`,
+        )
+      : null;
+    const order = [frame, ...layoutFocusOrder(frame, selectedElement)];
+    const index = order.indexOf(current);
+    if (index === -1) {
+      return;
+    }
+    const step = event.shiftKey ? -1 : 1;
+    for (
+      let position = index + step;
+      position >= 0 && position < order.length;
+      position += step
+    ) {
+      const next = order[position];
+      next.focus();
+      if (frame.getRootNode().activeElement === next) {
+        event.preventDefault();
+        return;
+      }
+    }
+    if (!event.shiftKey) {
+      releaseFocusForward(frame, current);
+    }
+  }
+
+  // Shift+Tab from after the element enters at the frame's last control in
+  // DOM order, which is not the end of the layout order. Keyboard entry from
+  // a later element moves on to the last control in layout order instead.
+  // Only a pending Shift+Tab counts: clicks and host scripts that focus a
+  // control keep it, even when the browser marks it :focus-visible.
+  function enterFromEnd(frame, event) {
+    const from = event.relatedTarget;
+    if (!reverseTabPending || !from || frame.contains(from)) {
+      return;
+    }
+    let host = frame;
+    while (
+      host.getRootNode() !== from.getRootNode() &&
+      host.getRootNode().host
+    ) {
+      host = host.getRootNode().host;
+    }
+    const position = host.compareDocumentPosition(from);
+    if (
+      host.getRootNode() !== from.getRootNode() ||
+      host.contains(from) ||
+      !(position & Node.DOCUMENT_POSITION_FOLLOWING)
+    ) {
+      return;
+    }
+    const selectedElement = selectedIds.length
+      ? frame.querySelector(
+          `.la-selectable[data-la-id="${CSS.escape(selectedIds[0])}"]`,
+        )
+      : null;
+    const last = layoutFocusOrder(frame, selectedElement).at(-1);
+    if (last && last !== event.target) {
+      last.focus();
+    }
   }
 
   function cancelInlineEditor(event, frame) {
@@ -4060,6 +4338,7 @@ export function renderEditor(target, editor, options = {}) {
     } = tooltip;
 
     const dirtyFields = new Set();
+    const endpointControls = {};
     const sizeTagPill = () => {
       const width = tagControl.value
         ? metadataMetrics(tagControl.value, false).tagWidth
@@ -4106,6 +4385,11 @@ export function renderEditor(target, editor, options = {}) {
       if (dirtyFields.has("tooltip")) {
         patch.tooltip = tooltipControl.value;
       }
+      for (const [endpoint, control] of Object.entries(endpointControls)) {
+        if (dirtyFields.has(endpoint)) {
+          patch[endpoint] = control.value;
+        }
+      }
       if (Object.keys(patch).length === 0) {
         return "unchanged";
       }
@@ -4119,6 +4403,11 @@ export function renderEditor(target, editor, options = {}) {
           labelControl.value = current?.label ?? "";
           tagControl.value = current?.tag ?? "";
           tooltipControl.value = current?.tooltip ?? "";
+          for (const [endpoint, control] of Object.entries(
+            endpointControls,
+          )) {
+            control.value = current?.[endpoint] ?? control.value;
+          }
           dirtyFields.clear();
           sizeTagPill();
           return "unchanged";
@@ -4214,7 +4503,71 @@ export function renderEditor(target, editor, options = {}) {
       });
       arrowStyles.append(button);
     }
-    inlineEditor.append(arrowStyles);
+
+    // Endpoints can also be dragged; these controls are the keyboard path.
+    const endpointControl = (endpoint) => {
+      const control = document.createElement("select");
+      control.className = "la-inline-message-endpoint";
+      control.dataset.field = `message-${endpoint}`;
+      control.setAttribute(
+        "aria-label",
+        endpoint === "source" ? "Arrow source" : "Arrow target",
+      );
+      for (const actor of editor.document.actors) {
+        const option = document.createElement("option");
+        option.value = actor.name;
+        option.textContent = actor.name;
+        control.append(option);
+      }
+      control.value = model[endpoint];
+      // A closed select changes its value on every arrow key or type-ahead
+      // letter. Keyboard changes wait for Enter or for focus to leave the
+      // editor, like the text fields, so one choice is one undo step; a
+      // choice from the open list applies at once.
+      let typing = false;
+      control.addEventListener("change", () => {
+        if (typing) {
+          dirtyFields.add(endpoint);
+        } else {
+          dirtyFields.delete(endpoint);
+          commit({ [endpoint]: control.value }, `message-${endpoint}`);
+        }
+      });
+      control.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          cancelled = true;
+          cancelInlineEditor(event, frame);
+          return;
+        }
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.stopPropagation();
+          commit({}, `message-${endpoint}`);
+          return;
+        }
+        typing = true;
+      });
+      control.addEventListener("keyup", () => {
+        typing = false;
+      });
+      control.addEventListener("pointerdown", () => {
+        typing = false;
+      });
+      endpointControls[endpoint] = control;
+      return control;
+    };
+    const sourceControl = endpointControl("source");
+    const targetControl = endpointControl("target");
+    const toolbar = document.createElement("div");
+    toolbar.className = "la-inline-message-toolbar";
+    // Each endpoint control sits on its actor's side of the arrow.
+    if (source.centerX > target.centerX) {
+      toolbar.append(targetControl, arrowStyles, sourceControl);
+    } else {
+      toolbar.append(sourceControl, arrowStyles, targetControl);
+    }
+    // The toolbar sits above the label, so it comes first in Tab order too.
+    inlineEditor.prepend(toolbar);
 
     appendTooltipIconSelector(
       inlineEditor,
@@ -4294,20 +4647,10 @@ export function renderEditor(target, editor, options = {}) {
       metadata.style.top = `${
         (row.y + (selfMessage ? 18 : 5)) * diagramScale
       }px`;
-      metadata.style.setProperty(
-        "--la-inline-message-metadata-shift",
-        "0px",
-      );
 
-      const arrowControlsWidth = 60 * diagramScale;
-      const arrowControlsLeft =
-        labelX * diagramScale - arrowControlsWidth / 2;
-      arrowStyles.style.left = `${arrowControlsLeft}px`;
-      arrowStyles.style.top = `${
-        (labelTop - 12) * diagramScale
-      }px`;
+      toolbar.style.left = `${labelX * diagramScale}px`;
+      toolbar.style.top = `${(labelTop - 12) * diagramScale}px`;
 
-      const metadataRect = metadata.getBoundingClientRect();
       const frameRect = frame.getBoundingClientRect();
       const viewportWidth = innerWidth;
       const leftBoundary = Math.max(8, frameRect.left + 8);
@@ -4315,16 +4658,20 @@ export function renderEditor(target, editor, options = {}) {
         viewportWidth - 8,
         frameRect.right - 8,
       );
-      let metadataShift = 0;
-      if (metadataRect.left < leftBoundary) {
-        metadataShift = leftBoundary - metadataRect.left;
-      } else if (metadataRect.right > rightBoundary) {
-        metadataShift = rightBoundary - metadataRect.right;
+      for (const [element, property] of [
+        [metadata, "--la-inline-message-metadata-shift"],
+        [toolbar, "--la-inline-message-toolbar-shift"],
+      ]) {
+        element.style.setProperty(property, "0px");
+        const rect = element.getBoundingClientRect();
+        let shift = 0;
+        if (rect.left < leftBoundary) {
+          shift = leftBoundary - rect.left;
+        } else if (rect.right > rightBoundary) {
+          shift = rightBoundary - rect.right;
+        }
+        element.style.setProperty(property, `${shift}px`);
       }
-      metadata.style.setProperty(
-        "--la-inline-message-metadata-shift",
-        `${metadataShift}px`,
-      );
       tooltipEditor.position();
     };
 
@@ -4628,12 +4975,34 @@ export function renderEditor(target, editor, options = {}) {
           }
         });
       }
+      // Messages, and groups that start with one, need an actor.
+      const needsActor = editor.document.actors.length === 0;
       addInsertionPicker(popover, [
+        {
+          label: "Add message",
+          visibleLabel: "Message",
+          icon: "arrow-right",
+          fallback: "→",
+          disabled: needsActor,
+          run: () =>
+            run(
+              () =>
+                editor.addItem(
+                  transient.slot.parentId,
+                  transient.slot.index,
+                  "message",
+                ),
+              undefined,
+              popover,
+              "message-label",
+            ),
+        },
         {
           label: "Add group",
           visibleLabel: "Group",
           icon: "rectangle-dashed",
           fallback: "□",
+          disabled: needsActor,
           run: () =>
             run(
               () =>
@@ -5010,6 +5379,11 @@ export function renderEditor(target, editor, options = {}) {
               applySelectedVisuals(svg, selectedIds);
             }
             contextualEditor(frame, layout);
+            if (mode === "keyboard") {
+              frame
+                .querySelector(".la-insert-option:enabled")
+                ?.focus({ preventScroll: true });
+            }
           },
           "horizontal",
           {
@@ -5513,10 +5887,17 @@ export function renderEditor(target, editor, options = {}) {
       globalThis.addEventListener("pointercancel", cancel);
     });
 
+    frame.addEventListener("focusin", (event) => enterFromEnd(frame, event));
+
     frame.addEventListener("keydown", (event) => {
       // Text fields keep the browser's own undo stack and key handling.
       const editing = isEditableField(event.target);
       const command = event.metaKey || event.ctrlKey;
+
+      if (event.key === "Tab" && !command && !event.altKey) {
+        moveFocusInLayoutOrder(frame, event);
+        return;
+      }
 
       if (!editing && command && event.key.toLowerCase() === "z") {
         event.preventDefault();
@@ -5533,11 +5914,20 @@ export function renderEditor(target, editor, options = {}) {
       }
       if (event.key === "Escape") {
         event.preventDefault();
+        // Closing the insertion picker from inside returns to its mark.
+        const insertionControl =
+          transient?.type === "insert" &&
+          event.target.closest(".la-edit-popover")
+            ? transient.hoverTarget
+            : null;
         activeCancel?.();
         transient = null;
         selectedIds = [];
         applySelectedVisuals(svg, selectedIds);
         contextualEditor(frame, layout);
+        if (insertionControl?.isConnected) {
+          focusElement(insertionControl);
+        }
         return;
       }
       if (
@@ -5682,6 +6072,9 @@ export function renderEditor(target, editor, options = {}) {
     destroy() {
       destroyed = true;
       transient = null;
+      for (const type of ["keydown", "keyup", "pointerdown"]) {
+        globalThis.removeEventListener(type, trackReverseTab, true);
+      }
       activeCancel?.();
       cancelInlineDraw();
       clearStatus();

@@ -141,9 +141,26 @@ function createMessage(document, allocator, properties = {}) {
   };
 }
 
-function createTimelineItem(document, allocator, type) {
+// A new message continues the conversation at its insertion point: it reuses
+// the endpoints of the message just above it, or else the one just below it.
+// Without a neighboring message it starts from the first two actors, or is a
+// self-message when the diagram has one actor.
+function adjacentMessageEndpoints(items, index) {
+  const neighbor = [items[index - 1], items[index]].find(
+    (item) => item?.type === "message",
+  );
+  return neighbor
+    ? { source: neighbor.source, target: neighbor.target }
+    : {};
+}
+
+function createTimelineItem(document, allocator, type, items, index) {
   if (type === "message") {
-    return createMessage(document, allocator);
+    return createMessage(
+      document,
+      allocator,
+      adjacentMessageEndpoints(items, index),
+    );
   }
   if (type === "gap") {
     return {
@@ -372,8 +389,14 @@ export class DiagramEditor {
       if (!items) {
         throw new Error("Timeline insertion point no longer exists.");
       }
-      const item = createTimelineItem(document, this.#ids, type);
       const target = Math.max(0, Math.min(index, items.length));
+      const item = createTimelineItem(
+        document,
+        this.#ids,
+        type,
+        items,
+        target,
+      );
       items.splice(target, 0, item);
       return item.id;
     });

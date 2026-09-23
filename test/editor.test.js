@@ -235,3 +235,33 @@ test("actor renames reject the reserved gap keyword", () => {
   editor.updateActor(api.id, { name: "Gap" });
   assert.match(editor.source, /^Client -> Gap: Start$/m);
 });
+
+test("added messages reuse neighboring endpoints or the first actors", () => {
+  const editor = new DiagramEditor(SOURCE);
+  const added = (parentId, index) => {
+    const id = editor.addItem(parentId, index, "message");
+    const { item } = findItemLocation(editor.document, id);
+    return [item.source, item.target, item.arrow, item.label];
+  };
+  const group = editor.document.items.find(({ type }) => type === "group");
+
+  // Below "Client -> API: Start": the message above wins.
+  assert.deepEqual(added(ROOT_CONTAINER_ID, 1), ["Client", "API", "->", null]);
+  // At the top of the group body only the message below is adjacent.
+  assert.deepEqual(added(group.id, 0), ["API", "Worker", "->", null]);
+  // Between "Worker --> API" and the end of the group body.
+  assert.deepEqual(added(group.id, 3), ["Worker", "API", "->", null]);
+
+  // Gaps on both sides: no adjacent message, so the first two actors.
+  const noNeighbor = new DiagramEditor(
+    "@A\n@B\n@C\n\nA -> C: Start\ngap Later\ngap Much later\nC -> B: Next",
+  );
+  const id = noNeighbor.addItem(ROOT_CONTAINER_ID, 2, "message");
+  const { item, index } = findItemLocation(noNeighbor.document, id);
+  assert.equal(index, 2);
+  assert.deepEqual([item.source, item.target], ["A", "B"]);
+
+  const single = new DiagramEditor("@Solo\n\ngap Later");
+  single.addItem(ROOT_CONTAINER_ID, 1, "message");
+  assert.equal(single.source, "gap Later\nSolo -> Solo\n");
+});
