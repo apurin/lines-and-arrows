@@ -5,6 +5,50 @@ import { visitMessages } from "./document.js";
 const ARROW_PATTERN =
   /^(.*?)\s+(-->|->x|->)\s+([^:]+?)(?::\s*(.*))?$/;
 const ACTOR_FORBIDDEN_PATTERN = /:|-->|->x|->/;
+const SUPPORTED_ARROWS = new Set(["->", "-->", "->x"]);
+// Arrow-like punctuation runs, including forms other notations use. Only
+// consulted to explain a line that already failed to parse.
+const ARROW_RUN_PATTERN =
+  /<{1,2}[-=~.]+(?:>{1,2}|x(?![\p{L}\p{N}]))?|-+(?:>{1,2}(?:[xo](?![\p{L}\p{N}]))?|\)|x(?![\p{L}\p{N}]))|[-=~.]*[=~.][-=~.]*>{1,2}|[←→↔⇐⇒⇔⟵⟶]/u;
+const DECLARE_ACTOR_HINT = "Declare actors as @Name lines before the timeline.";
+const INDENT_BODY_HINT =
+  "Indent the body by two spaces; groups end where the indentation ends.";
+const SECTIONS_HINT =
+  "Indent the body by two spaces and write each branch as a | section.";
+// Keywords from other sequence-diagram notations, keyed in lowercase.
+const FOREIGN_KEYWORD_HINTS = new Map([
+  ["participant", DECLARE_ACTOR_HINT],
+  ["actor", DECLARE_ACTOR_HINT],
+  ["box", "Actors cannot be boxed; declare each one as @Name."],
+  [
+    "note",
+    "Attach a tooltip or tag indented under the actor or message instead.",
+  ],
+  ["autonumber", "There is no numbering directive; remove this line."],
+  ["title", "Write a title as a // comment before the diagram."],
+  [
+    "activate",
+    "Activation bars are not part of the syntax; remove this line.",
+  ],
+  [
+    "deactivate",
+    "Activation bars are not part of the syntax; remove this line.",
+  ],
+  ["sequencediagram", "The diagram needs no type header; remove this line."],
+  ["end", "Remove this line; groups end where the indentation ends."],
+  ["else", "Write alternatives as | sections inside a choice group."],
+  ["alt", SECTIONS_HINT],
+  ["par", SECTIONS_HINT],
+  ["loop", INDENT_BODY_HINT],
+  ["opt", INDENT_BODY_HINT],
+  ["break", INDENT_BODY_HINT],
+  ["critical", INDENT_BODY_HINT],
+  ["group", INDENT_BODY_HINT],
+  [
+    "rect",
+    "Background rectangles are not supported; use a group with an indented body.",
+  ],
+]);
 
 export class LinesAndArrowsSyntaxError extends SyntaxError {
   constructor(message, line) {
@@ -56,6 +100,71 @@ function makeLine(raw, index) {
     blank: content.trim() === "",
     comment: false,
   };
+}
+
+const ARROW_RUN_SEARCH = new RegExp(ARROW_RUN_PATTERN, "gu");
+
+// Returns the first arrow-like token in a line. Tokens without a visible
+// arrowhead ("-x", "-)") count only between spaces, so "api-x" or "(see -)"
+// in ordinary text is not mistaken for an arrow.
+function findArrowToken(content) {
+  for (const match of content.matchAll(ARROW_RUN_SEARCH)) {
+    const [token] = match;
+    if (
+      /[<>←→↔⇐⇒⇔⟵⟶]/u.test(token) ||
+      (/\s/.test(content[match.index - 1] ?? "") &&
+        /\s/.test(content[match.index + token.length] ?? ""))
+    ) {
+      return match;
+    }
+  }
+  return null;
+}
+
+function arrowProblem(content) {
+  const match = findArrowToken(content);
+  if (!match) {
+    return null;
+  }
+  const [token] = match;
+  if (!SUPPORTED_ARROWS.has(token)) {
+    return `Unsupported arrow "${token}". Use ->, -->, or ->x; messages read from source to target, so swap the sides of a reversed arrow.`;
+  }
+  const before = content.slice(0, match.index);
+  const after = content.slice(match.index + token.length);
+  if (!after.trim() || after.trimStart().startsWith(":")) {
+    return `A message needs a target after "${token}".`;
+  }
+  if (!before.trim()) {
+    return `A message needs a source before "${token}".`;
+  }
+  if (!/\s$/.test(before) || !/^\s/.test(after)) {
+    return `Missing spaces around the arrow. Write "${before.trimEnd()} ${token} ${after.trimStart()}".`;
+  }
+  return "Unsupported or malformed arrow expression.";
+}
+
+function withKeywordHint(message, keyword) {
+  const hint = FOREIGN_KEYWORD_HINTS.get(keyword.toLowerCase());
+  return hint ? `${message} ${hint}` : null;
+}
+
+function emptyGroupMessage(line, groupType) {
+  const message = "A group must contain at least one timeline item.";
+  return (
+    withKeywordHint(message, groupType) ??
+    arrowProblem(line.content) ??
+    message
+  );
+}
+
+function unexpectedLineMessage(content) {
+  const message = "Expected a message, group, or gap.";
+  return (
+    withKeywordHint(message, content.split(/\s/, 1)[0]) ??
+    arrowProblem(content) ??
+    message
+  );
 }
 
 function assertText(value, label, line, options = {}) {
@@ -281,7 +390,7 @@ function parseGroup(cursor, line, match) {
 
   const next = cursor.lines[cursor.index];
   if (!next || next.indent <= line.indent) {
-    fail("A group must contain at least one timeline item.", line.number);
+    fail(emptyGroupMessage(line, groupType), line.number);
   }
   if (next.indent !== bodyIndent) {
     fail("Group contents must be indented by one level.", next.number);
@@ -294,7 +403,7 @@ function parseGroup(cursor, line, match) {
   } else {
     body = parseItems(cursor, bodyIndent);
     if (body.length === 0) {
-      fail("A group must contain at least one timeline item.", line.number);
+      fail(emptyGroupMessage(line, groupType), line.number);
     }
     const nextLine = cursor.lines[cursor.index];
     if (
@@ -373,7 +482,11 @@ function parseItems(cursor, indent) {
     }
 
     if (line.content.includes("->")) {
-      fail("Unsupported or malformed arrow expression.", line.number);
+      fail(
+        arrowProblem(line.content) ??
+          "Unsupported or malformed arrow expression.",
+        line.number,
+      );
     }
 
     const groupMatch = line.content.trimEnd().match(GROUP_LINE_PATTERN);
@@ -383,7 +496,7 @@ function parseItems(cursor, indent) {
       continue;
     }
 
-    fail("Expected a message, group, or gap.", line.number);
+    fail(unexpectedLineMessage(line.content), line.number);
   }
 
   return items;

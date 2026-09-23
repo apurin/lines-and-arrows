@@ -196,3 +196,107 @@ test("ignores one leading byte order mark", () => {
   );
   assert.equal(validate("﻿﻿@Client\nClient -> API").valid, false);
 });
+
+test("names unsupported arrows and missing arrow spacing", () => {
+  const supported = /Use ->, -->, or ->x; messages read from source to target/;
+  for (const token of [
+    "<-",
+    "<--",
+    "=>",
+    "->>",
+    "-->>",
+    "-)",
+    "-x",
+    "<-x",
+    "..>",
+    "→",
+  ]) {
+    for (const source of [`A ${token} B: Hi`, `a ${token} b`]) {
+      const result = validate(`Client -> API\n${source}`);
+      assert.equal(result.valid, false, source);
+      assert.equal(result.error.line, 2, source);
+      assert.ok(
+        result.error.message.startsWith(`Unsupported arrow "${token}". `),
+        `${source}: ${result.error.message}`,
+      );
+      assert.match(result.error.message, supported, source);
+    }
+  }
+
+  for (const [source, spaced] of [
+    ["A->B", "A -> B"],
+    ["Client-->API: Done", "Client --> API: Done"],
+    ["Client->x Queue", "Client ->x Queue"],
+    ["Client->xray", "Client -> xray"],
+  ]) {
+    assert.deepEqual(validate(source).error, {
+      message: `Missing spaces around the arrow. Write "${spaced}".`,
+      line: 1,
+    });
+  }
+  assert.match(validate("A->>B: Hi").error.message, /^Unsupported arrow "->>"/);
+  for (const [source, token] of [
+    ["A -> ", "->"],
+    ["client -> ", "->"],
+    ["client ->", "->"],
+    ["client -> : Hi", "->"],
+    ["a --> ", "-->"],
+    ["order service ->", "->"],
+    ["Client->", "->"],
+  ]) {
+    assert.deepEqual(
+      validate(source).error,
+      { message: `A message needs a target after "${token}".`, line: 1 },
+      source,
+    );
+  }
+  assert.equal(
+    validate("-> api").error.message,
+    'A message needs a source before "->".',
+  );
+  for (const source of ["retry api-x", "retry (see -)", "Retry api-x"]) {
+    assert.doesNotMatch(validate(source).error.message, /arrow/, source);
+  }
+});
+
+test("hints at the equivalent of foreign keywords only after parsing fails", () => {
+  for (const [source, line, message] of [
+    ["participant Client\nClient -> API", 1, /^A group must contain at least one timeline item\. .*@Name/],
+    ["actor Client\nClient -> API", 1, /@Name/],
+    ["Client -> API\nnote over API: Busy", 2, /tooltip or tag/],
+    ["Client -> API\nNote over API: Busy", 2, /^Expected a message, group, or gap\. .*tooltip or tag/],
+    ["autonumber\nClient -> API", 1, /no numbering directive/],
+    ["title Checkout\nClient -> API", 1, /\/\/ comment/],
+    ["Client -> API\nactivate API", 2, /remove this line/],
+    ["sequenceDiagram\nClient -> API", 1, /^Expected a message, group, or gap\. .*remove this line/],
+    ["loop Retry\nClient -> API\nend", 1, /Indent the body by two spaces; groups end where the indentation ends/],
+    ["repeat Retry\n  Client -> API\nend", 3, /groups end where the indentation ends/],
+    ["choice\n  | ok\n    Client -> API\nelse\nAPI -> Client", 4, /\| sections/],
+    ["alt Valid\nClient -> API", 1, /\| section/],
+    ["box Backend\nClient -> API", 1, /@Name/],
+    ["Client -> API\ndeactivate API", 2, /Activation bars.*remove this line/],
+    ["par Fan out\nClient -> API", 1, /\| section/],
+    ["opt Cached\nClient -> API", 1, /Indent the body by two spaces/],
+    ["break Failed\nClient -> API", 1, /Indent the body by two spaces/],
+    ["critical Commit\nClient -> API", 1, /Indent the body by two spaces/],
+    ["group Setup\nClient -> API", 1, /Indent the body by two spaces/],
+    ["rect Highlight\nClient -> API", 1, /Background rectangles/],
+  ]) {
+    const result = validate(source);
+    assert.equal(result.valid, false, source);
+    assert.equal(result.error.line, line, source);
+    assert.match(result.error.message, message, source);
+    assert.doesNotMatch(result.error.message, /^Line \d|!/, source);
+  }
+
+  for (const source of [
+    "loop Retry\n  Client -> API",
+    "alt Valid\n  Client -> API",
+    "opt Cached\n  Client -> API",
+    "par\n  | first\n    Client -> API\n  | second\n    API -> Client",
+    "critical Retry A => B\n  Client -> API",
+    "note Busy\n  Client -> API",
+  ]) {
+    assert.deepEqual(validate(source), { valid: true }, source);
+  }
+});
