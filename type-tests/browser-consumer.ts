@@ -5,7 +5,12 @@ import {
   type ActorDetails,
   type ThemePalette,
 } from "lines-and-arrows";
-import { defineLinesAndArrows } from "lines-and-arrows/element";
+import {
+  defineLinesAndArrows,
+  type ChangeDetail,
+  type ErrorDetail,
+  type LinesAndArrowsEventMap,
+} from "lines-and-arrows/element";
 
 const palette: ThemePalette = {
   background: "#ffffff",
@@ -50,3 +55,35 @@ element.addEventListener("la-error", (event) => {
   const error: Error = event.detail.error;
   void error;
 });
+element.addEventListener("click", (event) => {
+  const x: number = event.clientX;
+  void x;
+});
+element.addEventListener("la-change", (event) => {
+  const detail: ChangeDetail = event.detail;
+  const source: string = detail.source;
+  void source;
+  // @ts-expect-error la-change detail carries source only.
+  void event.detail.error;
+});
+element.addEventListener("la-actor-select", (event) => {
+  if (event.detail === null) {
+    const cleared: null = event.detail;
+    void cleared;
+    return;
+  }
+  const actor: ActorDetails = event.detail;
+  void actor.name;
+});
+const onError = (event: LinesAndArrowsEventMap["la-error"]) => {
+  const detail: ErrorDetail = event.detail;
+  void detail.error.message;
+};
+element.addEventListener("la-error", onError);
+element.removeEventListener("la-error", onError);
+const onKeydown = (event: LinesAndArrowsEventMap["keydown"]) => {
+  const key: string = event.key;
+  void key;
+};
+element.addEventListener("keydown", onKeydown);
+element.removeEventListener("keydown", onKeydown);

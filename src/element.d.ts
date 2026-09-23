@@ -12,15 +12,15 @@ export type {
   ThemePalette,
 } from "./index.js";
 
-interface ChangeDetail {
+export interface ChangeDetail {
   readonly source: string;
 }
 
-interface ErrorDetail {
+export interface ErrorDetail {
   readonly error: Error;
 }
 
-interface LinesAndArrowsEventMap {
+export interface LinesAndArrowsEventMap extends HTMLElementEventMap {
   "la-actor-select": CustomEvent<ActorDetails | null>;
   "la-change": CustomEvent<ChangeDetail>;
   "la-error": CustomEvent<ErrorDetail>;

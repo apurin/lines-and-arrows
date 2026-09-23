@@ -94,7 +94,10 @@ while rendering failures emit `la-error` with `{ error }`. Undo and redo are
 built into edit mode; while a text field has focus, the undo and redo shortcuts
 apply to that field instead of the diagram. Delete, Backspace, and Alt+Arrow
 reordering act on the selection only while the canvas or the selected element
-has focus, never while a button or field in the editor does.
+has focus, never while a button or field in the editor does. TypeScript users
+can import `ChangeDetail`, `ErrorDetail`, and `LinesAndArrowsEventMap` from
+`lines-and-arrows/element`; the event map extends `HTMLElementEventMap`, so
+standard DOM events keep their types.
 
 ## Diagram source
 
