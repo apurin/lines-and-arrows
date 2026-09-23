@@ -300,3 +300,60 @@ test("hints at the equivalent of foreign keywords only after parsing fails", () 
     assert.deepEqual(validate(source), { valid: true }, source);
   }
 });
+
+test("names unknown actor and message properties", () => {
+  for (const [source, line, message] of [
+    [
+      "@A\n  colour red\n\nA -> B",
+      2,
+      'Unknown actor property "colour". Actor properties are icon, tag, tooltip, and tooltip-icon.',
+    ],
+    [
+      "A -> B\n  tag ok\n  colour red",
+      3,
+      'Unknown message property "colour". Message properties are tag, tooltip, and tooltip-icon.',
+    ],
+    [
+      "critical Work\n  A -> B\n    priority high",
+      3,
+      'Unknown message property "priority". Message properties are tag, tooltip, and tooltip-icon.',
+    ],
+    [
+      "A -> B\n  Tag idempotent",
+      2,
+      'Unknown message property "Tag". Property names are lowercase: use "tag".',
+    ],
+    [
+      "A -> B\n  colour api-x",
+      2,
+      'Unknown message property "colour". Message properties are tag, tooltip, and tooltip-icon.',
+    ],
+    [
+      "@A\n  Icon user\nA -> B",
+      2,
+      'Unknown actor property "Icon". Property names are lowercase: use "icon".',
+    ],
+  ]) {
+    assert.deepEqual(validate(source).error, { message, line }, source);
+  }
+});
+
+test("keeps mis-indented timeline items as indentation errors", () => {
+  for (const [source, line] of [
+    ["A -> B\n  C -> D", 2],
+    ["A -> B\n  Client API -> Worker: Run", 2],
+    ["A -> B\n  C <- D", 2],
+    ["A -> B\n  gap later", 2],
+    ["A -> B\n  | branch", 2],
+    ["A -> B\n  loop Retry\n    B -> C", 2],
+    ["A -> B\n  optional", 2],
+    ["@A\n  @B\nA -> B", 2],
+    ["@A\n  A -> B", 2],
+  ]) {
+    assert.deepEqual(
+      validate(source).error,
+      { message: "Unexpected extra indentation.", line },
+      source,
+    );
+  }
+});

@@ -118,11 +118,11 @@ Actor properties are optional:
 | `tooltip TEXT` | Additional detail exposed on hover, focus, or an equivalent interaction. May contain `\n`. |
 | `tooltip-icon IDENTIFIER` | An optional icon-catalog identifier for the tooltip control. |
 
-An actor may have at most one of each property. Property order does not change
-meaning. Canonical output uses `icon`, `tag`, `tooltip`, then `tooltip-icon`.
-When a tooltip is present, renderers expose a compact information control
-beside the tag, or by itself when there is no tag. Without `tooltip-icon`, the
-control uses a lowercase `i`.
+An actor may have at most one of each property. Property names are lowercase
+and case-sensitive. Property order does not change meaning. Canonical output
+uses `icon`, `tag`, `tooltip`, then `tooltip-icon`. When a tooltip is present,
+renderers expose a compact information control beside the tag, or by itself
+when there is no tag. Without `tooltip-icon`, the control uses a lowercase `i`.
 
 The text following `@` is both the actor's visible name and its identity in the
 source. Renaming an actor in the visual editor must update every reference to it
@@ -172,7 +172,8 @@ We recommend keeping each visible line of a message label to 32 characters or
 fewer. A label may contain multiple lines; use `\n` wherever a line should
 break.
 
-A message may have one `tag`, one `tooltip`, and one `tooltip-icon`:
+A message may have one `tag`, one `tooltip`, and one `tooltip-icon`. Property
+names are lowercase and case-sensitive:
 
 ```lines-and-arrows
 API -> Worker: Start job
@@ -370,6 +371,7 @@ from `group-type` because it is reserved by the `gap` production.
 A parser must report, at minimum:
 
 - malformed indentation or tabs;
+- unknown actor or message property names;
 - duplicate actor properties;
 - duplicate message tags, tooltips, or tooltip icons;
 - empty names, explicit labels, groups, sections, or gaps;

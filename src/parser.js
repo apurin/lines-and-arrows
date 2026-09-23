@@ -10,6 +10,9 @@ const SUPPORTED_ARROWS = new Set(["->", "-->", "->x"]);
 // consulted to explain a line that already failed to parse.
 const ARROW_RUN_PATTERN =
   /<{1,2}[-=~.]+(?:>{1,2}|x(?![\p{L}\p{N}]))?|-+(?:>{1,2}(?:[xo](?![\p{L}\p{N}]))?|\)|x(?![\p{L}\p{N}]))|[-=~.]*[=~.][-=~.]*>{1,2}|[←→↔⇐⇒⇔⟵⟶]/u;
+const PROPERTY_SHAPE_PATTERN = /^([A-Za-z][A-Za-z0-9-]*) +\S/;
+const ACTOR_PROPERTIES = ["icon", "tag", "tooltip", "tooltip-icon"];
+const MESSAGE_PROPERTIES = ["tag", "tooltip", "tooltip-icon"];
 const DECLARE_ACTOR_HINT = "Declare actors as @Name lines before the timeline.";
 const INDENT_BODY_HINT =
   "Indent the body by two spaces; groups end where the indentation ends.";
@@ -240,7 +243,39 @@ function skipBlankLines(cursor) {
   }
 }
 
-function parseProperties(cursor, indent, allowed) {
+function nextContentIndex(cursor, index) {
+  let next = index;
+  while (cursor.lines[next]?.blank) {
+    next += 1;
+  }
+  return next;
+}
+
+// A "word value" line at property depth that cannot be a timeline item: not
+// an arrow expression, gap, section, declaration, or group with a body.
+function looksLikeProperty(cursor, index) {
+  const line = cursor.lines[index];
+  const match = line.content.match(PROPERTY_SHAPE_PATTERN);
+  if (!match || match[1] === "gap" || findArrowToken(line.content)) {
+    return false;
+  }
+  const next = cursor.lines[nextContentIndex(cursor, index + 1)];
+  return !next || next.indent <= line.indent;
+}
+
+function unknownPropertyMessage(key, owner, names) {
+  const message = `Unknown ${owner} property "${key}".`;
+  const lowercase = key.toLowerCase();
+  if (names.includes(lowercase)) {
+    return `${message} Property names are lowercase: use "${lowercase}".`;
+  }
+  const list = `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
+  const title = `${owner[0].toUpperCase()}${owner.slice(1)}`;
+  return `${message} ${title} properties are ${list}.`;
+}
+
+function parseProperties(cursor, indent, owner, names) {
+  const allowed = new Set(names);
   const properties = {};
   skipBlankLines(cursor);
 
@@ -257,6 +292,9 @@ function parseProperties(cursor, indent, allowed) {
     const separator = line.content.indexOf(" ");
     const key = separator === -1 ? line.content : line.content.slice(0, separator);
     if (!allowed.has(key)) {
+      if (looksLikeProperty(cursor, cursor.index)) {
+        fail(unknownPropertyMessage(key, owner, names), line.number);
+      }
       break;
     }
 
@@ -285,11 +323,7 @@ function parseActor(cursor) {
   const name = assertActorName(line.content.slice(1), line.number);
   cursor.index += 1;
 
-  const properties = parseProperties(
-    cursor,
-    1,
-    new Set(["icon", "tag", "tooltip", "tooltip-icon"]),
-  );
+  const properties = parseProperties(cursor, 1, "actor", ACTOR_PROPERTIES);
 
   return {
     type: "actor",
@@ -315,7 +349,8 @@ function parseMessage(cursor, line, match) {
   const properties = parseProperties(
     cursor,
     line.indent + 1,
-    new Set(["tag", "tooltip", "tooltip-icon"]),
+    "message",
+    MESSAGE_PROPERTIES,
   );
 
   return {
@@ -429,11 +464,8 @@ function parseGap(cursor, line) {
   const label = assertText(line.content.slice(4), "Gap label", line.number);
   cursor.index += 1;
 
-  let nextIndex = cursor.index;
-  while (cursor.lines[nextIndex]?.blank) {
-    nextIndex += 1;
-  }
-  if (cursor.lines[nextIndex]?.indent > line.indent) {
+  const next = cursor.lines[nextContentIndex(cursor, cursor.index)];
+  if (next?.indent > line.indent) {
     fail(
       'The reserved "gap" keyword cannot introduce a group body.',
       line.number,
