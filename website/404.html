@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Page not found - Lines &amp; Arrows</title>
+    <!-- The host serves this page for any unknown path, so every URL is absolute. -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css?v=20260923-1" />
+  </head>
+  <body class="not-found-page">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav-shell" aria-label="Primary navigation">
+        <a class="wordmark" href="/">
+          <span class="wordmark-name">Lines &amp; Arrows</span>
+        </a>
+
+        <div class="nav-links">
+          <a href="/showcase">Showcase</a>
+          <a href="/constructor">Constructor</a>
+          <a href="/features">Features</a>
+          <a
+            href="https://raw.githubusercontent.com/apurin/lines-and-arrows/refs/heads/main/website/agents.md"
+          >
+            Agents
+          </a>
+          <a
+            class="nav-github"
+            href="https://github.com/apurin/lines-and-arrows"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Lines and Arrows on GitHub"
+          >
+            <img
+              src="https://cdn.jsdelivr.net/npm/@phosphor-icons/core@2.1.1/assets/bold/github-logo-bold.svg"
+              alt=""
+              width="20"
+              height="20"
+            />
+            <span>GitHub</span>
+          </a>
+        </div>
+        <div class="theme-switcher" role="group" aria-label="Color theme">
+          <button type="button" data-site-theme="light" aria-pressed="true">
+            <span class="control-icon icon-sun" aria-hidden="true"></span>
+            <span class="visually-hidden">Light theme</span>
+          </button>
+          <button type="button" data-site-theme="dark" aria-pressed="false">
+            <span class="control-icon icon-moon" aria-hidden="true"></span>
+            <span class="visually-hidden">Dark theme</span>
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="page-next section-shell">
+        <div>
+          <p class="eyebrow">404</p>
+          <h1>This page does not exist.</h1>
+          <p>
+            The address may be mistyped, or the page may have moved.
+          </p>
+        </div>
+        <div class="page-next-actions">
+          <a class="button button-primary" href="/">Homepage</a>
+          <a class="button button-secondary" href="/showcase">Showcase</a>
+          <a class="button button-secondary" href="/constructor">Constructor</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer section-shell">
+      <p>
+        <strong>Lines &amp; Arrows</strong>
+        <span>Sequence diagrams as text, with a visual editor.</span>
+      </p>
+      <div class="footer-links">
+        <a href="/showcase">Showcase</a>
+        <a href="/constructor">Constructor</a>
+        <a href="/features">Features</a>
+        <a
+          href="https://raw.githubusercontent.com/apurin/lines-and-arrows/refs/heads/main/website/agents.md"
+        >
+          Agents
+        </a>
+        <a href="https://www.linkedin.com/in/apurin" target="_blank" rel="noreferrer">Anton Purin ↗</a>
+      </div>
+    </footer>
+
+    <script type="module">
+      import { initializeSiteTheme } from "/site.js?v=20260806-2";
+
+      initializeSiteTheme();
+    </script>
+  </body>
+</html>

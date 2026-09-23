@@ -650,6 +650,7 @@ lines-and-arrows:not(:defined) {
   font-size: 0.72rem;
 }
 
+.page-next h1,
 .page-next h2 {
   max-width: 820px;
   margin: 0;
@@ -746,6 +747,7 @@ lines-and-arrows:not(:defined) {
   border-top: 1px solid var(--line-strong);
 }
 
+.page-next h1,
 .page-next h2 {
   max-width: 760px;
 }
@@ -756,6 +758,11 @@ lines-and-arrows:not(:defined) {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 14px;
+}
+
+.not-found-page .page-next {
+  min-height: 62vh;
+  border-top: 0;
 }
 
 /* Features */

@@ -9,6 +9,7 @@ import { chromium, firefox, webkit } from "playwright-core";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const MIME = new Map([
+  [".css", "text/css; charset=utf-8"],
   [".html", "text/html; charset=utf-8"],
   [".js", "text/javascript; charset=utf-8"],
   [".svg", "image/svg+xml"],
@@ -138,6 +139,108 @@ test("website pages load the exact public CDN runtime", async (testContext) => {
       path,
     );
   }
+});
+
+// Serves website/ the way the static host does: clean URLs resolve to their
+// .html file, and any other path returns 404.html with a 404 status.
+async function serveWebsite(testContext) {
+  const websiteRoot = join(ROOT, "website");
+  const siteServer = createServer((request, response) => {
+    const pathname = new URL(request.url, "http://localhost").pathname;
+    const candidates = [
+      join(websiteRoot, pathname),
+      join(websiteRoot, `${pathname}.html`),
+      join(websiteRoot, pathname, "index.html"),
+    ];
+    const file = candidates.find((path) => {
+      try {
+        return statSync(path).isFile();
+      } catch {
+        return false;
+      }
+    });
+    const status = file ? 200 : 404;
+    const path = file ?? join(websiteRoot, "404.html");
+    response.writeHead(status, {
+      "content-type": MIME.get(extname(path)) ?? "application/octet-stream",
+    });
+    createReadStream(path).pipe(response);
+  });
+  await new Promise((resolve) => siteServer.listen(0, "127.0.0.1", resolve));
+  testContext.after(() => new Promise((resolve) => siteServer.close(resolve)));
+  return `http://127.0.0.1:${siteServer.address().port}`;
+}
+
+test("unknown website paths show the 404 page with a 404 status", async (
+  testContext,
+) => {
+  const siteOrigin = await serveWebsite(testContext);
+  const sitemap = readFileSync(join(ROOT, "website", "sitemap.xml"), "utf8");
+  assert.doesNotMatch(sitemap, /404/);
+
+  const context = await browser.newContext();
+  testContext.after(() => context.close());
+  const page = await context.newPage();
+  const missingUrl = `${siteOrigin}/missing/nested/page`;
+  const problems = [];
+  page.on("console", (message) => {
+    // Chrome and WebKit log the 404 status of the page itself.
+    const ownStatus =
+      message.location().url === missingUrl &&
+      message.text().includes("404");
+    if (message.type() === "error" && !ownStatus) {
+      problems.push(message.text());
+    }
+  });
+  page.on("pageerror", (error) => problems.push(error.message));
+  page.on("requestfailed", (request) => problems.push(request.url()));
+  page.on("response", (response) => {
+    if (
+      response.request().resourceType() !== "document" &&
+      response.status() >= 400
+    ) {
+      problems.push(`${response.status()} ${response.url()}`);
+    }
+  });
+  await stubCdn(page);
+
+  const response = await page.goto(missingUrl);
+  assert.equal(response.status(), 404);
+  assert.equal(
+    await page.locator('meta[name="robots"]').getAttribute("content"),
+    "noindex",
+  );
+  assert.equal(
+    await page.getByRole("heading", { level: 1 }).textContent(),
+    "This page does not exist.",
+  );
+  const main = page.locator("main");
+  assert.deepEqual(
+    await main.getByRole("link").evaluateAll((links) =>
+      links.map((link) => [link.textContent.trim(), link.getAttribute("href")]),
+    ),
+    [
+      ["Homepage", "/"],
+      ["Showcase", "/showcase"],
+      ["Constructor", "/constructor"],
+    ],
+  );
+  assert.equal(
+    await page.evaluate(() =>
+      getComputedStyle(document.querySelector(".site-header")).position,
+    ),
+    "sticky",
+  );
+  await page.getByRole("button", { name: "Dark theme" }).click();
+  assert.equal(
+    await page.evaluate(() => document.documentElement.dataset.theme),
+    "dark",
+  );
+  for (const path of ["/", "/showcase", "/constructor"]) {
+    const linked = await context.request.get(`${siteOrigin}${path}`);
+    assert.equal(linked.status(), 200, path);
+  }
+  assert.deepEqual(problems, []);
 });
 
 test("homepage CDN example disables email address rewriting", () => {

@@ -66,6 +66,11 @@ Serve the repository and open the demo at `http://localhost:4173/demo/`:
 python3 -m http.server 4173
 ```
 
+The website is at `http://localhost:4173/website/`. Its 404 page appears
+unstyled in this preview because the host serves `website/` as the site root,
+and the page uses root-absolute URLs such as `/styles.css` so that it works at
+any depth.
+
 ## Conventions
 
 [AGENTS.md](./AGENTS.md) describes where responsibilities live, the contracts
