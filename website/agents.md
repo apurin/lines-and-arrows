@@ -8,10 +8,6 @@ This guide contains everything needed to author, validate, and render Lines &
 Arrows through the supported integrations below. Use the self-contained paths
 below; consult repository sources only for host requirements they do not cover.
 
-Testing showed that even mid-tier models at low reasoning reproduce the syntax
-and embedding correctly most of the time. Save verification for diagrams used
-in permanent documentation or websites.
-
 ## Put a diagram on a page
 
 The CDN build registers the `<lines-and-arrows>` element. No package install or
