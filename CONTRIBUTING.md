@@ -46,6 +46,8 @@ Both engines pass the suite with these differences:
   system clipboard.
 - Tests that dispatch touch input through a CDP session are skipped, because
   only Chromium has CDP.
+- On macOS, Firefox and WebKit do not move the caret on the End key, so a
+  caret-placement step presses Meta+ArrowRight there instead.
 - Known renderer differences have engine-specific expectations, each with a
   comment in the test: in WebKit, actor names with more than about 20 emoji
   overflow their box, and a typed actor name is dropped after a refused delete

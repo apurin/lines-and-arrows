@@ -3349,14 +3349,16 @@ test(
 
 async function openKeyboardEditor(testContext, source) {
   const { page, element } = await openEditor(testContext, source);
+  // The neighbours are text fields: WebKit, like Safari under default
+  // keyboard settings, neither tabs to nor focuses a button on click.
   await page.evaluate(() => {
     const diagram = document.querySelector("#focus-editor");
-    const before = document.createElement("button");
+    const before = document.createElement("input");
     before.id = "before";
-    before.textContent = "Before";
-    const after = document.createElement("button");
+    before.setAttribute("aria-label", "Before");
+    const after = document.createElement("input");
     after.id = "after";
-    after.textContent = "After";
+    after.setAttribute("aria-label", "After");
     diagram.before(before);
     diagram.after(after);
     window.changes = [];
@@ -3668,7 +3670,13 @@ test("clicking into an open editor from a later element keeps focus", async (
     const control = element.getByLabel(field);
     await control.click();
     assert.equal(await focused(), field);
-    await page.keyboard.press("End");
+    // Firefox and WebKit on macOS bind End to scrolling, as native text
+    // fields do; Command+Right moves the caret to the end of the line there.
+    await page.keyboard.press(
+      ENGINE !== "chrome" && process.platform === "darwin"
+        ? "Meta+ArrowRight"
+        : "End",
+    );
     await page.keyboard.type(typed);
     assert.equal(await control.inputValue(), expected);
     await page.keyboard.press("Escape");
@@ -3704,9 +3712,13 @@ test("edit mode keeps controls full size on a phone and scrolls", async (
       const root = node.shadowRoot;
       const frame = root.querySelector(".la-frame");
       const canvas = root.querySelector(".la-canvas");
+      // The drawn size comes from the fill box: Firefox includes the
+      // transparent hit stroke in an SVG element's client rect.
       const size = (selector) => {
-        const rect = root.querySelector(selector).getBoundingClientRect();
-        return Math.min(rect.width, rect.height);
+        const shape = root.querySelector(selector);
+        const box = shape.getBBox();
+        const scale = shape.getScreenCTM().a;
+        return Math.min(box.width, box.height) * scale;
       };
       return {
         natural: canvas.viewBox.baseVal.width,
@@ -3735,9 +3747,25 @@ test("edit mode keeps controls full size on a phone and scrolls", async (
   // inside each edge of a box at least 24 px on each side. The timeline
   // insertion band is drawn above a message's metadata row and takes the
   // lowest pixels of its tooltip trigger, so that edge is not probed there.
+  // SVG boxes are fill boxes, as above, so the probes land on the same
+  // pixels in every engine.
   const hitTargets = (selectors, skipBottom = false) =>
     element.evaluate((node, { list, skip }) => {
       const root = node.shadowRoot;
+      const fillRect = (shape) => {
+        if (!(shape instanceof SVGGraphicsElement)) {
+          return shape.getBoundingClientRect();
+        }
+        const box = shape.getBBox();
+        const matrix = shape.getScreenCTM();
+        const corner = new DOMPoint(box.x, box.y).matrixTransform(matrix);
+        return {
+          left: corner.x,
+          top: corner.y,
+          width: box.width * matrix.a,
+          height: box.height * matrix.d,
+        };
+      };
       return Object.fromEntries(
         list.map((selector) => {
           const controls = [...root.querySelectorAll(selector)].filter(
@@ -3746,7 +3774,7 @@ test("edit mode keeps controls full size on a phone and scrolls", async (
           return [
             selector,
             controls.every((control) => {
-              const rect = control.getBoundingClientRect();
+              const rect = fillRect(control);
               const x = rect.left + rect.width / 2;
               const y = rect.top + rect.height / 2;
               const circle = control.tagName === "circle";
@@ -3777,10 +3805,10 @@ test("edit mode keeps controls full size on a phone and scrolls", async (
   });
   assert.deepEqual(
     await element.evaluate((node) => {
-      const rect = node.shadowRoot
-        .querySelector(".la-tooltip-trigger-hit")
-        .getBoundingClientRect();
-      return [rect.width, rect.height];
+      const hit = node.shadowRoot.querySelector(".la-tooltip-trigger-hit");
+      const box = hit.getBBox();
+      const matrix = hit.getScreenCTM();
+      return [box.width * matrix.a, box.height * matrix.d];
     }),
     [24, 24],
   );
