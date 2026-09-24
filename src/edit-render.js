@@ -1731,6 +1731,78 @@ function keepFieldFocus(container, fields = container) {
   });
 }
 
+function inlineContainer(className, label) {
+  const container = document.createElement("div");
+  container.className = className;
+  container.setAttribute("role", "group");
+  container.setAttribute("aria-label", label);
+  return container;
+}
+
+// A one-line text input, or a textarea that starts with one row.
+function inlineField(tagName, className, field, label, value, placeholder) {
+  const control = document.createElement(tagName);
+  if (tagName === "input") {
+    control.type = "text";
+  } else {
+    control.rows = 1;
+  }
+  control.className = className;
+  control.dataset.field = field;
+  if (placeholder) {
+    control.placeholder = placeholder;
+  }
+  control.setAttribute("aria-label", label);
+  control.value = value;
+  return control;
+}
+
+function inlineDeleteControl(kind, label) {
+  const control = document.createElement("button");
+  control.type = "button";
+  control.className = `la-inline-delete-control la-inline-${kind}-delete`;
+  control.setAttribute("aria-label", label);
+  return control;
+}
+
+// Hides the rendered elements an inline editor covers and returns the
+// function that shows them again.
+function hideElements(elements) {
+  const previous = elements.map((element) => element.style.visibility);
+  for (const element of elements) {
+    element.style.visibility = "hidden";
+  }
+  return () => {
+    elements.forEach((element, index) => {
+      element.style.visibility = previous[index];
+    });
+  };
+}
+
+function sizeTagPill(control) {
+  const width = control.value
+    ? metadataMetrics(control.value, false).tagWidth
+    : 50;
+  control.style.width = `calc(${width}px * var(--la-inline-scale))`;
+}
+
+// Shifts an element sideways, through a CSS property on target, until it
+// sits inside both the frame and the viewport.
+function keepInside(frame, element, property, target = element) {
+  target.style.setProperty(property, "0px");
+  const rect = element.getBoundingClientRect();
+  const frameRect = frame.getBoundingClientRect();
+  const leftBoundary = Math.max(8, frameRect.left + 8);
+  const rightBoundary = Math.min(innerWidth - 8, frameRect.right - 8);
+  let shift = 0;
+  if (rect.left < leftBoundary) {
+    shift = leftBoundary - rect.left;
+  } else if (rect.right > rightBoundary) {
+    shift = rightBoundary - rect.right;
+  }
+  target.style.setProperty(property, `${shift}px`);
+}
+
 function removeContextualEditor(frame) {
   removePopover(frame);
   frame?.querySelectorAll(INLINE_EDITOR_SELECTOR).forEach((element) => {
@@ -2109,14 +2181,16 @@ function createInlineTooltipEditor(frame, model, owner, field) {
   dialog.setAttribute("role", "dialog");
   dialog.setAttribute("aria-label", `Edit ${owner} tooltip`);
 
-  const control = document.createElement("textarea");
-  control.className = "la-inline-actor-tooltip-text";
-  control.dataset.field = field;
+  const control = inlineField(
+    "textarea",
+    "la-inline-actor-tooltip-text",
+    field,
+    `${owner} tooltip text`,
+    model.tooltip ?? "",
+  );
   control.rows = 2;
   fieldSequence += 1;
   control.id = `la-field-${fieldSequence}`;
-  control.setAttribute("aria-label", `${owner} tooltip text`);
-  control.value = model.tooltip ?? "";
 
   const textField = document.createElement("div");
   textField.className = "la-inline-actor-tooltip-field";
@@ -2157,24 +2231,6 @@ function appendTooltipIconSelector(
   tooltip.dialog.append(tooltip.textField, field);
 }
 
-function positionInlineTooltipDialog(frame, dialog) {
-  dialog.style.setProperty("--la-inline-tooltip-dialog-shift", "0px");
-  const dialogRect = dialog.getBoundingClientRect();
-  const frameRect = frame.getBoundingClientRect();
-  const leftBoundary = Math.max(8, frameRect.left + 8);
-  const rightBoundary = Math.min(innerWidth - 8, frameRect.right - 8);
-  let shift = 0;
-  if (dialogRect.left < leftBoundary) {
-    shift = leftBoundary - dialogRect.left;
-  } else if (dialogRect.right > rightBoundary) {
-    shift = rightBoundary - dialogRect.right;
-  }
-  dialog.style.setProperty(
-    "--la-inline-tooltip-dialog-shift",
-    `${shift}px`,
-  );
-}
-
 function bindInlineTooltipEditor({
   frame,
   tooltip,
@@ -2187,7 +2243,7 @@ function bindInlineTooltipEditor({
   let open = false;
   const position = () => {
     if (open && !tooltip.dialog.hidden) {
-      positionInlineTooltipDialog(frame, tooltip.dialog);
+      keepInside(frame, tooltip.dialog, "--la-inline-tooltip-dialog-shift");
     }
   };
   const close = (
@@ -3428,6 +3484,158 @@ export function renderEditor(target, editor, options = {}) {
     globalThis.addEventListener("blur", release);
   }
 
+  // Enter commits a field and Escape closes its editor. In a textarea,
+  // Shift+Enter adds a line. Other keys stay with the field.
+  function bindInlineKeys(frame, control, enter) {
+    control.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        cancelInlineEditor(event, frame);
+        return;
+      }
+      if (
+        event.key === "Enter" &&
+        !(event.shiftKey && control.localName === "textarea")
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        enter();
+        return;
+      }
+      event.stopPropagation();
+    });
+  }
+
+  // Presses and clicks inside an inline editor stay there, and focus that
+  // leaves it, other than to the outside element, commits. The returned
+  // function disposes the editor.
+  function bindInlineContainer(container, leave, pointerDown, outside) {
+    let disposed = false;
+    container.addEventListener("pointerdown", (event) => {
+      pointerDown?.(event);
+      event.stopPropagation();
+    });
+    container.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+    container.addEventListener("focusout", (event) => {
+      if (
+        disposed ||
+        container.contains(event.relatedTarget) ||
+        outside?.contains(event.relatedTarget)
+      ) {
+        return;
+      }
+      leave();
+    });
+    return () => {
+      disposed = true;
+      flushInlineEdit = null;
+    };
+  }
+
+  // The shared wiring of the actor, group, section, and message editors.
+  // Edited fields join the patch, and Enter or Escape in a field of
+  // `fields` commits or cancels; `trackedFields`, such as selects and the
+  // tooltip text, track their own edits and keys. A commit that leaves the
+  // document unchanged reloads every field from it. A field marked
+  // keepTyped keeps its text when the item has no such value; the others
+  // become empty.
+  function inlineEditorSession(frame, container, config) {
+    const { id, update, remove, deleteControl, reloaded } = config;
+    const fields = [...config.fields, ...(config.trackedFields ?? [])];
+    const dirty = new Set();
+    frame.append(container);
+    keepFieldFocus(container);
+
+    const commit = (
+      extraPatch = {},
+      focusField = null,
+      deferDraw = false,
+    ) => {
+      if (destroyed) {
+        return "unchanged";
+      }
+      const previousDocument = editor.document;
+      const patch = { ...extraPatch };
+      for (const [key, control] of fields) {
+        if (dirty.has(key)) {
+          patch[key] = control.value;
+        }
+      }
+      if (Object.keys(patch).length === 0) {
+        return "unchanged";
+      }
+      try {
+        update(patch);
+        if (editor.document === previousDocument) {
+          const current = selectedModel(editor.document, id);
+          for (const [key, control, keepTyped] of fields) {
+            control.value =
+              current?.[key] ?? (keepTyped ? control.value : "");
+          }
+          dirty.clear();
+          reloaded?.();
+          return "unchanged";
+        }
+        dirty.clear();
+        selectedIds = [id];
+        transient = null;
+        pendingFocus = focusField;
+        notifyChange();
+        if (deferDraw) {
+          scheduleInlineDraw(frame);
+        } else {
+          draw();
+        }
+        return "changed";
+      } catch (error) {
+        notifyError(error, container);
+        return "error";
+      }
+    };
+    flushInlineEdit = (deferDraw) => commit({}, null, deferDraw);
+
+    for (const [key, control] of config.fields) {
+      control.addEventListener("input", () => {
+        dirty.add(key);
+      });
+      bindInlineKeys(frame, control, () => commit());
+    }
+    deleteControl.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runRemoval(remove);
+    });
+    const dispose = bindInlineContainer(
+      container,
+      () => {
+        config.leave?.();
+        commit({}, null, true);
+      },
+      config.pointerDown,
+    );
+
+    return {
+      commit,
+      dirty,
+      // Positions the editor now and whenever the diagram moves.
+      start(observed, position, cleanup) {
+        const place = () => {
+          if (container.isConnected) {
+            position();
+          }
+        };
+        const positioning = observePosition(observed, place);
+        container.cleanup = () => {
+          dispose();
+          positioning.disconnect();
+          cleanup();
+        };
+        place();
+      },
+    };
+  }
+
   function addInlineActorEditor(frame, layout, model) {
     const actor = layout.actors.find(
       (candidate) => candidate.id === model.id,
@@ -3442,43 +3650,41 @@ export function renderEditor(target, editor, options = {}) {
       return;
     }
 
-    const hiddenElements = [
+    const restoreHidden = hideElements([
       ...actorElement.querySelectorAll(
         ".la-actor-icon-trigger, .la-actor-icon-fallback, .la-actor-icon, .la-actor-label, .la-tag, .la-tooltip-trigger",
       ),
-    ];
-    const previousVisibility = hiddenElements.map(
-      (element) => element.style.visibility,
-    );
-    for (const element of hiddenElements) {
-      element.style.visibility = "hidden";
-    }
+    ]);
 
-    const inlineEditor = document.createElement("div");
-    inlineEditor.className = "la-inline-actor-editor";
-    inlineEditor.setAttribute("role", "group");
-    inlineEditor.setAttribute("aria-label", `Edit actor ${model.name}`);
+    const inlineEditor = inlineContainer(
+      "la-inline-actor-editor",
+      `Edit actor ${model.name}`,
+    );
 
     const card = document.createElement("div");
     card.className = "la-inline-actor-card";
 
-    const nameControl = document.createElement("input");
-    nameControl.type = "text";
-    nameControl.className = "la-inline-actor-name";
-    nameControl.dataset.field = "actor-name";
-    nameControl.setAttribute("aria-label", "Actor name");
-    nameControl.value = model.name;
+    const nameControl = inlineField(
+      "input",
+      "la-inline-actor-name",
+      "actor-name",
+      "Actor name",
+      model.name,
+    );
 
     const metadata = document.createElement("div");
     metadata.className = "la-inline-actor-metadata";
 
-    const tagControl = document.createElement("input");
-    tagControl.type = "text";
-    tagControl.className = "la-inline-actor-pill";
-    tagControl.dataset.field = "actor-tag";
-    tagControl.placeholder = "Tag";
-    tagControl.setAttribute("aria-label", "Actor tag");
-    tagControl.value = model.tag ?? "";
+    const tagControl = inlineField(
+      "input",
+      "la-inline-actor-pill",
+      "actor-tag",
+      "Actor tag",
+      model.tag ?? "",
+      "Tag",
+    );
+    sizeTagPill(tagControl);
+    tagControl.addEventListener("input", () => sizeTagPill(tagControl));
 
     const tooltip = createInlineTooltipEditor(
       frame,
@@ -3486,94 +3692,44 @@ export function renderEditor(target, editor, options = {}) {
       "actor",
       "actor-tooltip-text",
     );
-    const {
-      wrapper: tooltipWrapper,
-      control: tooltipControl,
-    } = tooltip;
 
-    const deleteControl = document.createElement("button");
-    deleteControl.type = "button";
-    deleteControl.className =
-      "la-inline-delete-control la-inline-actor-delete";
-    deleteControl.setAttribute("aria-label", "Delete actor and messages");
+    const deleteControl = inlineDeleteControl(
+      "actor",
+      "Delete actor and messages",
+    );
 
-    const dirtyFields = new Set();
-
-    const sizeMetadataPills = () => {
-      const width = tagControl.value
-        ? metadataMetrics(tagControl.value, false).tagWidth
-        : 50;
-      tagControl.style.width =
-        `calc(${width}px * var(--la-inline-scale))`;
-    };
-    sizeMetadataPills();
-    nameControl.addEventListener("input", () => {
-      dirtyFields.add("name");
-    });
-    tagControl.addEventListener("input", () => {
-      dirtyFields.add("tag");
-      sizeMetadataPills();
-    });
-
-    metadata.append(tagControl, tooltipWrapper);
+    metadata.append(tagControl, tooltip.wrapper);
     card.append(nameControl, deleteControl);
     inlineEditor.append(card, metadata);
-    frame.append(inlineEditor);
-    keepFieldFocus(inlineEditor);
 
-    let disposed = false;
-    const commit = (
-      extraPatch = {},
-      focusField = null,
-      deferDraw = false,
-    ) => {
-      if (destroyed) {
-        return "unchanged";
-      }
-      const previousDocument = editor.document;
-      const patch = { ...extraPatch };
-      if (dirtyFields.has("name")) {
-        patch.name = nameControl.value;
-      }
-      if (dirtyFields.has("tag")) {
-        patch.tag = tagControl.value;
-      }
-      if (dirtyFields.has("tooltip")) {
-        patch.tooltip = tooltipControl.value;
-      }
-      if (Object.keys(patch).length === 0) {
-        return "unchanged";
-      }
-      try {
-        editor.updateActor(model.id, patch);
-        if (editor.document === previousDocument) {
-          const current = editor.document.actors.find(
-            (actor) => actor.id === model.id,
-          );
-          nameControl.value = current?.name ?? nameControl.value;
-          tagControl.value = current?.tag ?? "";
-          tooltipControl.value = current?.tooltip ?? "";
-          dirtyFields.clear();
-          sizeMetadataPills();
-          return "unchanged";
-        }
-        dirtyFields.clear();
-        selectedIds = [model.id];
-        transient = null;
-        pendingFocus = focusField;
-        notifyChange();
-        if (deferDraw) {
-          scheduleInlineDraw(frame);
-        } else {
-          draw();
-        }
-        return "changed";
-      } catch (error) {
-        notifyError(error, inlineEditor);
-        return "error";
-      }
-    };
-    flushInlineEdit = (deferDraw) => commit({}, null, deferDraw);
+    const { commit, dirty, start } = inlineEditorSession(
+      frame,
+      inlineEditor,
+      {
+        id: model.id,
+        update: (patch) => editor.updateActor(model.id, patch),
+        remove: () => editor.removeActor(model.id),
+        deleteControl,
+        fields: [
+          ["name", nameControl, true],
+          ["tag", tagControl],
+        ],
+        trackedFields: [["tooltip", tooltip.control]],
+        reloaded: () => sizeTagPill(tagControl),
+        pointerDown: (event) => {
+          if (!iconPicker.contains(event.target)) {
+            iconPicker.closePicker();
+          }
+          if (
+            tooltipEditor.open &&
+            !tooltip.wrapper.contains(event.target)
+          ) {
+            tooltipEditor.close(false);
+          }
+        },
+        leave: () => tooltipEditor.close(false),
+      },
+    );
 
     const iconPicker = createIconPicker(
       inlineEditor,
@@ -3611,112 +3767,39 @@ export function renderEditor(target, editor, options = {}) {
       frame,
       tooltip,
       model,
-      dirtyFields,
+      dirtyFields: dirty,
       commit,
       selectedFocus: pendingFocus === "actor-tooltip-text",
       beforeOpen: () => iconPicker.closePicker(),
     });
 
-    const positionEditor = () => {
-      if (!inlineEditor.isConnected) {
-        return;
-      }
-      const rect = actorShape.getBoundingClientRect();
-      const scale = rect.height / actor.height;
-      inlineEditor.style.left = `${rect.left}px`;
-      inlineEditor.style.top = `${rect.top}px`;
-      inlineEditor.style.width = `${rect.width}px`;
-      inlineEditor.style.height = `${rect.height}px`;
-      inlineEditor.style.setProperty(
-        "--la-inline-scale",
-        String(scale),
-      );
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-metadata-shift",
-        "0px",
-      );
-      const metadataRect = metadata.getBoundingClientRect();
-      const frameRect = frame.getBoundingClientRect();
-      const viewportWidth = innerWidth;
-      const leftBoundary = Math.max(8, frameRect.left + 8);
-      const rightBoundary = Math.min(
-        viewportWidth - 8,
-        frameRect.right - 8,
-      );
-      let metadataShift = 0;
-      if (metadataRect.left < leftBoundary) {
-        metadataShift = leftBoundary - metadataRect.left;
-      } else if (metadataRect.right > rightBoundary) {
-        metadataShift = rightBoundary - metadataRect.right;
-      }
-      inlineEditor.style.setProperty(
-        "--la-inline-actor-metadata-shift",
-        `${metadataShift}px`,
-      );
-      tooltipEditor.position();
-    };
-    const positioning = observePosition(
+    start(
       actorShape.ownerSVGElement,
-      positionEditor,
+      () => {
+        const rect = actorShape.getBoundingClientRect();
+        const scale = rect.height / actor.height;
+        inlineEditor.style.left = `${rect.left}px`;
+        inlineEditor.style.top = `${rect.top}px`;
+        inlineEditor.style.width = `${rect.width}px`;
+        inlineEditor.style.height = `${rect.height}px`;
+        inlineEditor.style.setProperty(
+          "--la-inline-scale",
+          String(scale),
+        );
+        keepInside(
+          frame,
+          metadata,
+          "--la-inline-actor-metadata-shift",
+          inlineEditor,
+        );
+        tooltipEditor.position();
+      },
+      () => {
+        tooltipEditor.cleanup();
+        iconPicker.cleanup();
+        restoreHidden();
+      },
     );
-
-    inlineEditor.addEventListener("pointerdown", (event) => {
-      if (!iconPicker.contains(event.target)) {
-        iconPicker.closePicker();
-      }
-      if (
-        tooltipEditor.open &&
-        !tooltipWrapper.contains(event.target)
-      ) {
-        tooltipEditor.close(false);
-      }
-      event.stopPropagation();
-    });
-    inlineEditor.addEventListener("click", (event) => {
-      event.stopPropagation();
-    });
-    inlineEditor.addEventListener("focusout", (event) => {
-      if (disposed || inlineEditor.contains(event.relatedTarget)) {
-        return;
-      }
-      tooltipEditor.close(false);
-      commit({}, null, true);
-    });
-
-    for (const control of [nameControl, tagControl]) {
-      control.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          cancelInlineEditor(event, frame);
-          return;
-        }
-        if (event.key === "Enter") {
-          event.preventDefault();
-          event.stopPropagation();
-          commit();
-          return;
-        }
-        event.stopPropagation();
-      });
-    }
-
-    deleteControl.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      runRemoval(() => editor.removeActor(model.id));
-    });
-
-    inlineEditor.cleanup = () => {
-      disposed = true;
-      flushInlineEdit = null;
-      positioning.disconnect();
-      tooltipEditor.cleanup();
-      iconPicker.cleanup();
-      for (let index = 0; index < hiddenElements.length; index += 1) {
-        hiddenElements[index].style.visibility =
-          previousVisibility[index];
-      }
-    };
-    positionEditor();
   }
 
   function addInlineGroupEditor(frame, layout, model) {
@@ -3731,53 +3814,48 @@ export function renderEditor(target, editor, options = {}) {
       return;
     }
 
-    const previousVisibility = header.style.visibility;
-    header.style.visibility = "hidden";
+    const restoreHidden = hideElements([header]);
 
-    const inlineEditor = document.createElement("div");
-    inlineEditor.className = "la-inline-group-editor";
-    inlineEditor.setAttribute("role", "group");
-    inlineEditor.setAttribute(
-      "aria-label",
+    const inlineEditor = inlineContainer(
+      "la-inline-group-editor",
       `Edit ${model.groupType} group${model.label ? `, ${model.label}` : ""}`,
     );
 
     const row = document.createElement("div");
     row.className = "la-inline-group-row";
 
-    const typeControl = document.createElement("input");
-    typeControl.type = "text";
-    typeControl.className = "la-inline-group-type";
-    typeControl.dataset.field = "group-type";
-    typeControl.placeholder = "Type";
+    const groupField = (name, control) => {
+      const field = document.createElement("div");
+      field.className = "la-inline-group-field";
+      const fieldName = document.createElement("span");
+      fieldName.className = "la-inline-group-field-name";
+      fieldName.textContent = name;
+      fieldName.setAttribute("aria-hidden", "true");
+      field.append(fieldName, control);
+      return field;
+    };
+
+    const typeControl = inlineField(
+      "input",
+      "la-inline-group-type",
+      "group-type",
+      "Group type",
+      model.groupType,
+      "Type",
+    );
     typeControl.pattern = GROUP_TYPE_PATTERN_SOURCE;
-    typeControl.setAttribute("aria-label", "Group type");
-    typeControl.value = model.groupType;
+    const typeField = groupField("Type", typeControl);
 
-    const typeField = document.createElement("div");
-    typeField.className = "la-inline-group-field";
-    const typeFieldName = document.createElement("span");
-    typeFieldName.className = "la-inline-group-field-name";
-    typeFieldName.textContent = "Type";
-    typeFieldName.setAttribute("aria-hidden", "true");
-    typeField.append(typeFieldName, typeControl);
-
-    const labelControl = document.createElement("textarea");
-    labelControl.className = "la-inline-group-label";
-    labelControl.dataset.field = "group-label";
-    labelControl.rows = 1;
-    labelControl.placeholder = "Label";
-    labelControl.setAttribute("aria-label", "Group label");
-    labelControl.value = model.label ?? "";
-
-    const labelField = document.createElement("div");
-    labelField.className =
-      "la-inline-group-field la-inline-group-label-field";
-    const labelFieldName = document.createElement("span");
-    labelFieldName.className = "la-inline-group-field-name";
-    labelFieldName.textContent = "Label";
-    labelFieldName.setAttribute("aria-hidden", "true");
-    labelField.append(labelFieldName, labelControl);
+    const labelControl = inlineField(
+      "textarea",
+      "la-inline-group-label",
+      "group-label",
+      "Group label",
+      model.label ?? "",
+      "Label",
+    );
+    const labelField = groupField("Label", labelControl);
+    labelField.classList.add("la-inline-group-label-field");
 
     const actions = document.createElement("div");
     actions.className = "la-inline-group-actions";
@@ -3792,19 +3870,15 @@ export function renderEditor(target, editor, options = {}) {
     ungroupControl.className = "la-inline-group-action";
     ungroupControl.textContent = "Ungroup";
 
-    const deleteControl = document.createElement("button");
-    deleteControl.type = "button";
-    deleteControl.className =
-      "la-inline-delete-control la-inline-group-delete";
-    deleteControl.setAttribute("aria-label", "Delete group and contents");
+    const deleteControl = inlineDeleteControl(
+      "group",
+      "Delete group and contents",
+    );
 
     actions.append(addSectionControl, ungroupControl, deleteControl);
     row.append(typeField, labelField, actions);
     inlineEditor.append(row);
-    frame.append(inlineEditor);
-    keepFieldFocus(inlineEditor);
 
-    const dirtyFields = new Set();
     const sizeTypePill = () => {
       const content = typeControl.value || typeControl.placeholder;
       const width = Math.min(
@@ -3821,64 +3895,22 @@ export function renderEditor(target, editor, options = {}) {
       if (typeControl.value !== normalized) {
         typeControl.value = normalized;
       }
-      dirtyFields.add("type");
       sizeTypePill();
     });
-    labelControl.addEventListener("input", () => {
-      dirtyFields.add("label");
+
+    const { commit, start } = inlineEditorSession(frame, inlineEditor, {
+      id: model.id,
+      update: (patch) => editor.updateItem(model.id, patch),
+      remove: () => editor.removeItem(model.id),
+      deleteControl,
+      fields: [
+        ["groupType", typeControl, true],
+        ["label", labelControl, true],
+      ],
+      reloaded: sizeTypePill,
     });
 
-    let disposed = false;
-    const commit = (
-      focusField = null,
-      deferDraw = false,
-    ) => {
-      if (destroyed) {
-        return "unchanged";
-      }
-      const previousDocument = editor.document;
-      const patch = {};
-      if (dirtyFields.has("type")) {
-        patch.groupType = typeControl.value;
-      }
-      if (dirtyFields.has("label")) {
-        patch.label = labelControl.value;
-      }
-      if (Object.keys(patch).length === 0) {
-        return "unchanged";
-      }
-      try {
-        editor.updateItem(model.id, patch);
-        if (editor.document === previousDocument) {
-          const current = findItemLocation(
-            editor.document,
-            model.id,
-          )?.item;
-          typeControl.value = current?.groupType ?? typeControl.value;
-          labelControl.value = current?.label ?? labelControl.value;
-          dirtyFields.clear();
-          sizeTypePill();
-          return "unchanged";
-        }
-        dirtyFields.clear();
-        selectedIds = [model.id];
-        transient = null;
-        pendingFocus = focusField;
-        notifyChange();
-        if (deferDraw) {
-          scheduleInlineDraw(frame);
-        } else {
-          draw();
-        }
-        return "changed";
-      } catch (error) {
-        notifyError(error, inlineEditor);
-        return "error";
-      }
-    };
-
-    flushInlineEdit = (deferDraw) => commit(null, deferDraw);
-    const flushBeforeAction = () => commit(null, true) !== "error";
+    const flushBeforeAction = () => commit({}, null, true) !== "error";
     addSectionControl.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -3902,89 +3934,35 @@ export function renderEditor(target, editor, options = {}) {
       }
       run(() => editor.ungroup(model.id));
     });
-    deleteControl.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      runRemoval(() => editor.removeItem(model.id));
-    });
 
-    typeControl.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        cancelInlineEditor(event, frame);
-        return;
-      }
-      if (event.key === "Enter") {
-        event.preventDefault();
-        event.stopPropagation();
-        commit();
-        return;
-      }
-      event.stopPropagation();
-    });
-    labelControl.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        cancelInlineEditor(event, frame);
-        return;
-      }
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        commit();
-        return;
-      }
-      event.stopPropagation();
-    });
-
-    const positionEditor = () => {
-      if (!inlineEditor.isConnected) {
-        return;
-      }
-      const svgRect = svg.getBoundingClientRect();
-      const diagramScale = svgRect.width / layout.width;
-      inlineEditor.style.left = `${
-        svgRect.left +
-        (group.left + GROUP_EDITOR_LEFT_INSET) * diagramScale
-      }px`;
-      inlineEditor.style.top = `${
-        svgRect.top + (group.top + 5) * diagramScale
-      }px`;
-      inlineEditor.style.width = `${
-        (group.right -
-          group.left -
-          GROUP_EDITOR_LEFT_INSET -
-          GROUP_EDITOR_RIGHT_INSET) *
-        diagramScale
-      }px`;
-      inlineEditor.style.height = `${20 * diagramScale}px`;
-      row.style.inset = "0";
-      inlineEditor.style.setProperty(
-        "--la-inline-scale",
-        String(diagramScale),
-      );
-    };
-
-    const positioning = observePosition(svg, positionEditor);
-
-    inlineEditor.addEventListener("pointerdown", (event) => {
-      event.stopPropagation();
-    });
-    inlineEditor.addEventListener("click", (event) => {
-      event.stopPropagation();
-    });
-    inlineEditor.addEventListener("focusout", (event) => {
-      if (disposed || inlineEditor.contains(event.relatedTarget)) {
-        return;
-      }
-      commit(null, true);
-    });
-
-    inlineEditor.cleanup = () => {
-      disposed = true;
-      flushInlineEdit = null;
-      positioning.disconnect();
-      header.style.visibility = previousVisibility;
-    };
-    positionEditor();
+    start(
+      svg,
+      () => {
+        const svgRect = svg.getBoundingClientRect();
+        const diagramScale = svgRect.width / layout.width;
+        inlineEditor.style.left = `${
+          svgRect.left +
+          (group.left + GROUP_EDITOR_LEFT_INSET) * diagramScale
+        }px`;
+        inlineEditor.style.top = `${
+          svgRect.top + (group.top + 5) * diagramScale
+        }px`;
+        inlineEditor.style.width = `${
+          (group.right -
+            group.left -
+            GROUP_EDITOR_LEFT_INSET -
+            GROUP_EDITOR_RIGHT_INSET) *
+          diagramScale
+        }px`;
+        inlineEditor.style.height = `${20 * diagramScale}px`;
+        row.style.inset = "0";
+        inlineEditor.style.setProperty(
+          "--la-inline-scale",
+          String(diagramScale),
+        );
+      },
+      restoreHidden,
+    );
   }
 
   function addInlineSectionEditor(frame, layout, model) {
@@ -4005,35 +3983,28 @@ export function renderEditor(target, editor, options = {}) {
       (line) => Number(line.getAttribute("x1")) > section.left,
     );
 
-    const previousVisibility = label.style.visibility;
     const previousRightRuleStart = rightRule?.getAttribute("x1");
-    label.style.visibility = "hidden";
+    const restoreHidden = hideElements([label]);
 
-    const inlineEditor = document.createElement("div");
-    inlineEditor.className = "la-inline-section-editor";
-    inlineEditor.setAttribute("role", "group");
-    inlineEditor.setAttribute("aria-label", `Edit section ${model.label}`);
+    const inlineEditor = inlineContainer(
+      "la-inline-section-editor",
+      `Edit section ${model.label}`,
+    );
 
-    const labelControl = document.createElement("textarea");
-    labelControl.className = "la-inline-section-label";
-    labelControl.dataset.field = "section-label";
+    const labelControl = inlineField(
+      "textarea",
+      "la-inline-section-label",
+      "section-label",
+      "Section label",
+      model.label,
+    );
     labelControl.rows = Math.max(1, model.label.split("\n").length);
     labelControl.wrap = "off";
-    labelControl.setAttribute("aria-label", "Section label");
-    labelControl.value = model.label;
 
-    const deleteControl = document.createElement("button");
-    deleteControl.type = "button";
-    deleteControl.className =
-      "la-inline-delete-control la-inline-section-delete";
-    deleteControl.setAttribute("aria-label", "Delete section");
+    const deleteControl = inlineDeleteControl("section", "Delete section");
 
     inlineEditor.append(labelControl, deleteControl);
-    frame.append(inlineEditor);
-    keepFieldFocus(inlineEditor);
 
-    let dirty = false;
-    let disposed = false;
     const labelLeft = section.left + 10;
     const ruleGap = 4;
     const sizeLabel = () => {
@@ -4059,112 +4030,44 @@ export function renderEditor(target, editor, options = {}) {
       );
     };
     sizeLabel();
-    labelControl.addEventListener("input", () => {
-      dirty = true;
-      sizeLabel();
+    labelControl.addEventListener("input", sizeLabel);
+
+    const { start } = inlineEditorSession(frame, inlineEditor, {
+      id: model.id,
+      update: (patch) => editor.updateSection(model.id, patch),
+      remove: () => editor.removeSection(model.id),
+      deleteControl,
+      fields: [["label", labelControl, true]],
     });
 
-    const commit = (deferDraw = false) => {
-      if (destroyed || !dirty) {
-        return "unchanged";
-      }
-      const previousDocument = editor.document;
-      try {
-        editor.updateSection(model.id, { label: labelControl.value });
-        if (editor.document === previousDocument) {
-          const current = findSectionLocation(
-            editor.document,
-            model.id,
-          )?.section;
-          labelControl.value = current?.label ?? labelControl.value;
-          dirty = false;
-          return "unchanged";
+    start(
+      svg,
+      () => {
+        const svgRect = svg.getBoundingClientRect();
+        const diagramScale = svgRect.width / layout.width;
+        const editorHeight = section.headerHeight - 7;
+        inlineEditor.style.left = `${
+          svgRect.left + (section.left + 10) * diagramScale
+        }px`;
+        inlineEditor.style.top = `${
+          svgRect.top + (section.top + 3) * diagramScale
+        }px`;
+        inlineEditor.style.width = `${
+          (section.right - section.left) * diagramScale
+        }px`;
+        inlineEditor.style.height = `${editorHeight * diagramScale}px`;
+        inlineEditor.style.setProperty(
+          "--la-inline-scale",
+          String(diagramScale),
+        );
+      },
+      () => {
+        restoreHidden();
+        if (rightRule && previousRightRuleStart !== null) {
+          rightRule.setAttribute("x1", previousRightRuleStart);
         }
-        dirty = false;
-        selectedIds = [model.id];
-        transient = null;
-        notifyChange();
-        if (deferDraw) {
-          scheduleInlineDraw(frame);
-        } else {
-          draw();
-        }
-        return "changed";
-      } catch (error) {
-        notifyError(error, inlineEditor);
-        return "error";
-      }
-    };
-    flushInlineEdit = commit;
-
-    labelControl.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        cancelInlineEditor(event, frame);
-        return;
-      }
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        commit();
-        return;
-      }
-      event.stopPropagation();
-    });
-
-    deleteControl.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      runRemoval(() => editor.removeSection(model.id));
-    });
-
-    const positionEditor = () => {
-      if (!inlineEditor.isConnected) {
-        return;
-      }
-      const svgRect = svg.getBoundingClientRect();
-      const diagramScale = svgRect.width / layout.width;
-      const editorHeight = section.headerHeight - 7;
-      inlineEditor.style.left = `${
-        svgRect.left + (section.left + 10) * diagramScale
-      }px`;
-      inlineEditor.style.top = `${
-        svgRect.top + (section.top + 3) * diagramScale
-      }px`;
-      inlineEditor.style.width = `${
-        (section.right - section.left) * diagramScale
-      }px`;
-      inlineEditor.style.height = `${editorHeight * diagramScale}px`;
-      inlineEditor.style.setProperty(
-        "--la-inline-scale",
-        String(diagramScale),
-      );
-    };
-
-    const positioning = observePosition(svg, positionEditor);
-
-    inlineEditor.addEventListener("pointerdown", (event) => {
-      event.stopPropagation();
-    });
-    inlineEditor.addEventListener("click", (event) => {
-      event.stopPropagation();
-    });
-    inlineEditor.addEventListener("focusout", (event) => {
-      if (disposed || inlineEditor.contains(event.relatedTarget)) {
-        return;
-      }
-      commit(true);
-    });
-
-    inlineEditor.cleanup = () => {
-      disposed = true;
-      flushInlineEdit = null;
-      positioning.disconnect();
-      label.style.visibility = previousVisibility;
-      if (rightRule && previousRightRuleStart !== null) {
-        rightRule.setAttribute("x1", previousRightRuleStart);
-      }
-    };
-    positionEditor();
+      },
+    );
   }
 
   function addInlineMessageEditor(frame, layout, model) {
@@ -4185,50 +4088,42 @@ export function renderEditor(target, editor, options = {}) {
       return;
     }
 
-    const hiddenElements = [
+    const restoreHidden = hideElements([
       ...messageElement.querySelectorAll(
         ".la-message-label, .la-tag, .la-tooltip-trigger",
       ),
-    ];
-    const previousVisibility = hiddenElements.map(
-      (element) => element.style.visibility,
-    );
-    for (const element of hiddenElements) {
-      element.style.visibility = "hidden";
-    }
+    ]);
 
-    const inlineEditor = document.createElement("div");
-    inlineEditor.className = "la-inline-message-editor";
-    inlineEditor.setAttribute("role", "group");
-    inlineEditor.setAttribute(
-      "aria-label",
+    const inlineEditor = inlineContainer(
+      "la-inline-message-editor",
       `Edit arrow from ${model.source} to ${model.target}`,
     );
 
-    const labelControl = document.createElement("textarea");
-    labelControl.className = "la-inline-message-label";
-    labelControl.dataset.field = "message-label";
-    labelControl.rows = 1;
-    labelControl.placeholder = "Label";
-    labelControl.setAttribute("aria-label", "Arrow label");
-    labelControl.value = model.label ?? "";
+    const labelControl = inlineField(
+      "textarea",
+      "la-inline-message-label",
+      "message-label",
+      "Arrow label",
+      model.label ?? "",
+      "Label",
+    );
+    labelControl.addEventListener("input", () => positionEditor());
 
-    const deleteControl = document.createElement("button");
-    deleteControl.type = "button";
-    deleteControl.className =
-      "la-inline-delete-control la-inline-message-delete";
-    deleteControl.setAttribute("aria-label", "Delete arrow");
+    const deleteControl = inlineDeleteControl("message", "Delete arrow");
 
     const metadata = document.createElement("div");
     metadata.className = "la-inline-message-metadata";
 
-    const tagControl = document.createElement("input");
-    tagControl.type = "text";
-    tagControl.className = "la-inline-actor-pill";
-    tagControl.dataset.field = "message-tag";
-    tagControl.placeholder = "Tag";
-    tagControl.setAttribute("aria-label", "Arrow tag");
-    tagControl.value = model.tag ?? "";
+    const tagControl = inlineField(
+      "input",
+      "la-inline-actor-pill",
+      "message-tag",
+      "Arrow tag",
+      model.tag ?? "",
+      "Tag",
+    );
+    sizeTagPill(tagControl);
+    tagControl.addEventListener("input", () => sizeTagPill(tagControl));
 
     const tooltip = createInlineTooltipEditor(
       frame,
@@ -4236,104 +4131,96 @@ export function renderEditor(target, editor, options = {}) {
       "arrow",
       "message-tooltip-text",
     );
-    const {
-      wrapper: tooltipWrapper,
-      control: tooltipControl,
-    } = tooltip;
 
-    const dirtyFields = new Set();
-    const endpointControls = {};
-    const sizeTagPill = () => {
-      const width = tagControl.value
-        ? metadataMetrics(tagControl.value, false).tagWidth
-        : 50;
-      tagControl.style.width =
-        `calc(${width}px * var(--la-inline-scale))`;
-    };
-    sizeTagPill();
-
-    labelControl.addEventListener("input", () => {
-      dirtyFields.add("label");
-      positionEditor();
-    });
-    tagControl.addEventListener("input", () => {
-      dirtyFields.add("tag");
-      sizeTagPill();
-    });
-
-    metadata.append(tagControl, tooltipWrapper);
+    metadata.append(tagControl, tooltip.wrapper);
     inlineEditor.append(
       labelControl,
       deleteControl,
       metadata,
     );
-    frame.append(inlineEditor);
-    keepFieldFocus(inlineEditor);
 
-    let disposed = false;
-    const commit = (
-      extraPatch = {},
-      focusField = null,
-      deferDraw = false,
-    ) => {
-      if (destroyed) {
-        return "unchanged";
+    // Endpoints can also be dragged; these controls are the keyboard path.
+    const endpointControl = (endpoint) => {
+      const control = document.createElement("select");
+      control.className = "la-inline-message-endpoint";
+      control.dataset.field = `message-${endpoint}`;
+      control.setAttribute(
+        "aria-label",
+        endpoint === "source" ? "Arrow source" : "Arrow target",
+      );
+      for (const actor of editor.document.actors) {
+        const option = document.createElement("option");
+        option.value = actor.name;
+        option.textContent = actor.name;
+        control.append(option);
       }
-      const previousDocument = editor.document;
-      const patch = { ...extraPatch };
-      if (dirtyFields.has("label")) {
-        patch.label = labelControl.value;
-      }
-      if (dirtyFields.has("tag")) {
-        patch.tag = tagControl.value;
-      }
-      if (dirtyFields.has("tooltip")) {
-        patch.tooltip = tooltipControl.value;
-      }
-      for (const [endpoint, control] of Object.entries(endpointControls)) {
-        if (dirtyFields.has(endpoint)) {
-          patch[endpoint] = control.value;
-        }
-      }
-      if (Object.keys(patch).length === 0) {
-        return "unchanged";
-      }
-      try {
-        editor.updateItem(model.id, patch);
-        if (editor.document === previousDocument) {
-          const current = findItemLocation(
-            editor.document,
-            model.id,
-          )?.item;
-          labelControl.value = current?.label ?? "";
-          tagControl.value = current?.tag ?? "";
-          tooltipControl.value = current?.tooltip ?? "";
-          for (const [endpoint, control] of Object.entries(
-            endpointControls,
-          )) {
-            control.value = current?.[endpoint] ?? control.value;
-          }
-          dirtyFields.clear();
-          sizeTagPill();
-          return "unchanged";
-        }
-        dirtyFields.clear();
-        selectedIds = [model.id];
-        transient = null;
-        pendingFocus = focusField;
-        notifyChange();
-        if (deferDraw) {
-          scheduleInlineDraw(frame);
+      control.value = model[endpoint];
+      // A closed select changes its value on every arrow key or type-ahead
+      // letter. Keyboard changes wait for Enter or for focus to leave the
+      // editor, like the text fields, so one choice is one undo step; a
+      // choice from the open list applies at once.
+      let typing = false;
+      control.addEventListener("change", () => {
+        if (typing) {
+          dirty.add(endpoint);
         } else {
-          draw();
+          dirty.delete(endpoint);
+          commit({ [endpoint]: control.value }, `message-${endpoint}`);
         }
-        return "changed";
-      } catch (error) {
-        notifyError(error, inlineEditor);
-        return "error";
-      }
+      });
+      control.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          cancelInlineEditor(event, frame);
+          return;
+        }
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.stopPropagation();
+          commit({}, `message-${endpoint}`);
+          return;
+        }
+        typing = true;
+      });
+      control.addEventListener("keyup", () => {
+        typing = false;
+      });
+      control.addEventListener("pointerdown", () => {
+        typing = false;
+      });
+      return control;
     };
-    flushInlineEdit = (deferDraw) => commit({}, null, deferDraw);
+    const sourceControl = endpointControl("source");
+    const targetControl = endpointControl("target");
+
+    const { commit, dirty, start } = inlineEditorSession(
+      frame,
+      inlineEditor,
+      {
+        id: model.id,
+        update: (patch) => editor.updateItem(model.id, patch),
+        remove: () => editor.removeItem(model.id),
+        deleteControl,
+        fields: [
+          ["label", labelControl],
+          ["tag", tagControl],
+        ],
+        trackedFields: [
+          ["tooltip", tooltip.control],
+          ["source", sourceControl, true],
+          ["target", targetControl, true],
+        ],
+        reloaded: () => sizeTagPill(tagControl),
+        pointerDown: (event) => {
+          if (
+            tooltipEditor.open &&
+            !tooltip.wrapper.contains(event.target)
+          ) {
+            tooltipEditor.close(false);
+          }
+        },
+        leave: () => tooltipEditor.close(false),
+      },
+    );
 
     const arrowStyles = document.createElement("div");
     arrowStyles.className = "la-inline-message-arrow-styles";
@@ -4410,59 +4297,6 @@ export function renderEditor(target, editor, options = {}) {
       arrowStyles.append(button);
     }
 
-    // Endpoints can also be dragged; these controls are the keyboard path.
-    const endpointControl = (endpoint) => {
-      const control = document.createElement("select");
-      control.className = "la-inline-message-endpoint";
-      control.dataset.field = `message-${endpoint}`;
-      control.setAttribute(
-        "aria-label",
-        endpoint === "source" ? "Arrow source" : "Arrow target",
-      );
-      for (const actor of editor.document.actors) {
-        const option = document.createElement("option");
-        option.value = actor.name;
-        option.textContent = actor.name;
-        control.append(option);
-      }
-      control.value = model[endpoint];
-      // A closed select changes its value on every arrow key or type-ahead
-      // letter. Keyboard changes wait for Enter or for focus to leave the
-      // editor, like the text fields, so one choice is one undo step; a
-      // choice from the open list applies at once.
-      let typing = false;
-      control.addEventListener("change", () => {
-        if (typing) {
-          dirtyFields.add(endpoint);
-        } else {
-          dirtyFields.delete(endpoint);
-          commit({ [endpoint]: control.value }, `message-${endpoint}`);
-        }
-      });
-      control.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          cancelInlineEditor(event, frame);
-          return;
-        }
-        if (event.key === "Enter") {
-          event.preventDefault();
-          event.stopPropagation();
-          commit({}, `message-${endpoint}`);
-          return;
-        }
-        typing = true;
-      });
-      control.addEventListener("keyup", () => {
-        typing = false;
-      });
-      control.addEventListener("pointerdown", () => {
-        typing = false;
-      });
-      endpointControls[endpoint] = control;
-      return control;
-    };
-    const sourceControl = endpointControl("source");
-    const targetControl = endpointControl("target");
     const toolbar = document.createElement("div");
     toolbar.className = "la-inline-message-toolbar";
     // Each endpoint control sits on its actor's side of the arrow.
@@ -4486,15 +4320,12 @@ export function renderEditor(target, editor, options = {}) {
       frame,
       tooltip,
       model,
-      dirtyFields,
+      dirtyFields: dirty,
       commit,
       selectedFocus: pendingFocus === "message-tooltip-text",
     });
 
     const positionEditor = () => {
-      if (!inlineEditor.isConnected) {
-        return;
-      }
       const svgRect = svg.getBoundingClientRect();
       const diagramScale = svgRect.width / layout.width;
       inlineEditor.style.left = `${svgRect.left}px`;
@@ -4556,96 +4387,15 @@ export function renderEditor(target, editor, options = {}) {
       toolbar.style.left = `${labelX * diagramScale}px`;
       toolbar.style.top = `${(labelTop - 12) * diagramScale}px`;
 
-      const frameRect = frame.getBoundingClientRect();
-      const viewportWidth = innerWidth;
-      const leftBoundary = Math.max(8, frameRect.left + 8);
-      const rightBoundary = Math.min(
-        viewportWidth - 8,
-        frameRect.right - 8,
-      );
-      for (const [element, property] of [
-        [metadata, "--la-inline-message-metadata-shift"],
-        [toolbar, "--la-inline-message-toolbar-shift"],
-      ]) {
-        element.style.setProperty(property, "0px");
-        const rect = element.getBoundingClientRect();
-        let shift = 0;
-        if (rect.left < leftBoundary) {
-          shift = leftBoundary - rect.left;
-        } else if (rect.right > rightBoundary) {
-          shift = rightBoundary - rect.right;
-        }
-        element.style.setProperty(property, `${shift}px`);
-      }
+      keepInside(frame, metadata, "--la-inline-message-metadata-shift");
+      keepInside(frame, toolbar, "--la-inline-message-toolbar-shift");
       tooltipEditor.position();
     };
 
-    const positioning = observePosition(svg, positionEditor);
-
-    inlineEditor.addEventListener("pointerdown", (event) => {
-      if (
-        tooltipEditor.open &&
-        !tooltipWrapper.contains(event.target)
-      ) {
-        tooltipEditor.close(false);
-      }
-      event.stopPropagation();
-    });
-    inlineEditor.addEventListener("click", (event) => {
-      event.stopPropagation();
-    });
-    inlineEditor.addEventListener("focusout", (event) => {
-      if (disposed || inlineEditor.contains(event.relatedTarget)) {
-        return;
-      }
-      tooltipEditor.close(false);
-      commit({}, null, true);
-    });
-
-    labelControl.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        cancelInlineEditor(event, frame);
-        return;
-      }
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        commit();
-        return;
-      }
-      event.stopPropagation();
-    });
-    tagControl.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        cancelInlineEditor(event, frame);
-        return;
-      }
-      if (event.key === "Enter") {
-        event.preventDefault();
-        event.stopPropagation();
-        commit();
-        return;
-      }
-      event.stopPropagation();
-    });
-
-    deleteControl.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      runRemoval(() => editor.removeItem(model.id));
-    });
-
-    inlineEditor.cleanup = () => {
-      disposed = true;
-      flushInlineEdit = null;
-      positioning.disconnect();
+    start(svg, positionEditor, () => {
       tooltipEditor.cleanup();
-      for (let index = 0; index < hiddenElements.length; index += 1) {
-        hiddenElements[index].style.visibility =
-          previousVisibility[index];
-      }
-    };
-    positionEditor();
+      restoreHidden();
+    });
   }
 
   function addInlineGapEditor(frame, layout, model) {
@@ -4661,8 +4411,7 @@ export function renderEditor(target, editor, options = {}) {
     const svg = gap.ownerSVGElement;
 
     const label = gap.querySelector(".la-gap-label");
-    const previousVisibility = label.style.visibility;
-    label.style.visibility = "hidden";
+    const restoreHidden = hideElements([label]);
 
     const lines = String(model.label).split("\n");
     const availableWidth = Math.max(
@@ -4685,32 +4434,21 @@ export function renderEditor(target, editor, options = {}) {
       height: labelHeight,
       overflow: "visible",
     });
-    let disposed = false;
-    inlineEditor.cleanup = () => {
-      disposed = true;
-      flushInlineEdit = null;
-      label.style.visibility = previousVisibility;
-    };
 
-    const body = document.createElement("div");
-    body.className = "la-inline-gap-editor-body";
-    body.setAttribute("role", "group");
-    body.setAttribute("aria-label", "Edit gap");
+    const body = inlineContainer("la-inline-gap-editor-body", "Edit gap");
 
-    const control = document.createElement("textarea");
-    control.className = "la-inline-gap-label";
-    control.dataset.field = "gap-label";
-    control.setAttribute("aria-label", "Gap label");
+    const control = inlineField(
+      "textarea",
+      "la-inline-gap-label",
+      "gap-label",
+      "Gap label",
+      model.label,
+    );
     control.rows = lines.length;
     control.wrap = "off";
-    control.value = model.label;
     control.style.height = `${labelHeight}px`;
 
-    const deleteControl = document.createElement("button");
-    deleteControl.type = "button";
-    deleteControl.className =
-      "la-inline-delete-control la-inline-gap-delete";
-    deleteControl.setAttribute("aria-label", "Delete gap");
+    const deleteControl = inlineDeleteControl("gap", "Delete gap");
 
     const positionDeleteControl = () => {
       if (!deleteControl.isConnected) {
@@ -4782,35 +4520,17 @@ export function renderEditor(target, editor, options = {}) {
     };
     flushInlineEdit = (deferDraw) => commit(false, deferDraw);
 
-    body.addEventListener("pointerdown", (event) => {
-      event.stopPropagation();
-    });
-    body.addEventListener("click", (event) => {
-      event.stopPropagation();
-    });
-    body.addEventListener("focusout", (event) => {
-      if (
-        disposed ||
-        body.contains(event.relatedTarget) ||
-        deleteControl.contains(event.relatedTarget)
-      ) {
-        return;
-      }
-      commit(false, true);
-    });
-    control.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        cancelInlineEditor(event, frame);
-        return;
-      }
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-        event.stopPropagation();
-        commit(true);
-        return;
-      }
-      event.stopPropagation();
-    });
+    const dispose = bindInlineContainer(
+      body,
+      () => commit(false, true),
+      null,
+      deleteControl,
+    );
+    inlineEditor.cleanup = () => {
+      dispose();
+      restoreHidden();
+    };
+    bindInlineKeys(frame, control, () => commit(true));
     const deleteGap = (event) => {
       event.preventDefault();
       event.stopPropagation();
