@@ -320,7 +320,7 @@ const VIEW_STYLES = `
   }
 
   .la-copy-dialog::backdrop {
-    background: rgb(0 0 0 / 0.42);
+    background: #0000006b;
   }
 
   .la-copy-dialog-title {
