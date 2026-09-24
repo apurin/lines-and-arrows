@@ -11,9 +11,11 @@ const { version } = JSON.parse(
 // would ship with their indentation. Minify each one as CSS instead. A
 // stylesheet that gains an interpolation or escape no longer matches, which
 // the count below reports rather than shipping it unminified.
-const STYLESHEET = /(const [A-Z_]+_STYLES = )`([^`$\\]*)`/g;
-const EXPECTED_STYLESHEETS = 2;
-let stylesheets = 0;
+const STYLESHEET = /(const ([A-Z_]+_STYLES) = )`([^`$\\]*)`/g;
+const DECLARED_STYLESHEET = /const ([A-Z_]+_STYLES) = `/g;
+const EXPECTED_STYLESHEETS = ["EDIT_STYLES", "VIEW_STYLES"];
+const stylesheets = [];
+const declared = [];
 const minifyStylesheets = {
   name: "minify-stylesheets",
   setup(builder) {
@@ -21,10 +23,13 @@ const minifyStylesheets = {
       { filter: /[\\/]src[\\/][^\\/]+\.js$/ },
       async ({ path }) => {
         const source = await readFile(path, "utf8");
+        declared.push(
+          ...[...source.matchAll(DECLARED_STYLESHEET)].map((match) => match[1]),
+        );
         let contents = "";
         let last = 0;
         for (const match of source.matchAll(STYLESHEET)) {
-          const { code } = await transform(match[2], {
+          const { code } = await transform(match[3], {
             loader: "css",
             minify: true,
           });
@@ -33,7 +38,7 @@ const minifyStylesheets = {
             match[1] +
             JSON.stringify(code.trim());
           last = match.index + match[0].length;
-          stylesheets += 1;
+          stylesheets.push(match[2]);
         }
         return { contents: contents + source.slice(last), loader: "js" };
       },
@@ -60,8 +65,10 @@ await build({
   plugins: [minifyStylesheets],
 });
 
-if (stylesheets !== EXPECTED_STYLESHEETS) {
+const minified = stylesheets.sort().join(", ");
+const expected = EXPECTED_STYLESHEETS.join(", ");
+if (minified !== expected || declared.sort().join(", ") !== expected) {
   throw new Error(
-    `Minified ${stylesheets} stylesheets; expected ${EXPECTED_STYLESHEETS}.`,
+    `Minified stylesheets [${minified}] of declared [${declared.join(", ")}]; expected [${expected}].`,
   );
 }
