@@ -331,7 +331,9 @@ const EDIT_STYLES = `
     top: calc(100% + 6px);
     right: auto;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translateX(
+      calc(-50% + var(--la-icon-picker-shift, 0px))
+    );
   }
 
   .la-inline-actor-name {
@@ -1865,7 +1867,7 @@ function observePosition(element, position) {
   };
   const resizeObserver = new ResizeObserver(reposition);
   resizeObserver.observe(element);
-  // The frame scrolls horizontally below the editor's minimum scale. Its
+  // The frame scrolls horizontally below the canvas's minimum width. Its
   // scroll events stay inside the shadow root and never reach the window.
   const scrollingFrame = element.closest(".la-frame");
   scrollingFrame?.addEventListener("scroll", reposition);
@@ -2414,6 +2416,7 @@ function createIconPicker(
     }
     selector.resetSearch();
     panel.hidden = false;
+    position();
     trigger.setAttribute("aria-expanded", "true");
     frame.addEventListener(
       "pointerdown",
@@ -2422,6 +2425,14 @@ function createIconPicker(
     queueMicrotask(() => selector.focusSearch());
   };
   picker.openPicker = open;
+  // The panel is centered under its trigger, which can sit near either edge
+  // of a canvas that is no wider than its diagram.
+  const position = () => {
+    if (!panel.hidden) {
+      keepInside(frame, panel, "--la-icon-picker-shift");
+    }
+  };
+  picker.position = position;
 
   trigger.addEventListener("click", (event) => {
     event.preventDefault();
@@ -3821,6 +3832,7 @@ export function renderEditor(target, editor, options = {}) {
         "--la-inline-actor-metadata-shift",
         inlineEditor,
       );
+      iconPicker.position();
       tooltipEditor.position();
     }
 

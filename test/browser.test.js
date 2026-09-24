@@ -1366,6 +1366,8 @@ test("view canvases stay at natural size, shrink, then scroll", async (
         medium: await measure(large, 800),
         narrow: await measure(large, 320),
         edit: await measure(small, 1200, "edit"),
+        mediumEdit: await measure(large, 800, "edit"),
+        narrowEdit: await measure(large, 320, "edit"),
         narrowTransition: await transition(large, 375),
       };
     },
@@ -1389,20 +1391,35 @@ test("view canvases stay at natural size, shrink, then scroll", async (
   );
   assert.equal(result.narrow.scrolls, true);
 
-  assert.equal(result.edit.width, 1200);
+  // The editor is capped at its natural width too, shrinks with its
+  // container down to 720 px, and scrolls below that.
+  assert.equal(result.edit.width, result.edit.natural);
+  assert.equal(result.edit.left, 0);
+  assert.equal(result.edit.scrolls, false);
   assert.equal(result.edit.afterTransition, result.edit.viewNatural);
 
-  // The editor fills its container but never drops below its natural width,
-  // so in a narrow container the transition widens the canvas.
+  assert.ok(
+    result.mediumEdit.natural > 800,
+    JSON.stringify(result.mediumEdit),
+  );
+  assert.equal(result.mediumEdit.width, 800);
+  assert.equal(result.mediumEdit.scrolls, false);
+
+  assert.equal(result.narrowEdit.width, 720);
+  assert.equal(result.narrowEdit.scrolls, true);
+
+  // In a narrow container the view stops at 75% of its natural width and
+  // the editor at 720 px, so the transition widens the canvas.
   const narrow = result.narrowTransition;
   assert.ok(narrow.view.width > 375, JSON.stringify(narrow.view));
-  assert.equal(narrow.edit.width, narrow.edit.natural);
+  assert.ok(narrow.edit.natural > 720, JSON.stringify(narrow.edit));
+  assert.equal(narrow.edit.width, 720);
   assert.ok(narrow.edit.width > narrow.view.width, JSON.stringify(narrow));
   assert.deepEqual(narrow.restored, narrow.view);
   assert.deepEqual(narrow.edit.sizing, {
     width: "",
-    minWidth: `${narrow.edit.natural}px`,
-    maxWidth: "",
+    minWidth: "720px",
+    maxWidth: `${narrow.edit.natural}px`,
   });
   for (const [from, to, widths] of [
     [narrow.view.width, narrow.edit.width, narrow.toEdit],
@@ -4260,7 +4277,95 @@ test("clicking into an open editor from a later element keeps focus", async (
   );
 });
 
-test("edit mode keeps controls full size on a phone and scrolls", async (
+test("edit mode stops shrinking at 60% of a wide diagram", async (
+  testContext,
+) => {
+  const page = await openPage(testContext);
+  const diagram = (actors) =>
+    Array.from(
+      { length: actors - 1 },
+      (_, index) => `A${index} -> A${index + 1}: Step ${index}`,
+    ).join("\n");
+  const measure = (source, containerWidth) =>
+    page.evaluate(
+      ({ source, containerWidth }) => {
+        const container = document.createElement("div");
+        container.style.width = `${containerWidth}px`;
+        document.body.append(container);
+        const element = document.createElement("lines-and-arrows");
+        element.mode = "edit";
+        element.branding = false;
+        element.source = source;
+        container.append(element);
+        const frame = element.shadowRoot.querySelector(".la-frame");
+        const canvas = element.shadowRoot.querySelector(".la-canvas");
+        const mark = element.shadowRoot.querySelector(
+          ".la-insertion-circle[tabindex]",
+        );
+        const box = mark.getBBox();
+        const result = {
+          natural: canvas.viewBox.baseVal.width,
+          width: canvas.getBoundingClientRect().width,
+          mark: Math.min(box.width, box.height) * mark.getScreenCTM().a,
+          scrolls: frame.scrollWidth > frame.clientWidth,
+        };
+        container.remove();
+        return result;
+      },
+      { source, containerWidth },
+    );
+
+  // Twelve actors are too wide for either container at 0.6, so the canvas
+  // stops at that scale, keeping a 16-unit insertion mark near 10 px, and
+  // the frame scrolls.
+  for (const containerWidth of [375, 1100]) {
+    const wide = await measure(diagram(12), containerWidth);
+    const details = JSON.stringify({ containerWidth, wide });
+    assert.ok(wide.natural * 0.6 > containerWidth, details);
+    assert.ok(Math.abs(wide.width - wide.natural * 0.6) < 0.5, details);
+    assert.ok(Math.abs(wide.mark - 16 * 0.6) < 0.05, details);
+    assert.equal(wide.scrolls, true, details);
+  }
+
+  // Eight actors fit a desktop container above both floors, without
+  // scrolling.
+  const desktop = await measure(diagram(8), 1100);
+  assert.ok(desktop.natural > 1100, JSON.stringify(desktop));
+  assert.equal(desktop.width, 1100);
+  assert.ok(desktop.width / desktop.natural > 0.6, JSON.stringify(desktop));
+  assert.equal(desktop.scrolls, false);
+});
+
+test("the actor icon picker stays inside the frame at the canvas edge", async (
+  testContext,
+) => {
+  const { element } = await openEditor(testContext, "@A\n@B\n\nA -> B: Start");
+  await element.getByRole("button", { name: /^Actor A/ }).click();
+  await element.getByRole("button", { name: "Choose actor icon" }).click();
+  const bounds = await element.evaluate((node) => {
+    const root = node.shadowRoot;
+    const canvas = root.querySelector(".la-canvas");
+    const frame = root.querySelector(".la-frame").getBoundingClientRect();
+    const panel = root
+      .querySelector(".la-icon-picker-popover")
+      .getBoundingClientRect();
+    return {
+      natural: canvas.viewBox.baseVal.width,
+      width: canvas.getBoundingClientRect().width,
+      frameLeft: frame.left,
+      frameRight: frame.right,
+      left: panel.left,
+      right: panel.right,
+    };
+  });
+  // The editor canvas stops at its natural width, so the first actor sits
+  // closer to the frame edge than half the picker's width.
+  assert.equal(bounds.width, bounds.natural, JSON.stringify(bounds));
+  assert.ok(bounds.left >= bounds.frameLeft + 7.5, JSON.stringify(bounds));
+  assert.ok(bounds.right <= bounds.frameRight - 7.5, JSON.stringify(bounds));
+});
+
+test("edit mode stops shrinking at 720 px on a phone and scrolls", async (
   testContext,
 ) => {
   const page = await openPage(testContext);
@@ -4307,23 +4412,37 @@ test("edit mode keeps controls full size on a phone and scrolls", async (
     });
 
   const edit = await geometry();
-  assert.equal(edit.width, edit.natural, JSON.stringify(edit));
+  // The five-actor diagram is wider than the editor's 720 px floor, so the
+  // canvas stops there and the frame scrolls.
+  assert.ok(edit.natural > 720, JSON.stringify(edit));
+  assert.equal(edit.width, 720, JSON.stringify(edit));
   assert.ok(edit.scrollWidth > edit.frameWidth, JSON.stringify(edit));
-  // Scale 1.0 keeps every control at its designed size; the smallest is
-  // the 16 px insertion mark.
-  assert.deepEqual(edit.controls, { insertion: 16, tooltip: 20, handle: 22 });
+  // Controls are drawn in diagram units and scale with the canvas; the
+  // smallest is the 16-unit insertion mark.
+  const scale = edit.width / edit.natural;
+  for (const [control, designed] of Object.entries({
+    insertion: 16,
+    tooltip: 20,
+    handle: 22,
+  })) {
+    assert.ok(
+      Math.abs(edit.controls[control] - designed * scale) < 0.01,
+      JSON.stringify({ control, scale, controls: edit.controls }),
+    );
+  }
 
-  // Each control takes pointers across a target at least 24 px wide and
-  // tall around its smaller visible shape. A circle's transparent stroke is
-  // outside its bounding box, so circles are probed 11.5 px from center;
-  // other controls include their target in the box and are probed 0.5 px
-  // inside each edge of a box at least 24 px on each side. The timeline
-  // insertion band is drawn above a message's metadata row and takes the
-  // lowest pixels of its tooltip trigger, so that edge is not probed there.
-  // SVG boxes are fill boxes, as above, so the probes land on the same
-  // pixels in every engine.
-  const hitTargets = (selectors, skipBottom = false) =>
-    element.evaluate((node, { list, skip }) => {
+  // Each control takes pointers across a target at least 24 units wide and
+  // tall around its smaller visible shape, scaled with the canvas. A circle's
+  // transparent stroke is outside its bounding box, so circles are probed
+  // 11.5 units from center; other controls include their target in the box
+  // and are probed 0.5 px inside each edge of a box at least 24 units on each
+  // side. The timeline insertion band is drawn above a message's metadata
+  // row and takes the lowest pixels of its tooltip trigger, so that edge is
+  // not probed there. SVG boxes are fill boxes, as above, so the probes land
+  // on the same pixels in every engine. HTML controls are sized in CSS
+  // pixels, so their targets are 24 px whatever the canvas scale.
+  const hitTargets = (selectors, skipBottom = false, unit = scale) =>
+    element.evaluate((node, { list, skip, unit }) => {
       const root = node.shadowRoot;
       const fillRect = (shape) => {
         if (!(shape instanceof SVGGraphicsElement)) {
@@ -4351,11 +4470,12 @@ test("edit mode keeps controls full size on a phone and scrolls", async (
               const x = rect.left + rect.width / 2;
               const y = rect.top + rect.height / 2;
               const circle = control.tagName === "circle";
-              if (!circle && (rect.width < 24 || rect.height < 24)) {
+              const minimum = 24 * unit - 0.01;
+              if (!circle && (rect.width < minimum || rect.height < minimum)) {
                 return false;
               }
-              const reachX = circle ? 11.5 : rect.width / 2 - 0.5;
-              const reachY = circle ? 11.5 : rect.height / 2 - 0.5;
+              const reachX = circle ? 11.5 * unit : rect.width / 2 - 0.5;
+              const reachY = circle ? 11.5 * unit : rect.height / 2 - 0.5;
               return [
                 [x - reachX, y],
                 [x + reachX, y],
@@ -4369,21 +4489,22 @@ test("edit mode keeps controls full size on a phone and scrolls", async (
           ];
         }),
       );
-    }, { list: selectors, skip: skipBottom });
+    }, { list: selectors, skip: skipBottom, unit });
   assert.deepEqual(await hitTargets([".la-insertion-circle[tabindex]"]), {
     ".la-insertion-circle[tabindex]": true,
   });
   assert.deepEqual(await hitTargets([".la-tooltip-trigger"], true), {
     ".la-tooltip-trigger": true,
   });
-  assert.deepEqual(
-    await element.evaluate((node) => {
-      const hit = node.shadowRoot.querySelector(".la-tooltip-trigger-hit");
-      const box = hit.getBBox();
-      const matrix = hit.getScreenCTM();
-      return [box.width * matrix.a, box.height * matrix.d];
-    }),
-    [24, 24],
+  const tooltipHit = await element.evaluate((node) => {
+    const hit = node.shadowRoot.querySelector(".la-tooltip-trigger-hit");
+    const box = hit.getBBox();
+    const matrix = hit.getScreenCTM();
+    return [box.width * matrix.a, box.height * matrix.d];
+  });
+  assert.ok(
+    tooltipHit.every((side) => Math.abs(side - 24 * scale) < 0.01),
+    JSON.stringify({ tooltipHit, scale }),
   );
 
   const view = await page.locator("#phone-view").evaluate((node) => {
@@ -4487,8 +4608,10 @@ test("edit mode keeps controls full size on a phone and scrolls", async (
   assert.ok(Math.abs(field.x - second.labelX) < 1, JSON.stringify(field));
   assert.ok(Math.abs(field.y - second.labelY) < 3, JSON.stringify(field));
 
-  // The editor toolbar keeps 18 px controls inside 24 px targets.
+  // The editor toolbar keeps its scaled 18-unit controls inside 24 px
+  // targets.
   const toolbar = ".la-inline-message-endpoint, .la-inline-message-arrow-style";
+  const controlHeight = Math.round(18 * scale);
   assert.deepEqual(
     await element.evaluate((node, selector) =>
       [...node.shadowRoot.querySelectorAll(selector)].map((control) => {
@@ -4501,14 +4624,14 @@ test("edit mode keeps controls full size on a phone and scrolls", async (
       }),
     toolbar),
     [
-      ["Arrow source", true, 18],
-      ["Solid arrow", true, 18],
-      ["Dashed arrow", true, 18],
-      ["Lost message", true, 18],
-      ["Arrow target", true, 18],
+      ["Arrow source", true, controlHeight],
+      ["Solid arrow", true, controlHeight],
+      ["Dashed arrow", true, controlHeight],
+      ["Lost message", true, controlHeight],
+      ["Arrow target", true, controlHeight],
     ],
   );
-  assert.deepEqual(await hitTargets([toolbar]), { [toolbar]: true });
+  assert.deepEqual(await hitTargets([toolbar], false, 1), { [toolbar]: true });
 
   await scrollTo(150);
   field = await labelField();

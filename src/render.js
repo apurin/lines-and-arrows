@@ -37,13 +37,16 @@ const ACTOR_LABEL_FONT_WEIGHT = 700;
 // horizontally: 0.75 keeps 11 px message labels at about 8 px and 13 px
 // actor names near 10 px.
 const VIEW_MIN_SCALE = 0.75;
-// Edit-mode canvases fill their container but stop shrinking at their natural
-// width and scroll horizontally below it. Editor controls are drawn in
-// diagram units, so any smaller scale shrinks their targets: the view floor
-// would turn a 16 px insertion mark into 12 px, and fitting a five-actor
-// diagram onto a 375 px phone made it 7 px. Scale 1.0 keeps every control at
-// its designed size.
-const EDIT_MIN_SCALE = 1;
+// Edit-mode canvases never grow past their natural layout width either. They
+// shrink with their container until the larger of two floors, then the frame
+// scrolls horizontally: 720 px (or the natural width, if smaller) keeps
+// room to edit, and 0.6 of the natural width keeps controls, which are drawn
+// in diagram units, usable. At that scale a 16-unit insertion mark is about
+// 10 px and a 24-unit hit target about 14 px. A 1640-unit diagram still fits
+// a 1100 px desktop container without scrolling, while a wide diagram on a
+// phone scrolls instead of shrinking its insertion marks to a few pixels.
+const EDIT_MIN_WIDTH = 720;
+const EDIT_MIN_SCALE = 0.6;
 // Minimum pointer target for small controls, in diagram units.
 export const CONTROL_HIT_SIZE = 24;
 let tooltipSequence = 0;
@@ -1029,9 +1032,9 @@ function renderMetadata(
     "aria-expanded": "false",
   });
   // A transparent target around the visible control keeps it at least
-  // CONTROL_HIT_SIZE wide and tall at scale 1.0, the editor's minimum. It
-  // grows upward: the timeline insertion band below a message's metadata
-  // row sits above it and would take the lower edge.
+  // CONTROL_HIT_SIZE diagram units wide and tall. It grows upward: the
+  // timeline insertion band below a message's metadata row sits above it and
+  // would take the lower edge.
   const hitSize = Math.max(triggerSize, CONTROL_HIT_SIZE);
   trigger.append(
     svgElement("rect", {
@@ -2657,12 +2660,15 @@ function renderDiagramSurface(
     preserveAspectRatio: "xMinYMin meet",
   });
   svg.style.aspectRatio = `${layoutWidth} / ${layoutHeight}`;
-  if (selectionMode === "editor") {
-    svg.style.minWidth = `${layoutWidth * EDIT_MIN_SCALE}px`;
-  } else {
-    svg.style.maxWidth = `${layoutWidth}px`;
-    svg.style.minWidth = `${layoutWidth * VIEW_MIN_SCALE}px`;
-  }
+  svg.style.maxWidth = `${layoutWidth}px`;
+  svg.style.minWidth = `${
+    selectionMode === "editor"
+      ? Math.max(
+          Math.min(layoutWidth, EDIT_MIN_WIDTH),
+          layoutWidth * EDIT_MIN_SCALE,
+        )
+      : layoutWidth * VIEW_MIN_SCALE
+  }px`;
   appendDefinitions(svg, tokens, prefix);
   const measurers = createTextMeasurers(svg);
   const renderOptions = {
