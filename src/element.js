@@ -404,8 +404,9 @@ function createElementClass() {
       // Both modes cap the canvas at its natural width, which differs between
       // them, and floor it differently: views at a readability scale, the
       // editor at a fixed width or a control scale, whichever is larger. The
-      // rendered width therefore animates with the frame. The effective widths already include the container and
-      // floor clamps; the fixed width is only temporary.
+      // rendered width therefore animates with the frame. The effective
+      // widths already include the container and floor clamps; the fixed
+      // width is only temporary.
       const finalStyle = {
         width: canvas.style.width,
         minWidth: canvas.style.minWidth,
