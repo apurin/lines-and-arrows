@@ -46,7 +46,8 @@
     "LICENSE",
     "README.md",
     "THIRD_PARTY_NOTICES.md",
-    "SECURITY.md"
+    "SECURITY.md",
+    "syntax.md"
   ],
   "scripts": {
     "build": "node ./scripts/build.mjs",

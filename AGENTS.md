@@ -72,9 +72,10 @@ on authoring or validating a diagram, read the canonical
 - The `files` allowlist in `package.json` is the npm package boundary. The
   website, demo, tests, and repository instructions stay outside the package.
 - The package contains one generated CDN artifact,
-  `dist/lines-and-arrows.auto.min.js`. There is no size limit;
-  `npm run website:prepare` measures its gzipped size at release time and
-  writes it into the homepage so the published number stays accurate.
+  `dist/lines-and-arrows.auto.min.js`. Tarball size does not matter; the
+  number that matters is the gzipped size of that file, which browsers
+  download from the CDN link. `npm run website:prepare` measures it at release
+  time and writes it into the homepage so the published number stays accurate.
 
 ## Making changes
 
