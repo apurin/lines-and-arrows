@@ -95,7 +95,7 @@ const setHeroSurface = (surface) => {
   modeStatus.textContent =
     surface === "edit"
       ? "Edit mode. Select an object to change it, then drag to reorder."
-      : "View mode. Read-only diagram.";
+      : "View mode, read-only.";
 };
 
 for (const button of surfaceButtons) {

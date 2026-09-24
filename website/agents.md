@@ -96,8 +96,6 @@ The header options `branding`, `copySource`, and `downloadSvg` default to
 
 ## Configure the web component
 
-Set configuration through attributes on `<lines-and-arrows>`:
-
 | Attribute | Values and behavior |
 | --- | --- |
 | `mode` | `view` by default. Use `edit` to enable the visual editor, undo and redo controls, and editing keyboard shortcuts. Editing also works from the keyboard alone: Tab follows the diagram layout, and each timeline insertion mark offers Message, Group, and Gap. The editor fills its container but never shrinks below its natural width, so its controls keep their full size and a narrow screen such as a phone scrolls horizontally instead. |
@@ -343,8 +341,7 @@ Checkout -> Payments API: Charge card
 ## Decorate messages
 
 Add metadata when an interaction carries useful context beyond its visible
-action. Message tooltips preserve a clear sequence while carrying important
-detail.
+action.
 
 - **Tag:** A compact interaction property visible in the diagram, such as
   `idempotent`, `async`, `encrypted`, or `best effort`. Keep it to 12 characters
