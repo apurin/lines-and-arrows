@@ -9,14 +9,14 @@ and the editor share.
 [Website](https://lines-and-arrows.dev/) ·
 [Constructor](https://lines-and-arrows.dev/constructor) ·
 [Showcase](https://lines-and-arrows.dev/showcase) ·
-[Syntax reference](./syntax.md) ·
+[Syntax reference](https://github.com/apurin/lines-and-arrows/blob/main/syntax.md) ·
 [Agent guide][agent-guide]
 
 [agent-guide]: https://raw.githubusercontent.com/apurin/lines-and-arrows/refs/heads/main/website/agents.md
 
 The JavaScript runtime has zero dependencies and includes TypeScript
 declarations. The current release line is `0.15`; the
-[stability policy](./syntax.md#status) states what a release may change.
+[stability policy](https://github.com/apurin/lines-and-arrows/blob/main/syntax.md#status) states what a release may change.
 
 Browser modules are tested in current Google Chrome and in Playwright's
 Firefox and WebKit builds; WebKit is the engine behind Safari. Known
@@ -192,7 +192,7 @@ gap A few moments later
 API --> Customer: Job complete
 ```
 
-The [syntax reference](./syntax.md) defines actors, messages, arrow forms,
+The [syntax reference](https://github.com/apurin/lines-and-arrows/blob/main/syntax.md) defines actors, messages, arrow forms,
 groups, sections, gaps, header comments, escaping, validation, and canonical
 serialization. The [agent guide][agent-guide] provides a compact authoring and
 embedding workflow.

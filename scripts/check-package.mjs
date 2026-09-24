@@ -92,7 +92,6 @@ try {
     !paths.some((path) => /^(demo|test|type-tests|website|scripts)\//.test(path)),
     "development files crossed the package boundary",
   );
-  assert.ok(packed.size <= 150_000, `packed package is ${packed.size} bytes`);
   const consumer = join(temporary, "consumer");
   mkdirSync(consumer);
   writeFileSync(

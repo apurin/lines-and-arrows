@@ -1,5 +1,8 @@
+import { execFileSync } from "node:child_process";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { extname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 
 const packageFile = new URL("../package.json", import.meta.url);
 const readmeFile = new URL("../README.md", import.meta.url);
@@ -108,11 +111,35 @@ if (readme.output !== readmeSource) {
   changedFiles += 1;
 }
 
+// The homepage states the size of the CDN file a browser downloads. Build the
+// bundle from the current source and write its gzipped size, rounded to whole
+// kilobytes, so the published number always matches the release.
+const buildScript = fileURLToPath(new URL("./build.mjs", import.meta.url));
+execFileSync(process.execPath, [buildScript], { stdio: "inherit" });
+const bundle = await readFile(
+  new URL("../dist/lines-and-arrows.auto.min.js", import.meta.url),
+);
+const gzippedKilobytes = Math.round(gzipSync(bundle, { level: 9 }).length / 1000);
+const homepageFile = new URL("./index.html", websiteDirectory);
+const homepageSource = await readFile(homepageFile, "utf8");
+const sizePattern = /Just \d+ kB gzipped\./g;
+if ((homepageSource.match(sizePattern) ?? []).length !== 1) {
+  throw new Error('Expected one "Just N kB gzipped." size claim in website/index.html');
+}
+const homepageOutput = homepageSource.replace(
+  sizePattern,
+  `Just ${gzippedKilobytes} kB gzipped.`,
+);
+if (homepageOutput !== homepageSource) {
+  await writeFile(homepageFile, homepageOutput);
+  changedFiles += 1;
+}
+
 const preparedRuntime = await readFile(runtimeFile, "utf8");
 if (!preparedRuntime.includes(`export const CDN_VERSION = "${version}";`)) {
   throw new Error("website/runtime.js did not receive the package version");
 }
 
 console.log(
-  `Prepared README and website for lines-and-arrows@${version}; updated ${changedFiles} file${changedFiles === 1 ? "" : "s"}.`,
+  `Prepared README and website for lines-and-arrows@${version} (CDN bundle ${gzippedKilobytes} kB gzipped); updated ${changedFiles} file${changedFiles === 1 ? "" : "s"}.`,
 );
