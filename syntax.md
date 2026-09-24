@@ -12,9 +12,14 @@ text.
 ## Status
 
 Before 1.0, a minor release may change the language and the JavaScript API;
-the release notes list each change. From 1.0, the language follows semantic
-versioning: a change that breaks existing source ships only in a major
-release.
+the release notes list each change. From 1.0, the package follows semantic
+versioning, and one version number covers every part of it: the diagram
+language and its canonical output, the `lines-and-arrows`, `/syntax`,
+`/element`, and `/auto` entry points with their TypeScript declarations, the
+`<lines-and-arrows>` attributes, properties, and events, the `renderDiagram`
+options, and the command-line validator's options, exit codes, and JSON
+output. A change that breaks existing source or any of those contracts ships
+only in a major release; minor releases add, and patch releases fix.
 
 ## Design boundaries
 
