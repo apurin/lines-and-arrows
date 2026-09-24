@@ -5,6 +5,8 @@ import {
 } from "./layout.js";
 import { phosphorIconResolver } from "./icons.js";
 import {
+  ACTOR_LABEL_MARGIN_X,
+  ACTOR_METADATA_MARGIN_X,
   messageLabelMetrics,
   metadataMetrics,
   selfMessageWidth,
@@ -28,6 +30,8 @@ const HEADER_CONTROL_SIZE = 18;
 const HEADER_CONTROL_GAP = 2;
 const LIFELINE_LABEL_MIN_ROWS = 6;
 const LIFELINE_LABEL_BASELINE_OFFSET = 14;
+const ACTOR_LABEL_FONT_SIZE = 13;
+const ACTOR_LABEL_FONT_WEIGHT = 700;
 // View-mode canvases never grow past their natural layout width and shrink
 // with their container down to this scale. Below it the frame scrolls
 // horizontally: 0.75 keeps 11 px message labels at about 8 px and 13 px
@@ -617,6 +621,50 @@ function sectionLabelGeometry(section, measurers) {
   };
 }
 
+// The layout reserves each actor's column from a worst-case text estimate, so
+// columns never collide in any font. The box is drawn at the measured name
+// width instead, centered on the column: never narrower than the layout's
+// minimum or the metadata row beneath it, and never wider than the reserved
+// slot. A name that overflows even the slot is shortened with an ellipsis.
+// Everything drawn later, including the editor, reads the fitted x and width;
+// slotX and slotWidth keep the reservation.
+function fitActorBoxes(layout, measurers) {
+  const measure = measurers(
+    ACTOR_LABEL_FONT_SIZE,
+    ACTOR_LABEL_FONT_WEIGHT,
+  );
+  const actors = layout.actors.map((actor) => {
+    const maximumTextWidth = actor.width - ACTOR_LABEL_MARGIN_X * 2;
+    const visibleName = truncateToWidth(
+      actor.name,
+      maximumTextWidth,
+      measure,
+    );
+    const width = Math.min(
+      actor.width,
+      Math.max(
+        layout.options.actorWidth,
+        measure(visibleName) + ACTOR_LABEL_MARGIN_X * 2,
+        metadataMetrics(actor.tag, actor.tooltip).width +
+          ACTOR_METADATA_MARGIN_X * 2,
+      ),
+    );
+    return {
+      ...actor,
+      visibleName,
+      slotX: actor.x,
+      slotWidth: actor.width,
+      x: actor.centerX - width / 2,
+      width,
+    };
+  });
+  return {
+    ...layout,
+    actors,
+    actorByName: new Map(actors.map((actor) => [actor.name, actor])),
+  };
+}
+
 function rippedEdgePoints(
   left,
   right,
@@ -1144,12 +1192,16 @@ function renderActor(
     class: "la-actor",
     transform: `translate(${actor.x} ${actor.y})`,
   });
-  makeSelectable(
+  const accessibleName = `Actor ${actor.name}${
+    actor.tooltip ? `. ${actor.tooltip}` : ""
+  }`;
+  const selectable = makeSelectable(
     group,
     actor,
     selection,
-    `Actor ${actor.name}${actor.tooltip ? `. ${actor.tooltip}` : ""}`,
+    accessibleName,
   );
+  const truncated = actor.visibleName !== actor.name;
   group.append(
     svgElement("rect", {
       class: "la-focus-ring",
@@ -1255,14 +1307,31 @@ function renderActor(
     x: actor.width / 2,
     y: hasIcon ? 39 : 29.5,
     "text-anchor": "middle",
-    "font-size": 13,
-    "font-weight": 700,
+    "font-size": ACTOR_LABEL_FONT_SIZE,
+    "font-weight": ACTOR_LABEL_FONT_WEIGHT,
     "letter-spacing": "-0.01em",
     fill: tokens.actorText,
-    "pointer-events": "none",
+    "pointer-events": truncated ? "bounding-box" : "none",
   });
-  label.textContent = actor.name;
-  group.append(label);
+  label.textContent = actor.visibleName;
+  if (truncated) {
+    // As with message labels, the actor carries the full name as its
+    // accessible name and the shortened label shows it on hover.
+    if (!selectable) {
+      group.setAttribute("role", "group");
+      group.setAttribute("aria-label", accessibleName);
+    }
+    const labelGroup = svgElement("g", {
+      class: "la-actor-label-group",
+      "aria-hidden": "true",
+    });
+    const title = svgElement("title");
+    title.textContent = actor.name;
+    labelGroup.append(title, label);
+    group.append(labelGroup);
+  } else {
+    group.append(label);
+  }
 
   renderMetadata(
     group,
@@ -2562,12 +2631,13 @@ function renderDiagramSurface(
     copySource ||
     downloadSvg ||
     headerActions.length > 0;
-  const layout =
+  const slotLayout =
     selectionMode === "editor"
       ? layoutDiagramForEditor(documentModel)
       : hasHeader
         ? layoutDiagram(documentModel)
         : layoutDiagramWithoutHeader(documentModel);
+  const { width: layoutWidth, height: layoutHeight } = slotLayout;
   const prefix = `la-${rendererSequence}`;
   rendererSequence += 1;
 
@@ -2581,17 +2651,17 @@ function renderDiagramSurface(
 
   const svg = svgElement("svg", {
     class: "la-canvas",
-    viewBox: `0 0 ${layout.width} ${layout.height}`,
+    viewBox: `0 0 ${layoutWidth} ${layoutHeight}`,
     role: "group",
     "aria-label": options.label || "Sequence diagram",
     preserveAspectRatio: "xMinYMin meet",
   });
-  svg.style.aspectRatio = `${layout.width} / ${layout.height}`;
+  svg.style.aspectRatio = `${layoutWidth} / ${layoutHeight}`;
   if (selectionMode === "editor") {
-    svg.style.minWidth = `${layout.width * EDIT_MIN_SCALE}px`;
+    svg.style.minWidth = `${layoutWidth * EDIT_MIN_SCALE}px`;
   } else {
-    svg.style.maxWidth = `${layout.width}px`;
-    svg.style.minWidth = `${layout.width * VIEW_MIN_SCALE}px`;
+    svg.style.maxWidth = `${layoutWidth}px`;
+    svg.style.minWidth = `${layoutWidth * VIEW_MIN_SCALE}px`;
   }
   appendDefinitions(svg, tokens, prefix);
   const measurers = createTextMeasurers(svg);
@@ -2630,6 +2700,7 @@ function renderDiagramSurface(
     frame.append(copyDialog.dialog);
   }
   target.replaceChildren(style, frame);
+  const layout = fitActorBoxes(slotLayout, measurers);
 
   const selection =
     selectionMode === "editor"

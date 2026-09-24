@@ -49,8 +49,7 @@ Both engines pass the suite with these differences:
 - On macOS, Firefox and WebKit do not move the caret on the End key, so a
   caret-placement step presses Meta+ArrowRight there instead.
 - Known renderer differences have engine-specific expectations, each with a
-  comment in the test: in WebKit, actor names with more than about 20 emoji
-  overflow their box; in Firefox, the hover area of a shortened message label
+  comment in the test: in Firefox, the hover area of a shortened message label
   covers only its glyphs.
 
 Validate a diagram file with the local CLI:

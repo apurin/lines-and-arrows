@@ -604,10 +604,7 @@ test(
       emojiGeometry: { tag: true, group: true },
       longTextGeometry: {
         emoji: {
-          // Renderer bug: the layout reserves the same actor width in every
-          // engine, but WebKit draws emoji wider, so an actor name with more
-          // than about 20 emoji overflows its box there.
-          actor: ENGINE !== "webkit",
+          actor: true,
           tag: true,
           group: true,
           gap: true,
@@ -646,6 +643,269 @@ test(
     );
   },
 );
+
+test("actor boxes fit their measured names inside the reserved column", async (
+  testContext,
+) => {
+  const { element } = await openEditor(
+    testContext,
+    [
+      "@Bob",
+      "  tag api",
+      "",
+      "@Payment Svc!",
+      "  icon user",
+      "",
+      "@The Extremely Long Actor Name!",
+      "  tooltip Explains the actor",
+      "",
+      "@WWWWWW",
+      "  tag wide",
+      "  tooltip Wide glyphs",
+      "",
+      "Bob -> WWWWWW: Start",
+    ].join("\n"),
+  );
+  const measure = (node) =>
+    node.evaluate(async (host) => {
+      const { layoutDiagram, layoutDiagramForEditor } = await import(
+        "../src/layout.js"
+      );
+      const { parse } = await import("../src/parser.js");
+      const source = host.source;
+      const target = document.createElement("div");
+      document.body.append(target);
+      const view = window.linesAndArrows.renderDiagram(target, source, {
+        branding: false,
+        copySource: false,
+      });
+      const geometry = (svg, slots) => {
+        const lifelines = [...svg.querySelectorAll(".la-lifeline")];
+        const actors = [...svg.querySelectorAll(".la-actor")].map(
+          (actor, index) => {
+            const x = Number(
+              actor.getAttribute("transform").match(/translate\(([-\d.]+)/)[1],
+            );
+            const shape = actor.querySelector(".la-actor-shape");
+            const width = Number(shape.getAttribute("width"));
+            const label = actor.querySelector(".la-actor-label");
+            const labelBox = label.getBBox();
+            const metadata = [
+              ...actor.querySelectorAll(".la-tag rect, .la-tooltip-trigger-shape"),
+            ].map((part) => part.getBoundingClientRect());
+            const shapeRect = shape.getBoundingClientRect();
+            const scale = shapeRect.width / width;
+            return {
+              x,
+              width,
+              center: x + width / 2,
+              text: label.getComputedTextLength(),
+              labelInside:
+                labelBox.x >= 0 && labelBox.x + labelBox.width <= width,
+              focusRing: Number(
+                actor.querySelector(".la-focus-ring").getAttribute("width"),
+              ),
+              metadataCenter:
+                metadata.length === 0
+                  ? null
+                  : ((Math.min(...metadata.map((rect) => rect.left)) +
+                      Math.max(...metadata.map((rect) => rect.right))) /
+                      2 -
+                      shapeRect.left) /
+                    scale,
+              lifeline: Number(lifelines[index].getAttribute("x1")),
+              slotWidth: slots.actors[index].width,
+              slotCenter: slots.actors[index].centerX,
+            };
+          },
+        );
+        return actors;
+      };
+      const model = parse(source);
+      const viewGeometry = geometry(view.svg, layoutDiagram(model));
+      view.destroy();
+      target.remove();
+      const svg = host.shadowRoot.querySelector(".la-canvas");
+      const editGeometry = geometry(svg, layoutDiagramForEditor(model));
+      const insertions = [
+        ...svg.querySelectorAll(
+          '.la-insertion[aria-label="Add actor here"] .la-insertion-circle',
+        ),
+      ].map((circle) => Number(circle.getAttribute("cx")));
+      return { viewGeometry, editGeometry, insertions };
+    });
+
+  const { viewGeometry, editGeometry, insertions } = await measure(element);
+  for (const actors of [viewGeometry, editGeometry]) {
+    for (const actor of actors) {
+      const details = JSON.stringify(actor);
+      assert.ok(actor.width >= 96, details);
+      assert.ok(actor.width <= actor.slotWidth + 0.001, details);
+      // Canvas measurement may overestimate the drawn glyphs slightly (by
+      // about 10% in Firefox), never underestimate them.
+      assert.ok(
+        actor.width <= Math.max(96, actor.text * 1.15 + 32),
+        details,
+      );
+      assert.ok(actor.labelInside, details);
+      assert.ok(Math.abs(actor.center - actor.slotCenter) < 0.001, details);
+      assert.ok(Math.abs(actor.lifeline - actor.slotCenter) < 0.001, details);
+      assert.equal(actor.focusRing, actor.width - 2, details);
+      if (actor.metadataCenter !== null) {
+        assert.ok(
+          Math.abs(actor.metadataCenter - actor.width / 2) < 0.5,
+          details,
+        );
+      }
+    }
+    // The long name no longer gets the per-character worst-case width.
+    assert.ok(
+      actors[2].width < actors[2].slotWidth * 0.75,
+      JSON.stringify(actors[2]),
+    );
+    for (let index = 1; index < actors.length; index += 1) {
+      const previous = actors[index - 1];
+      assert.ok(
+        actors[index].x - (previous.x + previous.width) >= 70,
+        JSON.stringify([previous, actors[index]]),
+      );
+    }
+  }
+
+  // Actor insertion marks sit in the visible gaps between the drawn boxes.
+  const expected = [
+    Math.max(13, editGeometry[0].x - 20),
+    ...editGeometry
+      .slice(1)
+      .map(
+        (actor, index) =>
+          (editGeometry[index].x + editGeometry[index].width + actor.x) / 2,
+      ),
+    editGeometry.at(-1).x + editGeometry.at(-1).width + 20,
+  ];
+  assert.equal(insertions.length, expected.length);
+  for (const [index, x] of insertions.entries()) {
+    assert.ok(Math.abs(x - expected[index]) < 0.001, `${index}: ${x}`);
+  }
+
+  // The inline actor editor covers exactly the drawn box.
+  await element
+    .getByRole("button", { name: /^Actor The Extremely Long Actor Name!/ })
+    .click();
+  const overlay = await element.evaluate((host) => {
+    const editor = host.shadowRoot.querySelector(".la-inline-actor-editor");
+    const shape = host.shadowRoot
+      .querySelector('.la-actor[aria-label^="Actor The Extremely"]')
+      .querySelector(".la-actor-shape");
+    const editorRect = editor.getBoundingClientRect();
+    const shapeRect = shape.getBoundingClientRect();
+    return {
+      left: editorRect.left - shapeRect.left,
+      width: editorRect.width - shapeRect.width,
+    };
+  });
+  assert.ok(Math.abs(overlay.left) < 1, JSON.stringify(overlay));
+  assert.ok(Math.abs(overlay.width) < 1, JSON.stringify(overlay));
+
+  // A longer typed name grows the box around the column center, up to the
+  // reserved slot, and the name field grows with it.
+  await element
+    .getByRole("textbox", { name: "Actor name", exact: true })
+    .fill("The Extremely Long Actor Name! Now even longer");
+  const grown = await element.evaluate((host) => {
+    const root = host.shadowRoot;
+    const actor = root.querySelector('.la-actor[aria-label^="Actor The Extremely"]');
+    const shape = actor.querySelector(".la-actor-shape");
+    const field = root.querySelector(".la-inline-actor-name");
+    const editorRect = root
+      .querySelector(".la-inline-actor-editor")
+      .getBoundingClientRect();
+    const shapeRect = shape.getBoundingClientRect();
+    const x = Number(actor.getAttribute("transform").match(/translate\(([-\d.]+)/)[1]);
+    const offset = Number(shape.getAttribute("x"));
+    const width = Number(shape.getAttribute("width"));
+    return {
+      width,
+      center: x + offset + width / 2,
+      editorLeft: editorRect.left - shapeRect.left,
+      editorWidth: editorRect.width - shapeRect.width,
+      clipped: field.scrollWidth > field.clientWidth,
+    };
+  });
+  const long = editGeometry[2];
+  assert.ok(grown.width > long.width, JSON.stringify({ grown, long }));
+  assert.ok(grown.width <= long.slotWidth, JSON.stringify({ grown, long }));
+  assert.ok(Math.abs(grown.center - long.slotCenter) < 0.001, JSON.stringify(grown));
+  assert.ok(Math.abs(grown.editorLeft) < 1, JSON.stringify(grown));
+  assert.ok(Math.abs(grown.editorWidth) < 1, JSON.stringify(grown));
+  assert.equal(grown.clipped, false);
+});
+
+test("a shortened actor name keeps its full text for hover and assistive tech", async (
+  testContext,
+) => {
+  const page = await openPage(testContext);
+  const result = await page.evaluate(() => {
+    // A host font wider than the layout's worst-case estimate is simulated
+    // by tripling every canvas measurement.
+    const measureText = CanvasRenderingContext2D.prototype.measureText;
+    CanvasRenderingContext2D.prototype.measureText = function (text) {
+      const metrics = measureText.call(this, text);
+      return { width: metrics.width * 3 };
+    };
+    const name = "Settlement Coordinator";
+    const snapshot = (selectableActors) => {
+      const target = document.createElement("div");
+      document.body.append(target);
+      const rendered = window.linesAndArrows.renderDiagram(
+        target,
+        `@${name}\n  tooltip Owns payouts\n\n${name} -> B: Pay`,
+        { branding: false, copySource: false, selectableActors },
+      );
+      const actor = rendered.svg.querySelector(".la-actor");
+      const label = actor.querySelector(".la-actor-label");
+      const labelGroup = actor.querySelector(".la-actor-label-group");
+      const result = {
+        role: actor.getAttribute("role"),
+        name: actor.getAttribute("aria-label"),
+        text: label.textContent,
+        title: labelGroup?.querySelector("title")?.textContent ?? null,
+        hidden: labelGroup?.getAttribute("aria-hidden") ?? null,
+      };
+      rendered.destroy();
+      target.remove();
+      return result;
+    };
+    const view = snapshot(false);
+    const selectable = snapshot(true);
+    CanvasRenderingContext2D.prototype.measureText = measureText;
+    return { view, selectable };
+  });
+  const name = "Settlement Coordinator";
+  for (const [mode, role] of [
+    ["view", "group"],
+    ["selectable", "button"],
+  ]) {
+    const actor = result[mode];
+    assert.match(actor.text, /…$/, mode);
+    assert.ok(name.startsWith(actor.text.slice(0, -1)), mode);
+    assert.deepEqual(
+      {
+        role: actor.role,
+        name: actor.name,
+        title: actor.title,
+        hidden: actor.hidden,
+      },
+      {
+        role,
+        name: `Actor ${name}. Owns payouts`,
+        title: name,
+        hidden: "true",
+      },
+      mode,
+    );
+  }
+});
 
 test("copy source offers selectable text when clipboard access fails", async (
   testContext,

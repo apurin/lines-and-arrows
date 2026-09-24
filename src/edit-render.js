@@ -13,6 +13,7 @@ import {
   recommendedActorIconNames,
 } from "./icons.js";
 import {
+  ACTOR_LABEL_MARGIN_X,
   SELF_MESSAGE_MIN_WIDTH,
   messageLabelMetrics,
   metadataMetrics,
@@ -3702,7 +3703,10 @@ export function renderEditor(target, editor, options = {}) {
           ["tag", tagControl],
         ],
         trackedFields: [["tooltip", tooltip.control]],
-        reloaded: () => sizeTagPill(tagControl),
+        reloaded: () => {
+          sizeTagPill(tagControl);
+          fitName();
+        },
         pointerDown: (event) => {
           if (!iconPicker.contains(event.target)) {
             iconPicker.closePicker();
@@ -3760,33 +3764,79 @@ export function renderEditor(target, editor, options = {}) {
       beforeOpen: () => iconPicker.closePicker(),
     });
 
-    start(
-      actorShape.ownerSVGElement,
-      () => {
-        const rect = actorShape.getBoundingClientRect();
-        const scale = rect.height / actor.height;
-        inlineEditor.style.left = `${rect.left}px`;
-        inlineEditor.style.top = `${rect.top}px`;
-        inlineEditor.style.width = `${rect.width}px`;
-        inlineEditor.style.height = `${rect.height}px`;
-        inlineEditor.style.setProperty(
-          "--la-inline-scale",
-          String(scale),
-        );
-        keepInside(
-          frame,
-          metadata,
-          "--la-inline-actor-metadata-shift",
-          inlineEditor,
-        );
-        tooltipEditor.position();
-      },
-      () => {
-        tooltipEditor.cleanup();
-        iconPicker.cleanup();
-        restoreHidden();
-      },
-    );
+    // The box is drawn at the measured name width. While a longer name is
+    // typed, it grows around the column center up to the reserved slot, and
+    // the editor, which covers the box, grows with it.
+    const focusRing = actorElement.querySelector(".la-focus-ring");
+    const drawnAttributes = [actorShape, focusRing]
+      .filter(Boolean)
+      .flatMap((element) =>
+        ["x", "width"].map((name) => [
+          element,
+          name,
+          element.getAttribute(name),
+        ]),
+      );
+    const nameMeasure = document.createElement("canvas").getContext("2d");
+    function fitName() {
+      const style = getComputedStyle(nameControl);
+      nameMeasure.font = `${style.fontWeight} 13px ${style.fontFamily}`;
+      // The drawn box already fits a name that was not shortened.
+      const unchanged =
+        nameControl.value === actor.name &&
+        actor.visibleName === actor.name;
+      const width = unchanged
+        ? actor.width
+        : Math.min(
+            actor.slotWidth,
+            Math.max(
+              actor.width,
+              nameMeasure.measureText(nameControl.value).width +
+                ACTOR_LABEL_MARGIN_X * 2,
+            ),
+          );
+      const offset = (actor.width - width) / 2;
+      actorShape.setAttribute("x", offset);
+      actorShape.setAttribute("width", width);
+      focusRing?.setAttribute("x", offset + 1);
+      focusRing?.setAttribute("width", width - 2);
+      position();
+    }
+    nameControl.addEventListener("input", fitName);
+
+    function position() {
+      const rect = actorShape.getBoundingClientRect();
+      const scale = rect.height / actor.height;
+      inlineEditor.style.left = `${rect.left}px`;
+      inlineEditor.style.top = `${rect.top}px`;
+      inlineEditor.style.width = `${rect.width}px`;
+      inlineEditor.style.height = `${rect.height}px`;
+      inlineEditor.style.setProperty(
+        "--la-inline-scale",
+        String(scale),
+      );
+      keepInside(
+        frame,
+        metadata,
+        "--la-inline-actor-metadata-shift",
+        inlineEditor,
+      );
+      tooltipEditor.position();
+    }
+
+    start(actorShape.ownerSVGElement, position, () => {
+      tooltipEditor.cleanup();
+      iconPicker.cleanup();
+      for (const [element, name, value] of drawnAttributes) {
+        if (value === null) {
+          element.removeAttribute(name);
+        } else {
+          element.setAttribute(name, value);
+        }
+      }
+      restoreHidden();
+    });
+    fitName();
   }
 
   function addInlineGroupEditor(frame, layout, model) {
