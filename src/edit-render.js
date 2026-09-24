@@ -1418,10 +1418,6 @@ const EDIT_STYLES = `
     margin-top: 10px;
   }
 
-  .la-edit-actions[data-nowrap="true"] {
-    flex-wrap: nowrap;
-  }
-
   .la-edit-button {
     min-height: 30px;
     padding: 0 9px;
@@ -1515,6 +1511,16 @@ const primaryIconRecommendations = recommendedActorIconNames
 const secondaryIconRecommendations = recommendedActorIconNames
   .slice(16, 48)
   .map((name) => iconsByName.get(name));
+
+// Inline editors and the gap editor's delete control, which sits outside it.
+const INLINE_EDITOR_SELECTOR = [
+  ".la-inline-actor-editor",
+  ".la-inline-group-editor",
+  ".la-inline-section-editor",
+  ".la-inline-message-editor",
+  ".la-inline-gap-editor",
+  ".la-inline-gap-delete",
+].join(", ");
 
 function svgElement(name, attributes = {}) {
   const element = document.createElementNS(SVG_NS, name);
@@ -1708,21 +1714,6 @@ function removePopover(frame) {
   popover.remove();
 }
 
-function removeInlineGapEditor(frame) {
-  const inlineEditor = frame?.querySelector(
-    ".la-inline-gap-editor",
-  );
-  if (inlineEditor) {
-    inlineEditor.cleanup?.();
-    inlineEditor.remove();
-  }
-  const deleteControl = frame?.querySelector(
-    ".la-inline-gap-delete",
-  );
-  deleteControl?.cleanup?.();
-  deleteControl?.remove();
-}
-
 // Pressing an inline editor's button keeps focus in the editor's field, so
 // no engine commits typed text before the button acts. Otherwise WebKit
 // would focus the frame, and Chrome and Firefox the button. Focus elsewhere
@@ -1740,35 +1731,12 @@ function keepFieldFocus(container, fields = container) {
   });
 }
 
-function removeInlineEditor(frame, selector) {
-  const inlineEditor = frame?.querySelector(selector);
-  inlineEditor?.cleanup();
-  inlineEditor?.remove();
-}
-
-function removeInlineActorEditor(frame) {
-  removeInlineEditor(frame, ".la-inline-actor-editor");
-}
-
-function removeInlineGroupEditor(frame) {
-  removeInlineEditor(frame, ".la-inline-group-editor");
-}
-
-function removeInlineSectionEditor(frame) {
-  removeInlineEditor(frame, ".la-inline-section-editor");
-}
-
-function removeInlineMessageEditor(frame) {
-  removeInlineEditor(frame, ".la-inline-message-editor");
-}
-
 function removeContextualEditor(frame) {
   removePopover(frame);
-  removeInlineGapEditor(frame);
-  removeInlineActorEditor(frame);
-  removeInlineGroupEditor(frame);
-  removeInlineSectionEditor(frame);
-  removeInlineMessageEditor(frame);
+  frame?.querySelectorAll(INLINE_EDITOR_SELECTOR).forEach((element) => {
+    element.cleanup?.();
+    element.remove();
+  });
 }
 
 function positionPopover(popover, frame, layout, anchor) {
@@ -1788,53 +1756,26 @@ function positionPopover(popover, frame, layout, anchor) {
   const viewportWidth = innerWidth;
   const viewportHeight = innerHeight;
   const padding = 8;
-  const placement = popover.dataset.placement ?? "vertical";
-  const gap =
-    placement === "right"
-      ? 16
-      : placement === "above" &&
-          popover.dataset.variant === "insert"
-        ? 7
-        : 10;
+  const gap = 10;
   const anchorX =
     svgRect.left + (anchor.x / layout.width) * svgRect.width;
   const anchorY =
     svgRect.top + (anchor.y / layout.height) * svgRect.height;
-  let side;
   let preferredLeft;
   let preferredTop;
 
-  if (placement === "right") {
-    const spaceRight = viewportWidth - padding - anchorX - gap;
-    const spaceLeft = anchorX - gap - padding;
-    side =
-      spaceRight >= popoverRect.width || spaceRight >= spaceLeft
-        ? "right"
-        : "left";
-    preferredLeft =
-      side === "right"
-        ? anchorX + gap
-        : anchorX - gap - popoverRect.width;
-    preferredTop = anchorY - popoverRect.height / 2;
-  } else if (placement === "center-left") {
-    side = "center-left";
+  if (popover.dataset.placement === "center-left") {
     preferredLeft = anchorX;
     preferredTop = anchorY - popoverRect.height / 2;
   } else {
     const spaceBelow = viewportHeight - padding - anchorY - gap;
     const spaceAbove = anchorY - gap - padding;
-    side =
-      placement === "above"
-        ? "above"
-        : spaceBelow >= popoverRect.height ||
-            spaceBelow >= spaceAbove
-          ? "below"
-          : "above";
+    const below =
+      spaceBelow >= popoverRect.height || spaceBelow >= spaceAbove;
     preferredLeft = anchorX - popoverRect.width / 2;
-    preferredTop =
-      side === "below"
-        ? anchorY + gap
-        : anchorY - gap - popoverRect.height;
+    preferredTop = below
+      ? anchorY + gap
+      : anchorY - gap - popoverRect.height;
   }
   const maxLeft = Math.max(
     padding,
@@ -1844,63 +1785,11 @@ function positionPopover(popover, frame, layout, anchor) {
     padding,
     viewportHeight - padding - popoverRect.height,
   );
-  const left = Math.max(
+  popover.style.left = `${Math.max(
     padding,
     Math.min(preferredLeft, maxLeft),
-  );
-  const top = Math.max(padding, Math.min(preferredTop, maxTop));
-
-  popover.style.left = `${left}px`;
-  popover.style.top = `${top}px`;
-  popover.dataset.side = side;
-
-  const visibleNestedOverlays = [
-    ...popover.querySelectorAll(
-      ".la-icon-picker-popover:not([hidden])",
-    ),
-  ];
-  if (!visibleNestedOverlays.length) {
-    return;
-  }
-
-  const overlayRects = [
-    popover.getBoundingClientRect(),
-    ...visibleNestedOverlays.map((overlay) =>
-      overlay.getBoundingClientRect(),
-    ),
-  ];
-  const bounds = {
-    left: Math.min(...overlayRects.map((rect) => rect.left)),
-    right: Math.max(...overlayRects.map((rect) => rect.right)),
-    top: Math.min(...overlayRects.map((rect) => rect.top)),
-    bottom: Math.max(...overlayRects.map((rect) => rect.bottom)),
-  };
-  const availableWidth = viewportWidth - padding * 2;
-  const availableHeight = viewportHeight - padding * 2;
-  const boundsWidth = bounds.right - bounds.left;
-  const boundsHeight = bounds.bottom - bounds.top;
-  let correctionX = 0;
-  let correctionY = 0;
-
-  if (boundsWidth <= availableWidth) {
-    if (bounds.left < padding) {
-      correctionX = padding - bounds.left;
-    } else if (bounds.right > viewportWidth - padding) {
-      correctionX = viewportWidth - padding - bounds.right;
-    }
-  }
-  if (boundsHeight <= availableHeight) {
-    if (bounds.top < padding) {
-      correctionY = padding - bounds.top;
-    } else if (bounds.bottom > viewportHeight - padding) {
-      correctionY = viewportHeight - padding - bounds.bottom;
-    }
-  }
-
-  if (correctionX || correctionY) {
-    popover.style.left = `${left + correctionX}px`;
-    popover.style.top = `${top + correctionY}px`;
-  }
+  )}px`;
+  popover.style.top = `${Math.max(padding, Math.min(preferredTop, maxTop))}px`;
 }
 
 function observePosition(element, position) {
@@ -1989,7 +1878,6 @@ function addPopover(
   const positioning = observePosition(popover, () =>
     positionPopover(popover, frame, layout, anchor),
   );
-  popover.repositionOverlay = positioning.reposition;
   popover.cleanupPositioning = () => {
     positioning.disconnect();
   };
@@ -2163,24 +2051,14 @@ function createIconSelector(
       for (const icon of primaryIconRecommendations) {
         appendOption(icon);
       }
-      if (
-        primaryIconRecommendations.length &&
-        secondaryIconRecommendations.length
-      ) {
-        const divider = document.createElement("span");
-        divider.className = "la-icon-grid-divider";
-        divider.setAttribute("aria-hidden", "true");
-        grid.append(divider);
-      }
+      const divider = document.createElement("span");
+      divider.className = "la-icon-grid-divider";
+      divider.setAttribute("aria-hidden", "true");
+      grid.append(divider);
       for (const icon of secondaryIconRecommendations) {
         appendOption(icon);
       }
-
-      const count =
-        primaryIconRecommendations.length +
-        secondaryIconRecommendations.length;
-      empty.textContent = "No recommended icons available";
-      empty.hidden = count > 0;
+      empty.hidden = true;
       return;
     }
 
@@ -2421,9 +2299,7 @@ function createIconPicker(
   const trigger = document.createElement("button");
   trigger.type = "button";
   trigger.className = "la-icon-picker-trigger";
-  if (options.field) {
-    trigger.dataset.field = options.field;
-  }
+  trigger.dataset.field = options.field;
   // Unknown identifiers render the fallback, so the stored name stays
   // reachable through the accessible name, the hover title, and the panel.
   trigger.setAttribute(
@@ -2462,7 +2338,7 @@ function createIconPicker(
   );
   selector.classList.add("la-icon-picker-selector");
 
-  const close = (commit = true, restoreFocus = false) => {
+  const close = (restoreFocus = false) => {
     if (panel.hidden) {
       return;
     }
@@ -2472,10 +2348,6 @@ function createIconPicker(
     );
     panel.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
-    popover.repositionOverlay?.();
-    if (commit) {
-      options.onClose?.();
-    }
     if (restoreFocus) {
       trigger.focus();
     }
@@ -2503,10 +2375,7 @@ function createIconPicker(
       "pointerdown",
       onOutsidePointerDown,
     );
-    popover.repositionOverlay?.();
-    if (options.focusOnOpen !== false) {
-      queueMicrotask(() => selector.focusSearch());
-    }
+    queueMicrotask(() => selector.focusSearch());
   };
   picker.openPicker = open;
 
@@ -2516,14 +2385,14 @@ function createIconPicker(
     if (panel.hidden) {
       open();
     } else {
-      close(true, true);
+      close(true);
     }
   });
   panel.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      close(true, true);
+      close(true);
     }
   });
   const dispose = () => {
@@ -2541,12 +2410,9 @@ function createIconPicker(
   return picker;
 }
 
-function addActions(popover, actions, options = {}) {
+function addActions(popover, actions) {
   const row = document.createElement("div");
   row.className = "la-edit-actions";
-  if (options.nowrap) {
-    row.dataset.nowrap = "true";
-  }
   for (const action of actions) {
     const button = document.createElement("button");
     button.type = "button";
@@ -2557,9 +2423,6 @@ function addActions(popover, actions, options = {}) {
     }
     if (action.danger) {
       button.dataset.danger = "true";
-    }
-    if (action.disabled) {
-      button.disabled = true;
     }
     button.addEventListener("click", action.run);
     row.append(button);
@@ -2900,15 +2763,7 @@ function ownerSelector(owner) {
 }
 
 // Editing forms layered over the diagram. Tab keeps their own DOM order.
-const OVERLAY_SELECTOR = [
-  ".la-edit-popover",
-  ".la-inline-actor-editor",
-  ".la-inline-group-editor",
-  ".la-inline-section-editor",
-  ".la-inline-message-editor",
-  ".la-inline-gap-editor",
-  ".la-inline-gap-delete",
-].join(", ");
+const OVERLAY_SELECTOR = `.la-edit-popover, ${INLINE_EDITOR_SELECTOR}`;
 
 // checkVisibility misses SVG content inside a display: none group, such as
 // the insertion layer while something is selected; it has no client rects.
@@ -3077,7 +2932,7 @@ function focusElement(element) {
     element.classList.contains("la-inline-actor-name") ||
     element.classList.contains("la-inline-group-label") ||
     element.classList.contains("la-inline-message-label");
-  if (placeCaretAtEnd && element.setSelectionRange) {
+  if (placeCaretAtEnd) {
     const end = element.value.length;
     element.setSelectionRange(end, end);
   } else if (
@@ -3160,9 +3015,6 @@ function applySelectedVisuals(svg, ids) {
 }
 
 export function renderEditor(target, editor, options = {}) {
-  if (!target?.replaceChildren) {
-    throw new TypeError("renderEditor requires a DOM container.");
-  }
   let selectedIds = [];
   let baseController = null;
   let destroyed = false;
@@ -3729,7 +3581,7 @@ export function renderEditor(target, editor, options = {}) {
       (icon) => {
         const result = commit({ icon }, "actor-icon-trigger");
         if (result === "unchanged") {
-          iconPicker.closePicker(false, true);
+          iconPicker.closePicker(true);
         }
       },
       {
