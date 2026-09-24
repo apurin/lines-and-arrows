@@ -440,7 +440,7 @@ const VIEW_STYLES = `
   }
 `;
 
-function svgElement(name, attributes = {}) {
+export function svgElement(name, attributes = {}) {
   const element = document.createElementNS(SVG_NS, name);
   for (const [key, value] of Object.entries(attributes)) {
     if (value === null || value === undefined) {
@@ -770,35 +770,15 @@ function appendGapMask(svg, layout, prefix) {
   );
 }
 
+// Each theme token becomes a custom property: mutedText is --la-muted-text.
 function applyTokens(frame, tokens) {
-  const properties = {
-    "--la-canvas": tokens.canvas,
-    "--la-surface": tokens.surface,
-    "--la-text": tokens.text,
-    "--la-muted-text": tokens.mutedText,
-    "--la-faint-text": tokens.faintText,
-    "--la-line": tokens.line,
-    "--la-lifeline": tokens.lifeline,
-    "--la-group-fill": tokens.groupFill,
-    "--la-group-nested-fill": tokens.groupNestedFill,
-    "--la-section-line": tokens.sectionLine,
-    "--la-actor": tokens.actor,
-    "--la-actor-hover": tokens.actorHover,
-    "--la-actor-selected": tokens.actorSelected,
-    "--la-actor-text": tokens.actorText,
-    "--la-accent": tokens.accent,
-    "--la-accent-soft": tokens.accentSoft,
-    "--la-tag-fill": tokens.tagFill,
-    "--la-tag-text": tokens.tagText,
-    "--la-tooltip": tokens.tooltip,
-    "--la-tooltip-text": tokens.tooltipText,
-    "--la-selection": tokens.selection,
-    "--la-danger": tokens.danger,
-    "--la-danger-text": tokens.dangerText,
-  };
-
-  for (const [name, value] of Object.entries(properties)) {
-    frame.style.setProperty(name, value);
+  for (const [key, value] of Object.entries(tokens)) {
+    if (key !== "name") {
+      frame.style.setProperty(
+        `--la-${key.replace(/[A-Z]/g, "-$&").toLowerCase()}`,
+        value,
+      );
+    }
   }
 }
 

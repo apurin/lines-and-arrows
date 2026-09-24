@@ -18,10 +18,13 @@ import {
   metadataMetrics,
   selfMessageWidth,
 } from "./metadata.js";
-import { CONTROL_HIT_SIZE, renderDiagramForEditor } from "./render.js";
+import {
+  CONTROL_HIT_SIZE,
+  renderDiagramForEditor,
+  svgElement,
+} from "./render.js";
 import { estimatedTextWidth, graphemes } from "./text.js";
 
-const SVG_NS = "http://www.w3.org/2000/svg";
 const TIMELINE_INSERTION_CONTROL_OFFSET = 12;
 const TIMELINE_INSERTION_CONTROL_RADIUS = 8;
 const ACTOR_INSERTION_CONTROL_HALF_WIDTH = 13;
@@ -1171,12 +1174,6 @@ const EDIT_STYLES = `
       calc(var(--la-insertion-control-size) / 2 + 3px);
     border: 1px solid var(--la-selection);
     border-radius: 10px;
-    -webkit-mask-image: radial-gradient(
-      circle at left center,
-      transparent 0
-        calc(var(--la-insertion-control-size) / 2 - 0.5px),
-      black calc(var(--la-insertion-control-size) / 2 + 0.5px)
-    );
     mask-image: radial-gradient(
       circle at left center,
       transparent 0
@@ -1521,16 +1518,6 @@ const INLINE_EDITOR_SELECTOR = [
   ".la-inline-gap-editor",
   ".la-inline-gap-delete",
 ].join(", ");
-
-function svgElement(name, attributes = {}) {
-  const element = document.createElementNS(SVG_NS, name);
-  for (const [key, value] of Object.entries(attributes)) {
-    if (value !== null && value !== undefined) {
-      element.setAttribute(key, String(value));
-    }
-  }
-  return element;
-}
 
 function eventPoint(svg, event) {
   const point = svg.createSVGPoint();

@@ -63,9 +63,6 @@ const PALETTE_COLOR_KEYS = [
 ];
 
 function normalizePalette(palette) {
-  if (palette === null || palette === undefined) {
-    return null;
-  }
   if (typeof palette !== "object" || Array.isArray(palette)) {
     throw new TypeError("palette must be an object or null.");
   }
@@ -95,20 +92,9 @@ function mix(first, percentage, second) {
   return `color-mix(in oklab, ${first} ${percentage}%, ${second})`;
 }
 
-export function resolvePaletteTheme(
-  baseTheme,
-  palette,
-  canvasBackground = "solid",
-) {
+// The renderer passes an object palette and a validated canvasBackground.
+export function resolvePaletteTheme(baseTheme, palette, canvasBackground) {
   const normalized = normalizePalette(palette);
-  if (!normalized) {
-    return baseTheme;
-  }
-  if (canvasBackground !== "solid" && canvasBackground !== "transparent") {
-    throw new TypeError(
-      'canvasBackground must be either "solid" or "transparent".',
-    );
-  }
 
   const background = normalized.background ?? baseTheme.surface;
   const foreground = normalized.foreground ?? baseTheme.text;
