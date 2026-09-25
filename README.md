@@ -15,7 +15,7 @@ and the editor share.
 [agent-guide]: https://raw.githubusercontent.com/apurin/lines-and-arrows/refs/heads/main/website/agents.md
 
 The JavaScript runtime has zero dependencies and includes TypeScript
-declarations. The current release line is `0.15`; the
+declarations. The current release line is `1.0`; the
 [stability policy](./syntax.md#status) states what a release may change.
 
 Browser modules are tested in current Google Chrome and in Playwright's
@@ -31,7 +31,7 @@ Load the registered web component from jsDelivr:
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.15"
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@1.0"
 ></script>
 
 <lines-and-arrows theme="auto">

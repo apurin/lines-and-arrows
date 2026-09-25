@@ -22,7 +22,7 @@ framework is required.
     <title>Sequence diagram</title>
     <script
       type="module"
-      src="https://cdn.jsdelivr.net/npm/lines-and-arrows@0.15"
+      src="https://cdn.jsdelivr.net/npm/lines-and-arrows@1.0"
     ></script>
   </head>
   <body>
@@ -66,7 +66,7 @@ elements or external script tags, import the exact browser module and call
 <script type="module">
   import {
     renderDiagram,
-  } from "https://cdn.jsdelivr.net/npm/lines-and-arrows@0.15.0/+esm";
+  } from "https://cdn.jsdelivr.net/npm/lines-and-arrows@1.0.0/+esm";
 
   const source = `Client -> API: Start job
 API -> Worker: Run
