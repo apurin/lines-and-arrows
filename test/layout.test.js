@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { assignStructuralIds } from "../src/document.js";
-import { layoutDiagram, layoutDiagramWithoutHeader } from "../src/layout.js";
+import {
+  layoutDiagram,
+  layoutDiagramForEditor,
+  layoutDiagramWithoutHeader,
+} from "../src/layout.js";
 import {
   messageLabelMetrics,
   metadataMetrics,
@@ -67,6 +71,71 @@ test("header-free diagrams use the top edge", () => {
 
   assert.equal(withoutHeader.actors[0].y, 0);
   assert.ok(withHeader.actors[0].y > withoutHeader.actors[0].y);
+});
+
+test("measured actor boxes keep the outer margin and the column spacing", () => {
+  const source = `@a rather long lowercase name
+@Mid
+@another long lowercase name
+
+critical Retry
+  a rather long lowercase name -> Mid: Call
+  gap Later
+Mid -> another long lowercase name: Done`;
+  // A measurer narrower than the worst-case estimate, as real fonts are.
+  const measure = (name) => name.length * 6;
+  for (const layoutFor of [layoutDiagram, layoutDiagramForEditor]) {
+    const document = assignStructuralIds(parse(source));
+    const estimated = layoutFor(document);
+    const measured = layoutFor(document, measure);
+    const { marginX } = measured.options;
+    const first = measured.actors[0];
+    const last = measured.actors.at(-1);
+
+    // Without a measurer every box fills its column.
+    for (const actor of estimated.actors) {
+      assert.equal(actor.x, actor.slotX);
+      assert.equal(actor.width, actor.slotWidth);
+    }
+    assert.equal(estimated.actors[0].x, marginX);
+
+    // Boxes are centered on their columns at the measured width.
+    for (const [index, actor] of measured.actors.entries()) {
+      assert.equal(actor.slotWidth, estimated.actors[index].width);
+      assert.equal(
+        actor.width,
+        Math.max(96, measure(actor.name) + 32),
+      );
+      assert.equal(actor.x + actor.width / 2, actor.centerX);
+      assert.equal(actor.slotX + actor.slotWidth / 2, actor.centerX);
+    }
+    // The unused part of the edge columns is not kept as padding.
+    assert.ok(first.slotX < marginX);
+    assert.equal(first.x, marginX);
+    assert.equal(measured.contentLeft, marginX);
+    assert.equal(last.x + last.width, measured.width - marginX);
+    assert.equal(measured.contentRight, measured.width - marginX);
+    assert.ok(measured.width < estimated.width);
+    // Only the outer edges move inward.
+    const shift = estimated.actors[0].centerX - first.centerX;
+    for (const [index, actor] of measured.actors.entries()) {
+      assert.equal(actor.centerX, estimated.actors[index].centerX - shift);
+    }
+    assert.equal(measured.groups[0].left, marginX);
+    assert.equal(measured.groups[0].right, measured.contentRight);
+  }
+});
+
+test("a measured name wider than its column keeps the full column", () => {
+  const document = assignStructuralIds(parse("@WWWW\n@Mid\n\nWWWW -> Mid"));
+  const estimated = layoutDiagram(document);
+  const measured = layoutDiagram(document, (name) => name.length * 40);
+
+  assert.deepEqual(
+    measured.actors.map(({ x, width, centerX }) => ({ x, width, centerX })),
+    estimated.actors.map(({ x, width, centerX }) => ({ x, width, centerX })),
+  );
+  assert.equal(measured.width, estimated.width);
 });
 
 test("message labels expand the space between lifelines", () => {

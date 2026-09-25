@@ -679,6 +679,14 @@ test("actor boxes fit their measured names inside the reserved column", async (
         branding: false,
         copySource: false,
       });
+      // The reference layout measures names the way the renderer does.
+      const slotsFor = (svg, layoutFor) => {
+        const context = document.createElement("canvas").getContext("2d");
+        context.font = `700 13px ${getComputedStyle(svg).fontFamily}`;
+        return layoutFor(parse(source), (name) =>
+          context.measureText(name).width,
+        );
+      };
       const geometry = (svg, slots) => {
         const lifelines = [...svg.querySelectorAll(".la-lifeline")];
         const actors = [...svg.querySelectorAll(".la-actor")].map(
@@ -714,28 +722,32 @@ test("actor boxes fit their measured names inside the reserved column", async (
                       shapeRect.left) /
                     scale,
               lifeline: Number(lifelines[index].getAttribute("x1")),
-              slotWidth: slots.actors[index].width,
+              slotWidth: slots.actors[index].slotWidth,
               slotCenter: slots.actors[index].centerX,
             };
           },
         );
         return actors;
       };
-      const model = parse(source);
-      const viewGeometry = geometry(view.svg, layoutDiagram(model));
+      const viewGeometry = geometry(
+        view.svg,
+        slotsFor(view.svg, layoutDiagram),
+      );
       view.destroy();
       target.remove();
       const svg = host.shadowRoot.querySelector(".la-canvas");
-      const editGeometry = geometry(svg, layoutDiagramForEditor(model));
+      const editGeometry = geometry(svg, slotsFor(svg, layoutDiagramForEditor));
+      const canvasWidth = svg.viewBox.baseVal.width;
       const insertions = [
         ...svg.querySelectorAll(
           '.la-insertion[aria-label="Add actor here"] .la-insertion-circle',
         ),
       ].map((circle) => Number(circle.getAttribute("cx")));
-      return { viewGeometry, editGeometry, insertions };
+      return { viewGeometry, editGeometry, insertions, canvasWidth };
     });
 
-  const { viewGeometry, editGeometry, insertions } = await measure(element);
+  const { viewGeometry, editGeometry, insertions, canvasWidth } =
+    await measure(element);
   for (const actors of [viewGeometry, editGeometry]) {
     for (const actor of actors) {
       const details = JSON.stringify(actor);
@@ -781,7 +793,10 @@ test("actor boxes fit their measured names inside the reserved column", async (
         (actor, index) =>
           (editGeometry[index].x + editGeometry[index].width + actor.x) / 2,
       ),
-    editGeometry.at(-1).x + editGeometry.at(-1).width + 20,
+    Math.min(
+      canvasWidth - 13,
+      editGeometry.at(-1).x + editGeometry.at(-1).width + 20,
+    ),
   ];
   assert.equal(insertions.length, expected.length);
   for (const [index, x] of insertions.entries()) {
@@ -839,6 +854,245 @@ test("actor boxes fit their measured names inside the reserved column", async (
   assert.ok(Math.abs(grown.editorLeft) < 1, JSON.stringify(grown));
   assert.ok(Math.abs(grown.editorWidth) < 1, JSON.stringify(grown));
   assert.equal(grown.clipped, false);
+});
+
+test("edge actors keep the layout margin in view and edit modes", async (
+  testContext,
+) => {
+  const page = await openPage(testContext);
+  const results = await page.evaluate(async () => {
+    const { layoutDiagram } = await import("../src/layout.js");
+    const { parse } = await import("../src/parser.js");
+    const long = "a rather long lowercase name";
+    const wide = "WWWWWWWW";
+    // Each edge actor leaves a different part of its estimated column unused:
+    // a long lowercase name much of it, wide capitals little, and a short
+    // name none because the box keeps its minimum width.
+    const sources = [
+      [long, "Mid", wide],
+      ["Al", "Mid", long],
+      [wide, "Mid", "Bo"],
+    ].map(
+      ([first, middle, last]) =>
+        [
+          `@${first}`,
+          `@${middle}`,
+          `@${last}`,
+          "",
+          "critical Retry",
+          `  ${first} -> ${middle}: Call`,
+          "  gap Later",
+          `${middle} -> ${last}: Done`,
+        ].join("\n"),
+    );
+    const measure = (host) => {
+      const svg = host.shadowRoot.querySelector(".la-canvas");
+      const { x, width } = svg.viewBox.baseVal;
+      const translateX = (element) =>
+        Number(
+          element.getAttribute("transform").match(/translate\(([-\d.]+)/)[1],
+        );
+      const boxes = [...svg.querySelectorAll(".la-actor")].map((actor) => {
+        const shape = actor.querySelector(".la-actor-shape");
+        const left = translateX(actor) + Number(shape.getAttribute("x") ?? 0);
+        return { left, right: left + Number(shape.getAttribute("width")) };
+      });
+      const groupShape = svg.querySelector(".la-group-shape");
+      const gapArea = svg.querySelector(".la-gap rect");
+      const gapRule = svg.querySelector(".la-gap-rule").getBBox();
+      const controls = [...svg.querySelectorAll(".la-header-control")].map(
+        translateX,
+      );
+      return {
+        viewBoxX: x,
+        width,
+        left: boxes[0].left,
+        right: width - boxes.at(-1).right,
+        gaps: boxes
+          .slice(1)
+          .map((box, index) => box.left - boxes[index].right),
+        lifelines: [...svg.querySelectorAll(".la-lifeline")].map((line) =>
+          Number(line.getAttribute("x1")),
+        ),
+        groupLeft: Number(groupShape.getAttribute("x")),
+        groupRight:
+          width -
+          Number(groupShape.getAttribute("x")) -
+          Number(groupShape.getAttribute("width")),
+        gapLeft: Number(gapArea.getAttribute("x")),
+        gapRight:
+          width -
+          Number(gapArea.getAttribute("x")) -
+          Number(gapArea.getAttribute("width")),
+        gapRuleLeft: gapRule.x,
+        gapRuleRight: width - gapRule.x - gapRule.width,
+        gapLabelX: Number(
+          svg.querySelector(".la-gap-label").getAttribute("x"),
+        ),
+        controlsRight: width - (Math.max(...controls) + 18),
+        maxWidth: parseFloat(svg.style.maxWidth),
+      };
+    };
+    const results = [];
+    const measureText = CanvasRenderingContext2D.prototype.measureText;
+    // The last pass simulates a host font wider than the layout's estimate
+    // by tripling every canvas measurement: the boxes then fill their
+    // columns and nothing is trimmed.
+    for (const [index, source] of [...sources, sources[0]].entries()) {
+      const inflated = index === sources.length;
+      if (inflated) {
+        CanvasRenderingContext2D.prototype.measureText = function (text) {
+          return { width: measureText.call(this, text).width * 3 };
+        };
+      }
+      // Without measured text the layout draws every box at its full column.
+      const estimate = layoutDiagram(parse(source));
+      const slack = (actor) => {
+        const context = document.createElement("canvas").getContext("2d");
+        context.font = `700 13px ${getComputedStyle(document.body).fontFamily}`;
+        return actor.width - Math.max(96, context.measureText(actor.name).width + 32);
+      };
+      const result = {
+        inflated,
+        estimate: {
+          firstSlack: slack(estimate.actors[0]),
+          lastSlack: slack(estimate.actors.at(-1)),
+          lifelineSpacing: estimate.actors
+            .slice(1)
+            .map((actor, index) => actor.centerX - estimate.actors[index].centerX),
+        },
+      };
+      for (const mode of ["view", "edit"]) {
+        const host = document.createElement("lines-and-arrows");
+        host.mode = mode;
+        host.branding = false;
+        host.source = source;
+        document.body.append(host);
+        result[mode] = measure(host);
+        host.remove();
+      }
+      results.push(result);
+    }
+    CanvasRenderingContext2D.prototype.measureText = measureText;
+    return results;
+  });
+
+  // The fixtures cover edge actors with and without unused column space.
+  const slacks = results
+    .filter(({ inflated }) => !inflated)
+    .flatMap(({ estimate }) => [estimate.firstSlack, estimate.lastSlack]);
+  assert.ok(Math.max(...slacks) > 40, JSON.stringify(slacks));
+  assert.ok(Math.min(...slacks) <= 0, JSON.stringify(slacks));
+  const inflated = results.at(-1).estimate;
+  assert.ok(
+    inflated.firstSlack < 0 && inflated.lastSlack < 0,
+    JSON.stringify(inflated),
+  );
+
+  const close = (actual, expected, details) =>
+    assert.ok(
+      Math.abs(actual - expected) < 0.01,
+      `${actual} != ${expected}: ${JSON.stringify(details)}`,
+    );
+  for (const result of results) {
+    for (const [mode, margin] of [
+      ["view", 2],
+      ["edit", 32],
+    ]) {
+      const geometry = result[mode];
+      const details = { mode, geometry };
+      assert.equal(geometry.viewBoxX, 0, JSON.stringify(details));
+      close(geometry.left, margin, details);
+      close(geometry.right, margin, details);
+      close(geometry.maxWidth, geometry.width, details);
+      // Group frames and gaps span the content between the trimmed edges.
+      close(geometry.groupLeft, margin, details);
+      close(geometry.groupRight, margin, details);
+      close(geometry.gapLeft, margin, details);
+      close(geometry.gapRight, margin, details);
+      assert.ok(geometry.gapRuleLeft >= margin - 0.01, JSON.stringify(details));
+      assert.ok(geometry.gapRuleRight >= margin - 0.01, JSON.stringify(details));
+      close(geometry.gapLabelX, geometry.width / 2, details);
+      // Header controls end at the right content edge.
+      close(geometry.controlsRight, margin, details);
+      // Only the outer edges move: the columns keep their spacing.
+      geometry.lifelines.slice(1).forEach((x, index) =>
+        close(
+          x - geometry.lifelines[index],
+          result.estimate.lifelineSpacing[index],
+          details,
+        ),
+      );
+      assert.ok(
+        geometry.gaps.every((gap) => gap >= 70),
+        JSON.stringify(details),
+      );
+    }
+    // Edit mode adds the same margin on both sides.
+    close(result.edit.width - result.view.width, 60, result);
+  }
+
+  // While a longer name is typed, an edge actor grows inward and keeps the
+  // margin, and the name field grows with it.
+  await page.evaluate(() => {
+    const host = document.createElement("lines-and-arrows");
+    host.id = "edge-editor";
+    host.mode = "edit";
+    host.source = [
+      "@a rather long lowercase name",
+      "@Mid",
+      "@another long lowercase name",
+      "",
+      "Mid -> Mid: Check",
+    ].join("\n");
+    document.body.append(host);
+  });
+  const editor = page.locator("#edge-editor");
+  for (const [name, edge] of [
+    [/^Actor a rather/, "left"],
+    [/^Actor another/, "right"],
+  ]) {
+    await editor.getByRole("button", { name }).click();
+    await editor
+      .getByRole("textbox", { name: "Actor name", exact: true })
+      .fill("a rather long lowercase name that grows");
+    const grown = await editor.evaluate((host) => {
+      const root = host.shadowRoot;
+      const svg = root.querySelector(".la-canvas");
+      const field = root.querySelector(".la-inline-actor-name");
+      const actor = [...svg.querySelectorAll(".la-actor")].find((candidate) =>
+        candidate.querySelector(".la-actor-shape").hasAttribute("x"),
+      );
+      const shape = actor.querySelector(".la-actor-shape");
+      const left =
+        Number(
+          actor.getAttribute("transform").match(/translate\(([-\d.]+)/)[1],
+        ) + Number(shape.getAttribute("x"));
+      const editorRect = root
+        .querySelector(".la-inline-actor-editor")
+        .getBoundingClientRect();
+      const shapeRect = shape.getBoundingClientRect();
+      return {
+        left,
+        right:
+          svg.viewBox.baseVal.width -
+          left -
+          Number(shape.getAttribute("width")),
+        width: Number(shape.getAttribute("width")),
+        editorLeft: editorRect.left - shapeRect.left,
+        editorWidth: editorRect.width - shapeRect.width,
+        clipped: field.scrollWidth > field.clientWidth,
+      };
+    });
+    const details = JSON.stringify({ edge, grown });
+    assert.ok(grown.width > 250, details);
+    close(grown[edge], 32, details);
+    assert.ok(grown[edge === "left" ? "right" : "left"] > 32, details);
+    assert.ok(Math.abs(grown.editorLeft) < 1, details);
+    assert.ok(Math.abs(grown.editorWidth) < 1, details);
+    assert.equal(grown.clipped, false, details);
+    await page.keyboard.press("Escape");
+  }
 });
 
 test("a shortened actor name keeps its full text for hover and assistive tech", async (

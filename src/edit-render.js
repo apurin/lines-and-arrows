@@ -3777,7 +3777,8 @@ export function renderEditor(target, editor, options = {}) {
 
     // The box is drawn at the measured name width. While a longer name is
     // typed, it grows around the column center up to the reserved slot, and
-    // the editor, which covers the box, grows with it.
+    // the editor, which covers the box, grows with it. The canvas margin is
+    // kept from the drawn box, so an edge actor grows inward instead.
     const focusRing = actorElement.querySelector(".la-focus-ring");
     const drawnAttributes = [actorShape, focusRing]
       .filter(Boolean)
@@ -3796,17 +3797,26 @@ export function renderEditor(target, editor, options = {}) {
       const unchanged =
         nameControl.value === actor.name &&
         actor.visibleName === actor.name;
+      const left = Math.max(actor.slotX, layout.contentLeft);
+      const right = Math.min(
+        actor.slotX + actor.slotWidth,
+        layout.contentRight,
+      );
       const width = unchanged
         ? actor.width
         : Math.min(
-            actor.slotWidth,
+            right - left,
             Math.max(
               actor.width,
               nameMeasure.measureText(nameControl.value).width +
                 ACTOR_LABEL_MARGIN_X * 2,
             ),
           );
-      const offset = (actor.width - width) / 2;
+      const offset =
+        Math.min(
+          Math.max(actor.centerX - width / 2, left),
+          right - width,
+        ) - actor.x;
       actorShape.setAttribute("x", offset);
       actorShape.setAttribute("width", width);
       focusRing?.setAttribute("x", offset + 1);

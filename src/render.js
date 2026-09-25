@@ -6,7 +6,6 @@ import {
 import { phosphorIconResolver } from "./icons.js";
 import {
   ACTOR_LABEL_MARGIN_X,
-  ACTOR_METADATA_MARGIN_X,
   messageLabelMetrics,
   metadataMetrics,
   selfMessageWidth,
@@ -624,43 +623,23 @@ function sectionLabelGeometry(section, measurers) {
   };
 }
 
-// The layout reserves each actor's column from a worst-case text estimate, so
-// columns never collide in any font. The box is drawn at the measured name
-// width instead, centered on the column: never narrower than the layout's
-// minimum or the metadata row beneath it, and never wider than the reserved
-// slot. A name that overflows even the slot is shortened with an ellipsis.
-// Everything drawn later, including the editor, reads the fitted x and width;
-// slotX and slotWidth keep the reservation.
-function fitActorBoxes(layout, measurers) {
+// The layout draws each actor box at the measured name width, capped at the
+// column it reserved from a worst-case estimate (see computeLayout). A name
+// that overflows even that slot is shortened with an ellipsis.
+function layoutWithActorBoxes(documentModel, layoutDiagramFor, measurers) {
   const measure = measurers(
     ACTOR_LABEL_FONT_SIZE,
     ACTOR_LABEL_FONT_WEIGHT,
   );
-  const actors = layout.actors.map((actor) => {
-    const maximumTextWidth = actor.width - ACTOR_LABEL_MARGIN_X * 2;
-    const visibleName = truncateToWidth(
+  const layout = layoutDiagramFor(documentModel, measure);
+  const actors = layout.actors.map((actor) => ({
+    ...actor,
+    visibleName: truncateToWidth(
       actor.name,
-      maximumTextWidth,
+      actor.slotWidth - ACTOR_LABEL_MARGIN_X * 2,
       measure,
-    );
-    const width = Math.min(
-      actor.width,
-      Math.max(
-        layout.options.actorWidth,
-        measure(visibleName) + ACTOR_LABEL_MARGIN_X * 2,
-        metadataMetrics(actor.tag, actor.tooltip).width +
-          ACTOR_METADATA_MARGIN_X * 2,
-      ),
-    );
-    return {
-      ...actor,
-      visibleName,
-      slotX: actor.x,
-      slotWidth: actor.width,
-      x: actor.centerX - width / 2,
-      width,
-    };
-  });
+    ),
+  }));
   return {
     ...layout,
     actors,
@@ -2596,6 +2575,21 @@ function createViewSelection(root, options) {
 
 let rendererSequence = 0;
 
+// Applies the width policy described at VIEW_MIN_SCALE and EDIT_MIN_WIDTH.
+function sizeCanvas(svg, layout, selectionMode) {
+  svg.setAttribute("viewBox", `0 0 ${layout.width} ${layout.height}`);
+  svg.style.aspectRatio = `${layout.width} / ${layout.height}`;
+  svg.style.maxWidth = `${layout.width}px`;
+  svg.style.minWidth = `${
+    selectionMode === "editor"
+      ? Math.max(
+          Math.min(layout.width, EDIT_MIN_WIDTH),
+          layout.width * EDIT_MIN_SCALE,
+        )
+      : layout.width * VIEW_MIN_SCALE
+  }px`;
+}
+
 function renderDiagramSurface(
   target,
   documentModel,
@@ -2634,13 +2628,12 @@ function renderDiagramSurface(
     copySource ||
     downloadSvg ||
     headerActions.length > 0;
-  const slotLayout =
+  const layoutDiagramFor =
     selectionMode === "editor"
-      ? layoutDiagramForEditor(documentModel)
+      ? layoutDiagramForEditor
       : hasHeader
-        ? layoutDiagram(documentModel)
-        : layoutDiagramWithoutHeader(documentModel);
-  const { width: layoutWidth, height: layoutHeight } = slotLayout;
+        ? layoutDiagram
+        : layoutDiagramWithoutHeader;
   const prefix = `la-${rendererSequence}`;
   rendererSequence += 1;
 
@@ -2654,21 +2647,14 @@ function renderDiagramSurface(
 
   const svg = svgElement("svg", {
     class: "la-canvas",
-    viewBox: `0 0 ${layoutWidth} ${layoutHeight}`,
     role: "group",
     "aria-label": options.label || "Sequence diagram",
     preserveAspectRatio: "xMinYMin meet",
   });
-  svg.style.aspectRatio = `${layoutWidth} / ${layoutHeight}`;
-  svg.style.maxWidth = `${layoutWidth}px`;
-  svg.style.minWidth = `${
-    selectionMode === "editor"
-      ? Math.max(
-          Math.min(layoutWidth, EDIT_MIN_WIDTH),
-          layoutWidth * EDIT_MIN_SCALE,
-        )
-      : layoutWidth * VIEW_MIN_SCALE
-  }px`;
+  // Measuring text once the canvas is attached can force a layout of the
+  // host page, so the canvas is attached at the size of the estimated layout,
+  // which has the final height, instead of the default size of an SVG.
+  sizeCanvas(svg, layoutDiagramFor(documentModel), selectionMode);
   appendDefinitions(svg, tokens, prefix);
   const measurers = createTextMeasurers(svg);
   const renderOptions = {
@@ -2706,7 +2692,14 @@ function renderDiagramSurface(
     frame.append(copyDialog.dialog);
   }
   target.replaceChildren(style, frame);
-  const layout = fitActorBoxes(slotLayout, measurers);
+  // Actor boxes are sized from measured text, and the canvas is sized around
+  // them, so the natural width is only known once the canvas is attached.
+  const layout = layoutWithActorBoxes(
+    documentModel,
+    layoutDiagramFor,
+    measurers,
+  );
+  sizeCanvas(svg, layout, selectionMode);
 
   const selection =
     selectionMode === "editor"

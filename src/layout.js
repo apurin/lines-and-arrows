@@ -270,10 +270,21 @@ function layoutItems(
   }
 }
 
+// Each actor column is reserved from a worst-case text estimate, so columns
+// never collide in any font. A renderer that can measure text passes
+// measureActorName, and each actor box is then drawn at the measured name
+// width, centered on its column: never narrower than the minimum actor width
+// or the metadata row beneath it, and never wider than the reserved slot. The
+// outer margins are kept from the drawn boxes of the first and last actors,
+// so the unused part of their slots does not become extra padding. Only the
+// canvas edges move inward; the spacing between columns is unchanged.
+// Actors carry the drawn box as x and width, and the reservation as slotX and
+// slotWidth.
 function computeLayout(
   document,
   marginTop = DEFAULTS.marginTop,
   marginX = DEFAULTS.marginX,
+  measureActorName = null,
 ) {
   const options = { ...DEFAULTS, marginTop, marginX };
   const selfMessageWidths = new Map();
@@ -291,13 +302,23 @@ function computeLayout(
     actorIndexes,
     options.messageLabelMaxWidth,
   );
-  const actorWidths = document.actors.map((actor) =>
+  const actorBoxWidth = (actor, labelWidth) =>
     Math.max(
       options.actorWidth,
-      actorLabelWidth(actor.name) + ACTOR_LABEL_MARGIN_X * 2,
+      labelWidth + ACTOR_LABEL_MARGIN_X * 2,
       metadataMetrics(actor.tag, actor.tooltip).width +
         ACTOR_METADATA_MARGIN_X * 2,
-    ),
+    );
+  const actorWidths = document.actors.map((actor) =>
+    actorBoxWidth(actor, actorLabelWidth(actor.name)),
+  );
+  const boxWidths = document.actors.map((actor, index) =>
+    measureActorName
+      ? Math.min(
+          actorWidths[index],
+          actorBoxWidth(actor, measureActorName(actor.name)),
+        )
+      : actorWidths[index],
   );
   const actors = [];
   for (
@@ -307,15 +328,16 @@ function computeLayout(
   ) {
     const actor = document.actors[index];
     const actorWidth = actorWidths[index];
+    const boxWidth = boxWidths[index];
     let actorX;
     if (index === 0) {
-      actorX = options.marginX;
+      actorX = options.marginX - (actorWidth - boxWidth) / 2;
     } else {
       const previousActor = document.actors[index - 1];
       const previousLayoutActor = actors[index - 1];
       actorX =
-        previousLayoutActor.x +
-        previousLayoutActor.width +
+        previousLayoutActor.slotX +
+        previousLayoutActor.slotWidth +
         options.actorGap;
       actorX = Math.max(
         actorX,
@@ -347,11 +369,14 @@ function computeLayout(
     const layoutActor = {
       ...actor,
       id: actor.id ?? `actor:${actor.name}`,
-      x: actorX,
+      // Without a measurer the box is the slot; keep its exact coordinate.
+      x: boxWidth === actorWidth ? actorX : centerX - boxWidth / 2,
       y: options.marginTop,
       centerX,
-      width: actorWidth,
+      width: boxWidth,
       height: options.actorHeight,
+      slotX: actorX,
+      slotWidth: actorWidth,
     };
     actors.push(layoutActor);
   }
@@ -419,14 +444,24 @@ function computeLayout(
   };
 }
 
-export function layoutDiagram(document) {
-  return computeLayout(document);
+export function layoutDiagram(document, measureActorName) {
+  return computeLayout(
+    document,
+    DEFAULTS.marginTop,
+    DEFAULTS.marginX,
+    measureActorName,
+  );
 }
 
-export function layoutDiagramWithoutHeader(document) {
-  return computeLayout(document, 0);
+export function layoutDiagramWithoutHeader(document, measureActorName) {
+  return computeLayout(document, 0, DEFAULTS.marginX, measureActorName);
 }
 
-export function layoutDiagramForEditor(document) {
-  return computeLayout(document, DEFAULTS.marginTop, 32);
+export function layoutDiagramForEditor(document, measureActorName) {
+  return computeLayout(
+    document,
+    DEFAULTS.marginTop,
+    32,
+    measureActorName,
+  );
 }
