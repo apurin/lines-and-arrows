@@ -48,10 +48,8 @@ diagram source.
 
 Browser modules are tested in current Google Chrome and in Playwright's
 Firefox and WebKit builds; WebKit is the engine behind Safari. Known
-exceptions: actor names with more than about 20 emoji overflow their box in
-WebKit, and in Firefox the hover area of a shortened message label covers only
-its glyphs. The syntax module and CLI run on Node.js 22 or
-newer.
+exception: in Firefox the hover area of a shortened message label covers only
+its glyphs. The syntax module and CLI run on Node.js 22 or newer.
 
 ## Render inside GUI harness
 

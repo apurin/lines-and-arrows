@@ -15,8 +15,7 @@ on authoring or validating a diagram, read the canonical
   handwritten `.d.ts` files; there is no TypeScript source or build.
 - Browser modules are tested in current Google Chrome and in Playwright's
   Firefox and WebKit builds; WebKit is the engine behind Safari. Known
-  exceptions: actor names with more than about 20 emoji overflow their box in
-  WebKit, and in Firefox the hover area of a shortened message label covers
+  exception: in Firefox the hover area of a shortened message label covers
   only its glyphs. Chrome is the CI engine. The `/syntax` entry and CLI target
   Node.js 22 or newer and remain DOM-free.
 - UI output is SVG. View and edit rendering share the same layout and theme
