@@ -138,6 +138,52 @@ test("a measured name wider than its column keeps the full column", () => {
   assert.equal(measured.width, estimated.width);
 });
 
+test("content narrower than the minimum canvas is centered in it", () => {
+  const sources = [
+    "A -> B: One",
+    `@Solo
+
+critical Retry
+  loop Poll
+    Solo -> Solo: Check`,
+  ];
+  for (const source of sources) {
+    for (const layoutFor of [
+      layoutDiagram,
+      layoutDiagramForEditor,
+      layoutDiagramWithoutHeader,
+    ]) {
+      for (const measure of [undefined, (name) => name.length * 6]) {
+        const result = layoutFor(assignStructuralIds(parse(source)), measure);
+        const { marginX } = result.options;
+        const contentRight = Math.max(
+          ...result.actors.map((actor) => actor.x + actor.width),
+          ...result.rows
+            .filter((row) => row.source === row.target)
+            .map(
+              (row) =>
+                result.actorByName.get(row.source).centerX +
+                selfMessageWidth(row, result.options.messageLabelMaxWidth),
+            ),
+        );
+        const left = result.actors[0].x;
+
+        assert.equal(result.width, 420 + (marginX - 2) * 2);
+        assert.ok(left > marginX);
+        assert.ok(Math.abs(left - (result.width - contentRight)) < 1e-9);
+        for (const actor of result.actors) {
+          assert.equal(actor.x + actor.width / 2, actor.centerX);
+          assert.equal(actor.slotX + actor.slotWidth / 2, actor.centerX);
+        }
+        for (const group of result.groups) {
+          assert.equal(group.left, marginX + group.depth * 9);
+          assert.equal(group.right, result.width - marginX - group.depth * 9);
+        }
+      }
+    }
+  }
+});
+
 test("message labels expand the space between lifelines", () => {
   const label = "Confirm compatible migration";
   const result = layout(`@Client

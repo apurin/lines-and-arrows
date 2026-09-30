@@ -122,13 +122,13 @@ Download SVG saves the diagram as shown, in its current theme, as a standalone
 `.svg` file named after the `label`. Icons stay linked to the CDN, tooltips stay
 collapsed, and selection and controls are left out.
 
-A view never grows past its natural width and sits at the left edge of its
+A view never grows past its natural width and is centered in a wider
 container. In a narrower container it shrinks down to 75% of that width, then
-scrolls horizontally. The editor also never grows past its natural width and
-shrinks with its container, so a large diagram stays on screen on a desktop. It
-stops shrinking at 720 pixels wide or at 60% of its natural width, whichever is
-larger, and then scrolls horizontally, so its editing controls stay usable on a
-narrow screen such as a phone.
+scrolls horizontally. The editor also never grows past its natural width, is
+centered the same way, and shrinks with its container, so a large diagram stays
+on screen on a desktop. It stops shrinking at 720 pixels wide or at 60% of its
+natural width, whichever is larger, and then scrolls horizontally, so its
+editing controls stay usable on a narrow screen such as a phone.
 
 Built-in icons load from the pinned Phosphor package on jsDelivr. Allow that
 origin in browser content policies, or omit icon properties for offline embeds.

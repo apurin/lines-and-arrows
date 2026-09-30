@@ -28,6 +28,7 @@ const DEFAULTS = {
   bottomPadding: 36,
 };
 
+const MINIMUM_WIDTH = 420;
 const MESSAGE_LABEL_TOP_EXTENT = 19;
 const SELF_MESSAGE_LABEL_TOP_EXTENT = 32;
 const MESSAGE_LINE_EXTENT = 12;
@@ -270,6 +271,34 @@ function layoutItems(
   }
 }
 
+function layoutRows(document, actors, options, width) {
+  const state = {
+    options,
+    width,
+    actorByName: new Map(
+      actors.map((actor) => [actor.name, actor]),
+    ),
+    y:
+      options.marginTop +
+      options.actorHeight +
+      options.timelineTopGap,
+    rows: [],
+    groups: [],
+    sections: [],
+  };
+
+  layoutItems(document.items, state);
+
+  const expandedGroupRight = state.groups.reduce(
+    (right, group) => Math.max(right, group.right),
+    0,
+  );
+  return {
+    state,
+    width: Math.max(width, expandedGroupRight + options.marginX),
+  };
+}
+
 // Each actor column is reserved from a worst-case text estimate, so columns
 // never collide in any font. A renderer that can measure text passes
 // measureActorName, and each actor box is then drawn at the measured name
@@ -280,6 +309,10 @@ function layoutItems(
 // canvas edges move inward; the spacing between columns is unchanged.
 // Actors carry the drawn box as x and width, and the reservation as slotX and
 // slotWidth.
+//
+// The canvas is never narrower than MINIMUM_WIDTH plus any extra margin, so
+// the header fits. Content narrower than that is centered in the canvas, as
+// are the branding and gap labels, instead of leaving the space on the right.
 function computeLayout(
   document,
   marginTop = DEFAULTS.marginTop,
@@ -393,37 +426,34 @@ function computeLayout(
       ),
     actorRight,
   );
-  const baseWidth = Math.max(
-    420 + (options.marginX - DEFAULTS.marginX) * 2,
-    actorRight + options.marginX,
-    selfMessageRight + options.marginX,
-  );
-
-  const state = {
+  const minimumWidth =
+    MINIMUM_WIDTH + (options.marginX - DEFAULTS.marginX) * 2;
+  const contentWidth = selfMessageRight + options.marginX;
+  let { state, width } = layoutRows(
+    document,
+    actors,
     options,
-    width: baseWidth,
-    actorByName: new Map(
-      actors.map((actor) => [actor.name, actor]),
-    ),
-    y:
-      options.marginTop +
-      options.actorHeight +
-      options.timelineTopGap,
-    rows: [],
-    groups: [],
-    sections: [],
-  };
-
-  layoutItems(document.items, state);
-
-  const expandedGroupRight = state.groups.reduce(
-    (right, group) => Math.max(right, group.right),
-    0,
+    contentWidth,
   );
-  const width = Math.max(
-    baseWidth,
-    expandedGroupRight + options.marginX,
-  );
+  if (width < minimumWidth) {
+    // Center the actors and self messages, but never push a self message
+    // past the room its enclosing groups need, which would widen the canvas.
+    const offset = Math.min(
+      (minimumWidth - contentWidth) / 2,
+      minimumWidth - width,
+    );
+    for (const actor of actors) {
+      actor.x += offset;
+      actor.slotX += offset;
+      actor.centerX += offset;
+    }
+    ({ state, width } = layoutRows(
+      document,
+      actors,
+      options,
+      minimumWidth,
+    ));
+  }
   const height = state.y + options.bottomPadding;
   const actorByName = state.actorByName;
 

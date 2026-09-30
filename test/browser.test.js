@@ -1628,8 +1628,12 @@ test("view canvases stay at natural size, shrink, then scroll", async (
     { small, large },
   );
 
+  // A narrower canvas is centered in its container.
   assert.equal(result.wide.width, result.wide.natural);
-  assert.equal(result.wide.left, 0);
+  assert.ok(
+    Math.abs(result.wide.left - (1200 - result.wide.natural) / 2) < 0.5,
+    JSON.stringify(result.wide),
+  );
   assert.equal(result.wide.scrolls, false);
 
   assert.ok(
@@ -1644,11 +1648,17 @@ test("view canvases stay at natural size, shrink, then scroll", async (
     JSON.stringify(result.narrow),
   );
   assert.equal(result.narrow.scrolls, true);
+  // A canvas wider than its frame starts at the left edge and scrolls from
+  // there, so none of it is out of reach.
+  assert.equal(result.narrow.left, 0);
 
   // The editor is capped at its natural width too, shrinks with its
   // container down to 720 px, and scrolls below that.
   assert.equal(result.edit.width, result.edit.natural);
-  assert.equal(result.edit.left, 0);
+  assert.ok(
+    Math.abs(result.edit.left - (1200 - result.edit.natural) / 2) < 0.5,
+    JSON.stringify(result.edit),
+  );
   assert.equal(result.edit.scrolls, false);
   assert.equal(result.edit.afterTransition, result.edit.viewNatural);
 
@@ -1661,6 +1671,7 @@ test("view canvases stay at natural size, shrink, then scroll", async (
 
   assert.equal(result.narrowEdit.width, 720);
   assert.equal(result.narrowEdit.scrolls, true);
+  assert.equal(result.narrowEdit.left, 0);
 
   // In a narrow container the view stops at 75% of its natural width and
   // the editor at 720 px, so the transition widens the canvas.
@@ -1837,7 +1848,8 @@ test("view mode downloads the visible diagram as standalone SVG", async (
       header: withoutActions.svg.querySelectorAll(".la-diagram-header").length,
       actorY: withoutActions.svg
         .querySelector(".la-actor")
-        .getAttribute("transform"),
+        .getAttribute("transform")
+        .match(/ ([-\d.]+)\)$/)[1],
     };
     const element = document.createElement("lines-and-arrows");
     element.source = "A -> B: Start";
@@ -1860,7 +1872,7 @@ test("view mode downloads the visible diagram as standalone SVG", async (
   });
   assert.deepEqual(hidden, {
     header: 0,
-    actorY: "translate(2 0)",
+    actorY: "0",
     elementActions: ["Copy source"],
     attribute: "false",
     editActions: ["Undo", "Redo", "Copy source"],
@@ -1961,7 +1973,9 @@ test(
       transition.branding = false;
       transition.copySource = false;
       transition.downloadSvg = false;
-      transition.source = "A -> B: Start";
+      // Three actors are wider than the minimum canvas, so the first actor
+      // sits at the margin and its insertion control is clamped to the edge.
+      transition.source = "A -> B: Start\nB -> C: Next";
       document.body.append(transition);
       const viewCanvas = transition.shadowRoot.querySelector(".la-canvas");
       const viewFrame = {
@@ -3555,11 +3569,11 @@ test("mouse drags select a range, reconnect, and reorder", async (
     "A to B: Three",
     ".la-message-line",
   );
-  const frameLeft = await element.evaluate(
+  const canvasLeft = await element.evaluate(
     (node) =>
-      node.shadowRoot.querySelector(".la-frame").getBoundingClientRect().x,
+      node.shadowRoot.querySelector(".la-canvas").getBoundingClientRect().x,
   );
-  const empty = { x: frameLeft + 4, y: one.y - 8 };
+  const empty = { x: canvasLeft + 4, y: one.y - 8 };
   assert.equal(
     await element.evaluate(
       (node, point) =>
@@ -3572,7 +3586,7 @@ test("mouse drags select a range, reconnect, and reorder", async (
     null,
   );
 
-  await mouseDrag(page, empty, { x: frameLeft + 40, y: two.y + 8 });
+  await mouseDrag(page, empty, { x: canvasLeft + 40, y: two.y + 8 });
   assert.deepEqual(await selectedLabels(element), [
     "A to B: One",
     "A to B: Two",

@@ -31,10 +31,11 @@ const LIFELINE_LABEL_MIN_ROWS = 6;
 const LIFELINE_LABEL_BASELINE_OFFSET = 14;
 const ACTOR_LABEL_FONT_SIZE = 13;
 const ACTOR_LABEL_FONT_WEIGHT = 700;
-// View-mode canvases never grow past their natural layout width and shrink
-// with their container down to this scale. Below it the frame scrolls
-// horizontally: 0.75 keeps 11 px message labels at about 8 px and 13 px
-// actor names near 10 px.
+// View-mode canvases never grow past their natural layout width and are
+// centered in a wider container. They shrink with their container down to
+// this scale. Below it the frame scrolls horizontally from the left edge:
+// 0.75 keeps 11 px message labels at about 8 px and 13 px actor names near
+// 10 px.
 const VIEW_MIN_SCALE = 0.75;
 // Edit-mode canvases never grow past their natural layout width either. They
 // shrink with their container until the larger of two floors, then the frame
@@ -66,6 +67,7 @@ const VIEW_STYLES = `
     display: block;
     width: 100%;
     height: auto;
+    margin-inline: auto;
     background: var(--la-canvas);
     color: var(--la-text);
     font-family: var(
