@@ -1,4 +1,4 @@
-import "./runtime.js?v=20260821-1";
+import "./runtime.js?v=20260930-1";
 import { initializeSiteTheme } from "./site.js?v=20260806-2";
 
 const themePreviewSource = `@Client
