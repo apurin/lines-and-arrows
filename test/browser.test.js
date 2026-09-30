@@ -246,8 +246,12 @@ test("unknown website paths show the 404 page with a 404 status", async (
 test("website view stages leave horizontal scrolling to the diagram", async (
   testContext,
 ) => {
+  // The page shell stops growing at 1536 px and the showcase column gap at
+  // 1675 px, so 1700 px shows the final desktop layout. Every diagram fits
+  // it without scrolling.
+  const widestLayout = 1700;
   for (const path of ["index.html", "features.html", "showcase.html"]) {
-    for (const width of [375, 1400]) {
+    for (const width of [375, 1400, widestLayout]) {
       const context = await browser.newContext({
         viewport: { width, height: 900 },
       });
@@ -276,12 +280,22 @@ test("website view stages leave horizontal scrolling to the diagram", async (
             .querySelector("#hero-diagram")
             ?.shadowRoot.querySelectorAll(".la-copy-source, .la-download-svg")
             .length ?? 0,
+        scrollingDiagrams: [...document.querySelectorAll("lines-and-arrows")]
+          .filter((diagram) => {
+            const frame = diagram.shadowRoot.querySelector(".la-frame");
+            return frame.scrollWidth > frame.clientWidth;
+          })
+          .map((diagram) => diagram.id || diagram.closest("section").id),
       }));
+      const { scrollingDiagrams, ...stages } = layout;
       assert.deepEqual(
-        layout,
+        stages,
         { pageOverflow: 0, scrollingStages: [], heroControls: 0 },
         `${path} at ${width}px`,
       );
+      if (width === widestLayout) {
+        assert.deepEqual(scrollingDiagrams, [], `${path} at ${width}px`);
+      }
     }
   }
 });

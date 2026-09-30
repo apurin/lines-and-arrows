@@ -435,7 +435,7 @@ Release -> Database: Drop name</lines-and-arrows>
   tooltip-icon flow-arrow
 @Payment Service
   icon credit-card
-@Inventory Service
+@Stock Service
   icon warehouse
 @Delivery Service
   icon truck
@@ -445,15 +445,15 @@ Order Service -> Payment Service: Authorize payment
 choice Payment result
   | authorized
     Payment Service --> Order Service: Hold approved
-    Order Service -> Inventory Service: Reserve items
+    Order Service -> Stock Service: Reserve items
     choice Stock result
       | reserved
-        Inventory Service --> Order Service: Reservation confirmed
+        Stock Service --> Order Service: Reservation confirmed
         Order Service -> Delivery Service: Schedule shipment
         Delivery Service --> Order Service: Delivery window
         Order Service --> Storefront: Confirm order
       | unavailable
-        Inventory Service --> Order Service: Reservation rejected
+        Stock Service --> Order Service: Reservation rejected
         critical Compensate prior work
           Order Service -> Payment Service: Release hold
           Payment Service --> Order Service: Hold released
