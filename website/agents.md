@@ -92,6 +92,44 @@ select it or `null` to clear selection.
 The header options `branding`, `copySource`, and `downloadSvg` default to
 `true`; pass `false` to hide each one, as with the element attributes below.
 
+### Send edits back to the agent
+
+When the harness lets embedded HTML post a message into the conversation, a
+person can edit the diagram in place and return it without copying source.
+Render the element in edit mode and add a button that passes its `source`
+property to the host's callback. Claude's inline HTML widgets, for example,
+expose a global `sendPrompt(text)` that posts text as if the person typed it,
+which starts the agent's next turn.
+
+```html
+<script
+  type="module"
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@1.1"
+></script>
+
+<lines-and-arrows id="draft" mode="edit" theme="auto">
+  Client -> API: Start job
+  API --> Client: Complete
+</lines-and-arrows>
+<button type="button" id="send-back">Send back</button>
+
+<script>
+  const draft = document.querySelector("#draft");
+  document.querySelector("#send-back").addEventListener("click", () => {
+    // Use the host's own callback in place of sendPrompt.
+    sendPrompt(
+      "[lines-and-arrows edit]\n```lines-and-arrows\n" + draft.source + "\n```",
+    );
+  });
+</script>
+```
+
+Start the message with a fixed marker so the returned diagram is easy to
+recognize, and validate it before use. Some hosts rewrite `@` to the fullwidth
+`＠` to suppress mentions; the parser accepts either sign. The same callback
+turns ordinary buttons into an interview: each choice posts its answer, and
+work continues without the person typing a reply.
+
 ## Configure the web component
 
 | Attribute | Values and behavior |
