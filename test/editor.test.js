@@ -227,6 +227,10 @@ test("actor renames reject the reserved gap keyword", () => {
     () => editor.updateActor(api.id, { name: "API: public" }),
     /^Error: Invalid actor name "API: public"\.$/,
   );
+  assert.throws(
+    () => editor.updateActor(api.id, { name: "\uFF20API" }),
+    /^Error: Invalid actor name "\uFF20API"\.$/,
+  );
   assert.equal(editor.document, beforeDocument);
   assert.equal(editor.canUndo, false);
 

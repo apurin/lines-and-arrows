@@ -121,6 +121,10 @@ An actor declaration begins with `@`:
 Client -> API: Start job
 ```
 
+Parsers also accept U+FF20 FULLWIDTH COMMERCIAL AT (`＠`) in place of `@`,
+because some chat hosts rewrite `@` to suppress mentions. Canonical output
+always writes `@`.
+
 Actor properties are optional:
 
 | Property | Meaning |
@@ -375,8 +379,8 @@ escapes every literal backslash, so text always parses back to the same value.
 The following rules also apply:
 
 - actor names may contain spaces;
-- actor names may not contain `:`, an arrow form, or begin with `@`, `|`, or
-  `//`;
+- actor names may not contain `:`, an arrow form, or begin with `@`, `＠`,
+  `|`, or `//`;
 - an actor name may not be `gap` or start with `gap` followed by whitespace,
   because such a line reads as a gap. The check is case-sensitive, so `Gap`
   and `gapfill` are valid names;
@@ -399,7 +403,7 @@ document         = header, [ actors ], timeline ;
 header           = { comment | blank } ;
 
 actors           = actor, { actor | blank } ;
-actor            = "@", single-line-text, newline,
+actor            = ( "@" | "＠" ), single-line-text, newline,
                    { actor-property | blank } ;
 actor-property   = indent, ( icon | tag | tooltip | tooltip-icon ), newline ;
 icon             = "icon", space, single-line-text ;

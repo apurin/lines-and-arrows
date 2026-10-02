@@ -4,6 +4,7 @@ import {
   GROUP_LINE_PATTERN,
   MESSAGE_PROPERTY_LINE_PATTERN,
   actorNameProblem,
+  startsWithActorMarker,
 } from "./grammar.js";
 import { visitMessages } from "./document.js";
 
@@ -511,7 +512,7 @@ function parseItems(cursor, indent) {
     if (line.content.startsWith("|")) {
       break;
     }
-    if (line.content.startsWith("@")) {
+    if (startsWithActorMarker(line.content)) {
       fail("Actor declarations must appear before the timeline.", line.number);
     }
 
@@ -621,7 +622,7 @@ export function parse(source) {
 
   while (cursor.index < cursor.lines.length) {
     const line = cursor.lines[cursor.index];
-    if (line.indent === 0 && line.content.startsWith("@")) {
+    if (line.indent === 0 && startsWithActorMarker(line.content)) {
       declaredActors.push(parseActor(cursor));
       skipBlankLines(cursor);
       continue;

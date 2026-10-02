@@ -199,6 +199,21 @@ test("ignores one leading byte order mark", () => {
   assert.equal(validate("﻿﻿@Client\nClient -> API").valid, false);
 });
 
+test("reads a fullwidth at sign as an actor marker", () => {
+  const source = "@Client\n  icon user\n@API\n\nClient -> API: Start";
+  const document = parse(source.replaceAll("@", "\uFF20"));
+
+  assert.deepEqual(document, parse(source));
+  assert.equal(serialize(document), serialize(parse(source)));
+  assert.deepEqual(validate("A -> B\n\uFF20C").error, {
+    message: "Actor declarations must appear before the timeline.",
+    line: 2,
+  });
+  for (const invalid of ["@\uFF20A\nA -> B", "A -> \uFF20B: Hi"]) {
+    assert.equal(validate(invalid).valid, false, invalid);
+  }
+});
+
 test("names unsupported arrows and missing arrow spacing", () => {
   const supported = /Use ->, -->, or ->x; messages read from source to target/;
   for (const token of [
