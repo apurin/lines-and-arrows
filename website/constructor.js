@@ -1,4 +1,4 @@
-import { CDN_VERSION } from "./runtime.js?v=20260930-1";
+import { CDN_VERSION } from "./runtime.js?v=20261002-1";
 import { initializeSiteTheme } from "./site.js?v=20260806-2";
 
 initializeSiteTheme();

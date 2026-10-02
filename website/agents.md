@@ -22,7 +22,7 @@ framework is required.
     <title>Sequence diagram</title>
     <script
       type="module"
-      src="https://cdn.jsdelivr.net/npm/lines-and-arrows@1.1"
+      src="https://cdn.jsdelivr.net/npm/lines-and-arrows@1.2"
     ></script>
   </head>
   <body>
@@ -66,7 +66,7 @@ elements or external script tags, import the exact browser module and call
 <script type="module">
   import {
     renderDiagram,
-  } from "https://cdn.jsdelivr.net/npm/lines-and-arrows@1.1.0/+esm";
+  } from "https://cdn.jsdelivr.net/npm/lines-and-arrows@1.2.0/+esm";
 
   const source = `Client -> API: Start job
 API -> Worker: Run
@@ -104,7 +104,7 @@ which starts the agent's next turn.
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@1.1"
+  src="https://cdn.jsdelivr.net/npm/lines-and-arrows@1.2"
 ></script>
 
 <lines-and-arrows id="draft" mode="edit" theme="auto">
