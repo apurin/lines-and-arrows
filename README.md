@@ -260,6 +260,7 @@ Website deployment is independent of package publication. After the npm
 release is verified, run `npm run website:prepare` again as the first
 deployment step; on a synchronized checkout it changes nothing and confirms
 that every runtime and example URL matches the published version.
+[hosting/README.md](./hosting/README.md) covers the Railway deployment itself.
 
 ## License
 

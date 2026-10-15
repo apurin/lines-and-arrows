@@ -43,6 +43,7 @@ on authoring or validating a diagram, read the canonical
 - `bin/lines-and-arrows.js` provides DOM-free command-line validation.
 - `demo/` is the local visual workbench; `website/` is the separate product
   website.
+- `hosting/` serves `website/` on Railway; its README covers deployment.
 - `scripts/build.mjs` creates the minified auto-registration CDN bundle in
   ignored `dist/`.
 
@@ -141,4 +142,4 @@ Push the release commit and its tag close together to keep that window short.
 The deployed website is independent of package publication. After the npm
 release is verified, run `npm run website:prepare` again as the first website
 deployment step so every runtime and example URL is synchronized from
-`package.json`.
+`package.json`, then deploy as described in [hosting](./hosting/README.md).

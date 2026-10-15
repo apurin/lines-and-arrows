@@ -1,0 +1,48 @@
+# Serves website/ on Railway. Railway terminates TLS and forwards plain HTTP
+# to $PORT. Routes and headers match what the site had on Cloudflare Pages.
+{
+	admin off
+	persist_config off
+	auto_https off
+	servers {
+		trusted_proxies static private_ranges 100.0.0.0/8
+	}
+}
+
+:{$PORT:8080} {
+	root * /srv
+	encode zstd gzip
+
+	@www host www.lines-and-arrows.dev
+	redir @www https://lines-and-arrows.dev{uri} permanent
+
+	# Clean URLs: /features serves features.html.
+	redir /index.html / 308
+	@html path_regexp html ^(/.+)\.html$
+	redir @html {re.html.1} 308
+	@slash path_regexp slash ^(/.+)/$
+	redir @slash {re.slash.1} 308
+
+	# Release commits bump the ?v= queries on scripts and styles, so assets
+	# can stay cached for four hours while pages always revalidate.
+	@assets path *.css *.js *.svg *.png *.jpg
+	header @assets Cache-Control "public, max-age=14400, must-revalidate"
+	@markdown path *.md
+	header @markdown Content-Type "text/markdown; charset=utf-8"
+	header {
+		?Cache-Control "public, max-age=0, must-revalidate"
+		Access-Control-Allow-Origin *
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Content-Type-Options nosniff
+	}
+
+	try_files {path} {path}.html
+	file_server
+
+	handle_errors 404 {
+		rewrite * /404.html
+		header Cache-Control no-store
+		header Content-Type "text/html; charset=utf-8"
+		file_server
+	}
+}
